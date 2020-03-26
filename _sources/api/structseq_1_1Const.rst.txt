@@ -1,0 +1,16 @@
+.. _exhale_struct_structseq_1_1Const:
+
+Struct Const
+============
+
+- Defined in :ref:`file_compiler_lang_expr.h`
+
+
+Struct Documentation
+--------------------
+
+
+.. doxygenstruct:: seq::Const
+   :members:
+   :protected-members:
+   :undoc-members:

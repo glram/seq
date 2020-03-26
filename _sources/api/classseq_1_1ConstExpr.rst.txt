@@ -1,0 +1,36 @@
+.. _exhale_class_classseq_1_1ConstExpr:
+
+Class ConstExpr
+===============
+
+- Defined in :ref:`file_compiler_lang_expr.h`
+
+
+Inheritance Relationships
+-------------------------
+
+Base Type
+*********
+
+- ``public seq::Expr`` (:ref:`exhale_class_classseq_1_1Expr`)
+
+
+Derived Types
+*************
+
+- ``public seq::BoolExpr`` (:ref:`exhale_class_classseq_1_1BoolExpr`)
+- ``public seq::FloatExpr`` (:ref:`exhale_class_classseq_1_1FloatExpr`)
+- ``public seq::IntExpr`` (:ref:`exhale_class_classseq_1_1IntExpr`)
+- ``public seq::NoneExpr`` (:ref:`exhale_class_classseq_1_1NoneExpr`)
+- ``public seq::SeqExpr`` (:ref:`exhale_class_classseq_1_1SeqExpr`)
+- ``public seq::StrExpr`` (:ref:`exhale_class_classseq_1_1StrExpr`)
+
+
+Class Documentation
+-------------------
+
+
+.. doxygenclass:: seq::ConstExpr
+   :members:
+   :protected-members:
+   :undoc-members:

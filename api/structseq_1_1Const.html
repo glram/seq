@@ -1,0 +1,328 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Struct Const &mdash; Seq 0.9.6 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script src="../_static/collapsible-lists/js/CollapsibleLists.compressed.js"></script>
+        <script src="../_static/collapsible-lists/js/apply-collapsible-lists.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/collapsible-lists/css/tree_view.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Struct MagicMethod" href="structseq_1_1MagicMethod.html" />
+    <link rel="prev" title="Struct Config" href="structseq_1_1config_1_1Config.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #333131" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Seq
+          
+
+          
+            
+            <img src="../_static/logo.png" class="logo" alt="Logo"/>
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.9
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cookbook.html">Cookbook</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../python.html">Calling Python from Seq</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../embed.html">Calling Seq from C/C++</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../build.html">Building from Source</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../internals.html">Compiler Internals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="doxygen.html">Compiler API</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Seq</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="doxygen.html">Compiler API</a> &raquo;</li>
+        
+      <li>Struct Const</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/structseq_1_1Const.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="struct-const">
+<span id="exhale-struct-structseq-1-1const"></span><h1>Struct Const<a class="headerlink" href="#struct-const" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p>Defined in <a class="reference internal" href="file_compiler_lang_expr.h.html#file-compiler-lang-expr-h"><span class="std std-ref">File expr.h</span></a></p></li>
+</ul>
+<div class="section" id="struct-documentation">
+<h2>Struct Documentation<a class="headerlink" href="#struct-documentation" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="_CPPv4N3seq5ConstE">
+<span id="_CPPv3N3seq5ConstE"></span><span id="_CPPv2N3seq5ConstE"></span><span id="seq::Const"></span><span class="target" id="structseq_1_1Const"></span><em class="property">struct </em><code class="sig-name descname">Const</code><a class="headerlink" href="#_CPPv4N3seq5ConstE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric">Public Types</p>
+<dl class="enum">
+<dt id="_CPPv4N3seq5Const4TypeE">
+<span id="_CPPv3N3seq5Const4TypeE"></span><span id="_CPPv2N3seq5Const4TypeE"></span><span class="target" id="structseq_1_1Const_1a194799a037b952792a2ff04a27fba09b"></span><em class="property">enum </em><code class="sig-name descname">Type</code><a class="headerlink" href="#_CPPv4N3seq5Const4TypeE" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p><em>Values:</em></p>
+<dl class="enumerator">
+<dt id="_CPPv4N3seq5Const4NONEE">
+<span id="_CPPv3N3seq5Const4NONEE"></span><span id="_CPPv2N3seq5Const4NONEE"></span><span class="target" id="structseq_1_1Const_1a194799a037b952792a2ff04a27fba09ba6ad58c684892f81a1d5357e9490ac018"></span><code class="sig-name descname">NONE</code><a class="headerlink" href="#_CPPv4N3seq5Const4NONEE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="enumerator">
+<dt id="_CPPv4N3seq5Const3INTE">
+<span id="_CPPv3N3seq5Const3INTE"></span><span id="_CPPv2N3seq5Const3INTE"></span><span class="target" id="structseq_1_1Const_1a194799a037b952792a2ff04a27fba09ba5618b0f94b7085703d8ef50fccbf59f1"></span><code class="sig-name descname">INT</code><a class="headerlink" href="#_CPPv4N3seq5Const3INTE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="enumerator">
+<dt id="_CPPv4N3seq5Const5FLOATE">
+<span id="_CPPv3N3seq5Const5FLOATE"></span><span id="_CPPv2N3seq5Const5FLOATE"></span><span class="target" id="structseq_1_1Const_1a194799a037b952792a2ff04a27fba09ba5fa6989f7f0cf183933e03b89858ccf4"></span><code class="sig-name descname">FLOAT</code><a class="headerlink" href="#_CPPv4N3seq5Const5FLOATE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="enumerator">
+<dt id="_CPPv4N3seq5Const4BOOLE">
+<span id="_CPPv3N3seq5Const4BOOLE"></span><span id="_CPPv2N3seq5Const4BOOLE"></span><span class="target" id="structseq_1_1Const_1a194799a037b952792a2ff04a27fba09ba308e9eea636b1ce057a89f782f3e9a36"></span><code class="sig-name descname">BOOL</code><a class="headerlink" href="#_CPPv4N3seq5Const4BOOLE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="enumerator">
+<dt id="_CPPv4N3seq5Const3STRE">
+<span id="_CPPv3N3seq5Const3STRE"></span><span id="_CPPv2N3seq5Const3STRE"></span><span class="target" id="structseq_1_1Const_1a194799a037b952792a2ff04a27fba09ba578ac253852231d682fdcc1a2076a8c7"></span><code class="sig-name descname">STR</code><a class="headerlink" href="#_CPPv4N3seq5Const3STRE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="enumerator">
+<dt id="_CPPv4N3seq5Const3SEQE">
+<span id="_CPPv3N3seq5Const3SEQE"></span><span id="_CPPv2N3seq5Const3SEQE"></span><span class="target" id="structseq_1_1Const_1a194799a037b952792a2ff04a27fba09ba31c8bd602acf48f870c5769b648308d1"></span><code class="sig-name descname">SEQ</code><a class="headerlink" href="#_CPPv4N3seq5Const3SEQE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric">Public Functions</p>
+<dl class="function">
+<dt id="_CPPv4N3seq5Const5ConstEv">
+<span id="_CPPv3N3seq5Const5ConstEv"></span><span id="_CPPv2N3seq5Const5ConstEv"></span><span id="seq::Const::Const"></span><span class="target" id="structseq_1_1Const_1aef02c9382872e91bc4962c004f82ceef"></span><code class="sig-name descname">Const</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3seq5Const5ConstEv" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4N3seq5Const5ConstE9seq_int_t">
+<span id="_CPPv3N3seq5Const5ConstE9seq_int_t"></span><span id="_CPPv2N3seq5Const5ConstE9seq_int_t"></span><span id="seq::Const::Const__seq_int_t"></span><span class="target" id="structseq_1_1Const_1aa7e80aaea291f403451d872695ad09d9"></span><code class="sig-name descname">Const</code><span class="sig-paren">(</span>seq_int_t <em>ival</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3seq5Const5ConstE9seq_int_t" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4N3seq5Const5ConstEd">
+<span id="_CPPv3N3seq5Const5ConstEd"></span><span id="_CPPv2N3seq5Const5ConstEd"></span><span id="seq::Const::Const__double"></span><span class="target" id="structseq_1_1Const_1a2048ad157b1cbd0c6ac481f56d5905fa"></span><code class="sig-name descname">Const</code><span class="sig-paren">(</span>double <em>fval</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3seq5Const5ConstEd" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4N3seq5Const5ConstEb">
+<span id="_CPPv3N3seq5Const5ConstEb"></span><span id="_CPPv2N3seq5Const5ConstEb"></span><span id="seq::Const::Const__b"></span><span class="target" id="structseq_1_1Const_1a0f44050d046c0be4e7fe53726696c7c3"></span><code class="sig-name descname">Const</code><span class="sig-paren">(</span>bool <em>bval</em><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3seq5Const5ConstEb" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="_CPPv4N3seq5Const5ConstENSt6stringEb">
+<span id="_CPPv3N3seq5Const5ConstENSt6stringEb"></span><span id="_CPPv2N3seq5Const5ConstENSt6stringEb"></span><span id="seq::Const::Const__ss.b"></span><span class="target" id="structseq_1_1Const_1af72ea7d730d66cc216f28051098f76fd"></span><code class="sig-name descname">Const</code><span class="sig-paren">(</span>std::string <em>sval</em>, bool <em>seq</em> = false<span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N3seq5Const5ConstENSt6stringEb" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+</div>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric">Public Members</p>
+<dl class="member">
+<dt id="_CPPv4N3seq5Const4typeE">
+<span id="_CPPv3N3seq5Const4typeE"></span><span id="_CPPv2N3seq5Const4typeE"></span><span id="seq::Const::type__Type"></span><span class="target" id="structseq_1_1Const_1a9beb8cc9d0385a2ebebb6b9b4ae84ae5"></span><a class="reference internal" href="#_CPPv4N3seq5Const4TypeE" title="seq::Const::Type">Type</a> <code class="sig-name descname">type</code><a class="headerlink" href="#_CPPv4N3seq5Const4typeE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv4N3seq5Const4ivalE">
+<span id="_CPPv3N3seq5Const4ivalE"></span><span id="_CPPv2N3seq5Const4ivalE"></span><span id="seq::Const::ival__seq_int_t"></span><span class="target" id="structseq_1_1Const_1a052709f62430e87cc81c65a2688eeecd"></span>seq_int_t <code class="sig-name descname">ival</code><a class="headerlink" href="#_CPPv4N3seq5Const4ivalE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv4N3seq5Const4fvalE">
+<span id="_CPPv3N3seq5Const4fvalE"></span><span id="_CPPv2N3seq5Const4fvalE"></span><span id="seq::Const::fval__double"></span><span class="target" id="structseq_1_1Const_1af5fac2f5c354ca01200f2d38ce43022b"></span>double <code class="sig-name descname">fval</code><a class="headerlink" href="#_CPPv4N3seq5Const4fvalE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv4N3seq5Const4bvalE">
+<span id="_CPPv3N3seq5Const4bvalE"></span><span id="_CPPv2N3seq5Const4bvalE"></span><span id="seq::Const::bval__b"></span><span class="target" id="structseq_1_1Const_1a17f391627d990171fc284279098ddf61"></span>bool <code class="sig-name descname">bval</code><a class="headerlink" href="#_CPPv4N3seq5Const4bvalE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+<dl class="member">
+<dt id="_CPPv4N3seq5Const4svalE">
+<span id="_CPPv3N3seq5Const4svalE"></span><span id="_CPPv2N3seq5Const4svalE"></span><span id="seq::Const::sval__ss"></span><span class="target" id="structseq_1_1Const_1a35a85c797f9f0b6b36db44644b66283c"></span>std::string <code class="sig-name descname">sval</code><a class="headerlink" href="#_CPPv4N3seq5Const4svalE" title="Permalink to this definition">¶</a><br /></dt>
+<dd></dd></dl>
+
+</div>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="structseq_1_1MagicMethod.html" class="btn btn-neutral float-right" title="Struct MagicMethod" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="structseq_1_1config_1_1Config.html" class="btn btn-neutral float-left" title="Struct Config" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, seq-lang
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

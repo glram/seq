@@ -1,0 +1,13 @@
+.. _exhale_function_pipeline_8cpp_1ac2fb057d924d47daa68bd3c4d48752c1:
+
+Function applyCanonicalKmerOptimization
+=======================================
+
+- Defined in :ref:`file_compiler_lang_pipeline.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: applyCanonicalKmerOptimization(std::vector<Expr *>&, std::vector<bool>&)

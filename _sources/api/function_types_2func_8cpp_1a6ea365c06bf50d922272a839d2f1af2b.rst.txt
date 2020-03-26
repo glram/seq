@@ -1,0 +1,13 @@
+.. _exhale_function_types_2func_8cpp_1a6ea365c06bf50d922272a839d2f1af2b:
+
+Function codegenStr
+===================
+
+- Defined in :ref:`file_compiler_types_func.cpp`
+
+
+Function Documentation
+----------------------
+
+
+.. doxygenfunction:: codegenStr(Value *, const std::string&, BasicBlock *)
