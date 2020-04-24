@@ -65,3 +65,7 @@ dox
 ######################
 scratch.seq
 tmp
+
+# IDEA #
+######################
+cmake-build-debug/
