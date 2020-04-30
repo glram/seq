@@ -1,13 +1,17 @@
 #ifndef SEQ_IR_TERMINATOR_H
 #define SEQ_IR_TERMINATOR_H
 
+#include <memory>
+#include <string>
+
 #include "util/common.h"
 #include "bblock.h"
 #include "expr.h"
+#include "base.h"
 
 namespace seq {
     namespace ir {
-        class Terminator : public SrcObject {
+        class Terminator : public AttributeHolder {
 
         };
 
