@@ -1,13 +1,18 @@
 #ifndef SEQ_IR_STMT_H
 #define SEQ_IR_STMT_H
 
+#include <memory>
+#include <vector>
+#include <string>
+
 #include "util/common.h"
 #include "var.h"
 #include "expr.h"
+#include "base.h"
 
 namespace seq {
     namespace ir {
-        class Statement : public SrcObject {
+        class Statement : public AttributeHolder {
 
         };
 
