@@ -1,13 +1,18 @@
 #ifndef SEQ_IR_SCOPE_H
 #define SEQ_IR_SCOPE_H
 
+#include <memory>
+#include <vector>
+#include <string>
+
 #include "util/common.h"
 #include "bblock.h"
 #include "var.h"
+#include "base.h"
 
 namespace seq {
     namespace ir {
-        class Scope : public SrcObject {
+        class Scope : public AttributeHolder {
 
         };
 
