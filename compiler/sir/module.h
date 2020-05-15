@@ -1,37 +1,30 @@
-#ifndef SEQ_IR_MODULE_H
-#define SEQ_IR_MODULE_H
+#pragma once
 
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
-#include "util/common.h"
-#include "var.h"
-#include "func.h"
 #include "base.h"
 
 namespace seq {
-    namespace ir {
-        class IRModule : public AttributeHolder {
-        private:
-            std::vector<std::shared_ptr<Var>> globalVariables;
-            std::vector<std::shared_ptr<Function>> functions;
+namespace ir {
 
-        public:
-            IRModule();
-            IRModule(const IRModule &other);
+class Var;
 
-            std::vector<std::shared_ptr<Var>> getGlobalVariables();
-            void addGlobalVariable(std::shared_ptr<Var> var);
+class IRModule : public AttributeHolder {
+private:
+  std::vector<std::shared_ptr<Var>> globals;
 
-            std::vector<std::shared_ptr<Function>> getFunctions();
-            void addFunction(std::shared_ptr<Function> function);
+public:
+  IRModule();
+  IRModule(const IRModule &other);
 
-            std::string getName();
+  std::vector<std::shared_ptr<Var>> getGlobals();
+  void addGlobal(std::shared_ptr<Var> var);
 
-            std::string textRepresentation() const;
-        };
-    }
-}
+  std::string getName();
 
-#endif //SEQ_IR_MODULE_H
+  std::string textRepresentation() const;
+};
+} // namespace ir
+} // namespace seq

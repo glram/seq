@@ -1,21 +1,25 @@
-#ifndef SEQ_IR_VAR_H
-#define SEQ_IR_VAR_H
+#pragma once
 
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
-#include "util/common.h"
 #include "base.h"
+#include "util/common.h"
+#include "restypes/types.h"
 
 namespace seq {
-    namespace ir {
-        class Var : public AttributeHolder {
-        private:
-            std::string name;
-            // TODO: Type info...
+namespace ir {
+class Var : public AttributeHolder {
+private:
+  std::string name;
+  std::shared_ptr<restypes::Type> type;
 
-        };
-    }
-}
-#endif //SEQ_IR_VAR_H
+public:
+  Var(std::string name, std::shared_ptr<restypes::Type> type);
+
+  std::string getName();
+  std::shared_ptr<restypes::Type> getType();
+};
+} // namespace ir
+} // namespace seq
