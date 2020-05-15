@@ -1,42 +1,37 @@
-#ifndef SEQ_IR_BBLOCK_H
-#define SEQ_IR_BBLOCK_H
+#pragma once
 
 #include <memory>
 #include <vector>
 
-#include "util/common.h"
-#include "stmt.h"
-#include "terminator.h"
-#include "scope.h"
 #include "base.h"
 
 namespace seq {
-    namespace ir {
-        class BasicBlock : public AttributeHolder {
-        private:
-            std::vector<std::shared_ptr<Statement>> statements;
-            std::shared_ptr<Terminator> terminator;
-            std::weak_ptr<Scope> scope;
+namespace ir {
 
-            int id;
-        public:
-            BasicBlock(int id);
-            BasicBlock(const BasicBlock &other);
+class Statement;
+class Terminator;
 
-            int getId() const;
-            void setId(int id);
+class BasicBlock : public AttributeHolder {
+private:
+  std::vector<std::shared_ptr<Statement>> statements;
+  std::shared_ptr<Terminator> terminator;
 
-            void add(std::shared_ptr<Statement> statement);
-            std::vector<std::shared_ptr<Statement>> getStatements() const;
+  int id;
 
-            void setTerminator(std::shared_ptr<Terminator> terminator);
-            std::shared_ptr<Terminator> getTerminator() const;
+public:
+  BasicBlock(int id);
+  BasicBlock(const BasicBlock &other);
 
-            void setScope(std::weak_ptr<Scope> scope);
-            std::weak_ptr<Scope> getScope() const;
+  int getId() const;
+  void setId(int id);
 
-            std::string textRepresentation() const;
-        };
-    }
-}
-#endif //SEQ_IR_BBLOCK_H
+  void add(std::shared_ptr<Statement> statement);
+  std::vector<std::shared_ptr<Statement>> getStatements() const;
+
+  void setTerminator(std::shared_ptr<Terminator> terminator);
+  std::shared_ptr<Terminator> getTerminator() const;
+
+  std::string textRepresentation() const;
+};
+} // namespace ir
+} // namespace seq

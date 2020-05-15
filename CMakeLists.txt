@@ -102,6 +102,7 @@ add_definitions(${LLVM_DEFINITIONS})
 file(GLOB SEQ_HPPFILES compiler/lang/*.h
                        compiler/types/*.h
                        compiler/sir/*.h
+                       compiler/sir/restypes/*.h
                        compiler/parser/*.h
                        compiler/parser/ast/*.h
                        compiler/parser/ast/transform/*.h
@@ -111,6 +112,7 @@ file(GLOB SEQ_HPPFILES compiler/lang/*.h
                        compiler/util/fmt/*.h)
 file(GLOB SEQ_CPPFILES compiler/lang/*.cpp
                        compiler/sir/*.cpp
+                       compiler/sir/restypes/*.cpp
                        compiler/types/*.cpp
                        compiler/parser/*.cpp
                        compiler/parser/ast/*.cpp
