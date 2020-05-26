@@ -21,29 +21,24 @@ private:
   std::vector<std::shared_ptr<Var>> vars;
   std::vector<std::shared_ptr<BasicBlock>> blocks;
 
-  std::shared_ptr<restypes::Type> rType;
-
   std::weak_ptr<IRModule> module;
 
 public:
-  Func();
+  Func(std::string name, std::vector<std::string> argNames,
+       std::shared_ptr<restypes::FuncType> type);
   Func(const Func &other);
 
-  void setArgVars(std::vector<std::shared_ptr<Var>> argVars);
   std::vector<std::shared_ptr<Var>> getArgVars();
-
-  void setArgNames(std::vector<std::string> argNames);
   std::vector<std::string> getArgNames();
-
   std::shared_ptr<Var> getArgVar(std::string name);
+
+  void addVar(std::shared_ptr<Var> var);
 
   std::vector<std::shared_ptr<BasicBlock>> getBlocks();
   void addBlock(std::shared_ptr<BasicBlock> block);
 
-  void setRType(std::shared_ptr<restypes::Type> rType);
-  std::shared_ptr<restypes::Type> getRType();
-
   std::weak_ptr<IRModule> getModule();
+  void setModule(std::weak_ptr<IRModule> module);
 
   std::string textRepresentation() const;
 };

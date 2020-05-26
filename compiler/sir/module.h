@@ -14,9 +14,10 @@ class Var;
 class IRModule : public AttributeHolder {
 private:
   std::vector<std::shared_ptr<Var>> globals;
+  std::string name;
 
 public:
-  IRModule();
+  IRModule(std::string name);
   IRModule(const IRModule &other);
 
   std::vector<std::shared_ptr<Var>> getGlobals();

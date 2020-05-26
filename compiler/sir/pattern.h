@@ -21,32 +21,34 @@ private:
 public:
   explicit Pattern(std::shared_ptr<restypes::Type> type);
 
+  std::shared_ptr<restypes::Type> getType();
   virtual std::string textRepresentation() const;
 };
 
 class WildcardPattern : Pattern {
-  std::weak_ptr<Var> var;
+  std::shared_ptr<Var> var;
 
 public:
-  explicit WildcardPattern(std::weak_ptr<Var> var);
+  explicit WildcardPattern(std::shared_ptr<restypes::Type> type);
+  WildcardPattern();
 
   std::string textRepresentation() const;
 };
 
 class BoundPattern : Pattern {
 private:
-  std::weak_ptr<Var> var;
+  std::shared_ptr<Var> var;
   std::shared_ptr<Pattern> pattern;
 
 public:
-  explicit BoundPattern(std::weak_ptr<Var> var,
-                        std::shared_ptr<Pattern> pattern);
+  explicit BoundPattern(std::shared_ptr<Pattern> pattern);
 
   std::string textRepresentation() const;
 };
 
 class StarPattern : Pattern {
 public:
+  StarPattern();
   std::string textRepresentation() const;
 };
 
@@ -86,6 +88,7 @@ private:
 
 public:
   explicit RecordPattern(std::vector<std::shared_ptr<Pattern>> patterns);
+  RecordPattern(RecordPattern &other);
 
   std::string textRepresentation() const;
 };
@@ -96,6 +99,7 @@ private:
 
 public:
   explicit ArrayPattern(std::vector<std::shared_ptr<Pattern>> patterns);
+  ArrayPattern(ArrayPattern &other);
 
   std::string textRepresentation() const;
 };
@@ -127,6 +131,7 @@ private:
 
 public:
   explicit OrPattern(std::vector<std::shared_ptr<Pattern>> patterns);
+  OrPattern(OrPattern &other);
 
   std::string textRepresentation() const;
 };
