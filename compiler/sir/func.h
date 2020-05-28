@@ -40,7 +40,8 @@ public:
   std::weak_ptr<IRModule> getModule();
   void setModule(std::weak_ptr<IRModule> module);
 
-  std::string textRepresentation() const;
+  virtual std::string referenceString() const override;
+  std::string textRepresentation() const override;
 };
 } // namespace ir
 } // namespace seq

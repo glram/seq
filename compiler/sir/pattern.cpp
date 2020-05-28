@@ -35,8 +35,9 @@ BoundPattern::BoundPattern(std::shared_ptr<Pattern> pattern)
 
 std::string BoundPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << " ("
-         << pattern->textRepresentation() << ")";
+  stream << Pattern::textRepresentation() << "(("
+         << pattern->textRepresentation() << ")->" << var->referenceString()
+         << ")";
   return stream.str();
 }
 
@@ -73,7 +74,7 @@ StrPattern::StrPattern(std::string value)
 
 std::string StrPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << " " << value;
+  stream << Pattern::textRepresentation() << " '" << value << "'";
   return stream.str();
 }
 
@@ -91,7 +92,7 @@ std::string RecordPattern::textRepresentation() const {
   std::stringstream stream;
   stream << Pattern::textRepresentation() << " {";
   for (auto it = patterns.begin(); it != patterns.end(); it++) {
-    stream << (*it)->textRepresentation();
+    stream << "(" << (*it)->textRepresentation() << ")";
     if (it + 1 != patterns.end())
       stream << ", ";
   }
@@ -111,7 +112,7 @@ std::string ArrayPattern::textRepresentation() const {
   std::stringstream stream;
   stream << Pattern::textRepresentation() << " [";
   for (auto it = patterns.begin(); it != patterns.end(); it++) {
-    stream << (*it)->textRepresentation();
+    stream << "(" << (*it)->textRepresentation() << ")";
     if (it + 1 != patterns.end())
       stream << ", ";
   }
@@ -148,7 +149,7 @@ std::string OrPattern::textRepresentation() const {
   std::stringstream stream;
   stream << Pattern::textRepresentation() << " ";
   for (auto it = patterns.begin(); it != patterns.end(); it++) {
-    stream << (*it)->textRepresentation();
+    stream << "(" << (*it)->textRepresentation() << ")";
     if (it + 1 != patterns.end())
       stream << " or ";
   }

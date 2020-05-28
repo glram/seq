@@ -9,11 +9,12 @@ using namespace seq;
 using namespace ir;
 
 TryCatch::TryCatch()
-    : children{}, catchTypes{}, catchBlocks{}, finallyBlock{}, parent{} {}
+    : children{}, catchTypes{}, catchBlocks{},
+      finallyBlock{}, parent{}, id{currentId++} {}
 
 TryCatch::TryCatch(TryCatch &other)
     : children{}, catchTypes{}, catchBlocks{},
-      finallyBlock{other.finallyBlock}, parent{other.parent} {
+      finallyBlock{other.finallyBlock}, parent{other.parent}, id{other.id} {
   std::copy(other.children.begin(), other.children.end(),
             std::back_inserter(children));
   std::copy(other.catchTypes.begin(), other.catchTypes.end(),
@@ -54,19 +55,23 @@ void TryCatch::setFinallyBlock(std::weak_ptr<BasicBlock> finally) {
 
 std::weak_ptr<TryCatch> TryCatch::getParent() const { return parent; }
 
+std::string TryCatch::referenceString() const {
+  return "try#" + std::to_string(id);
+}
+
 std::string TryCatch::textRepresentation() const {
   std::stringstream stream;
-  stream << AttributeHolder::textRepresentation() << "try [";
+  stream << AttributeHolder::textRepresentation() << referenceString() << " [";
   for (auto it = children.begin(); it != children.end(); it++) {
     stream << (*it)->textRepresentation();
     if (it + 1 != children.end())
       stream << ",\n";
   }
   stream << "]{";
-  // TODO better rendering of basic blocks
+
   for (int i = 0; i < catchBlocks.size(); i++) {
     auto handler = catchBlocks[i].lock();
-    stream << catchTypes[i]->getName() << ": bb" << handler->getId();
+    stream << catchTypes[i]->getName() << ": " << handler->referenceString();
     if (i + 1 != catchBlocks.size()) {
       stream << ", ";
     }
@@ -75,7 +80,9 @@ std::string TryCatch::textRepresentation() const {
 
   auto finally = finallyBlock.lock();
   if (finally)
-    stream << " finally bb" << finally->getId();
+    stream << " finally " << finally->referenceString();
 
   return stream.str();
 }
+
+int TryCatch::getId() { return id; }

@@ -25,7 +25,7 @@ public:
   std::weak_ptr<Var> getLhs() const;
   std::shared_ptr<Expression> getRhs() const;
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class AssignMemberStatement : public Statement {
@@ -41,7 +41,7 @@ public:
   std::weak_ptr<Var> getLhs() const;
   std::shared_ptr<Expression> getRhs() const;
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class ExpressionStatement : public Statement {
@@ -51,7 +51,7 @@ private:
 public:
   ExpressionStatement(std::shared_ptr<Expression> expr);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 } // namespace ir
 } // namespace seq

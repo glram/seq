@@ -11,9 +11,14 @@
 namespace seq {
 namespace ir {
 class Var : public AttributeHolder {
+private:
+  static int varNum;
+
+  // TODO: refactor out
 protected:
   std::string name;
   std::shared_ptr<restypes::Type> type;
+  int id;
 
 public:
   Var(std::string name, std::shared_ptr<restypes::Type> type);
@@ -23,6 +28,10 @@ public:
 
   std::string getName();
   std::shared_ptr<restypes::Type> getType();
+  int getId();
+
+  std::string referenceString() const override;
+  std::string textRepresentation() const override;
 };
 } // namespace ir
 } // namespace seq

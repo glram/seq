@@ -9,7 +9,7 @@
 using namespace seq;
 using namespace ir;
 
-BasicBlock::BasicBlock(int id) : statements{}, terminator{nullptr}, id{id} {}
+BasicBlock::BasicBlock() : statements{}, terminator{nullptr}, id{currentId++} {}
 
 BasicBlock::BasicBlock(const BasicBlock &other)
     : statements{}, terminator{other.terminator}, id{other.id} {
@@ -33,11 +33,17 @@ std::shared_ptr<Terminator> BasicBlock::getTerminator() const {
   return terminator;
 }
 
+int BasicBlock::getId() { return id; }
+
+std::string BasicBlock::referenceString() const {
+  return "bb#" + std::to_string(id);
+}
+
 std::string BasicBlock::textRepresentation() const {
   std::stringstream stream;
 
   stream << AttributeHolder::textRepresentation();
-  stream << "bb" << id << " {";
+  stream << referenceString() << " {";
   for (auto stmtPtr : statements) {
     stream << stmtPtr->textRepresentation() << "\n";
   }
@@ -46,7 +52,3 @@ std::string BasicBlock::textRepresentation() const {
 
   return stream.str();
 }
-
-int BasicBlock::getId() const { return id; }
-
-void BasicBlock::setId(int id) { this->id = id; }

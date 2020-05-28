@@ -22,7 +22,7 @@ public:
   explicit Pattern(std::shared_ptr<restypes::Type> type);
 
   std::shared_ptr<restypes::Type> getType();
-  virtual std::string textRepresentation() const;
+  virtual std::string textRepresentation() const override;
 };
 
 class WildcardPattern : Pattern {
@@ -32,7 +32,7 @@ public:
   explicit WildcardPattern(std::shared_ptr<restypes::Type> type);
   WildcardPattern();
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class BoundPattern : Pattern {
@@ -43,13 +43,13 @@ private:
 public:
   explicit BoundPattern(std::shared_ptr<Pattern> pattern);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class StarPattern : Pattern {
 public:
   StarPattern();
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class IntPattern : Pattern {
@@ -59,7 +59,7 @@ private:
 public:
   explicit IntPattern(seq_int_t value);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class BoolPattern : Pattern {
@@ -69,7 +69,7 @@ private:
 public:
   explicit BoolPattern(bool value);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class StrPattern : Pattern {
@@ -79,7 +79,7 @@ private:
 public:
   explicit StrPattern(std::string value);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class RecordPattern : Pattern {
@@ -90,7 +90,7 @@ public:
   explicit RecordPattern(std::vector<std::shared_ptr<Pattern>> patterns);
   RecordPattern(RecordPattern &other);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class ArrayPattern : Pattern {
@@ -101,7 +101,7 @@ public:
   explicit ArrayPattern(std::vector<std::shared_ptr<Pattern>> patterns);
   ArrayPattern(ArrayPattern &other);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class OptionalPattern : Pattern {
@@ -111,7 +111,7 @@ private:
 public:
   explicit OptionalPattern(std::shared_ptr<Pattern> pattern);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class RangePattern : Pattern {
@@ -122,7 +122,7 @@ private:
 public:
   explicit RangePattern(seq_int_t a, seq_int_t b);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class OrPattern : Pattern {
@@ -133,7 +133,7 @@ public:
   explicit OrPattern(std::vector<std::shared_ptr<Pattern>> patterns);
   OrPattern(OrPattern &other);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class GuardedPattern : Pattern {
@@ -145,7 +145,7 @@ public:
   explicit GuardedPattern(std::shared_ptr<Pattern> pattern,
                           std::shared_ptr<Expression> expr);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 } // namespace ir
 } // namespace seq

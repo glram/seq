@@ -21,7 +21,7 @@ public:
   JumpTerminator(std::weak_ptr<BasicBlock> dst);
   std::weak_ptr<BasicBlock> getDst() const;
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class CondJumpTerminator : public Terminator {
@@ -39,12 +39,12 @@ public:
   std::weak_ptr<BasicBlock> getTDst() const;
   std::weak_ptr<BasicBlock> getFDst() const;
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class ReturnTerminator : public Terminator {
 public:
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class YieldTerminator : public Terminator {
@@ -59,7 +59,7 @@ public:
   std::weak_ptr<BasicBlock> getDst() const;
   std::weak_ptr<Var> getResult() const;
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class ThrowTerminator : public Terminator {
@@ -70,7 +70,7 @@ public:
   ThrowTerminator(std::shared_ptr<Expression> expr);
   std::shared_ptr<Expression> getExpr() const;
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 } // namespace ir
 } // namespace seq
