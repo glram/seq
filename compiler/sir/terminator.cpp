@@ -16,7 +16,8 @@ std::string JumpTerminator::textRepresentation() const {
   std::stringstream stream;
   auto lockedDst = dst.lock();
 
-  stream << Terminator::textRepresentation() << " jmp bb" << lockedDst->getId();
+  stream << Terminator::textRepresentation() << " jmp "
+         << lockedDst->referenceString();
   return stream.str();
 }
 
@@ -37,8 +38,8 @@ std::string CondJumpTerminator::textRepresentation() const {
   auto lockedFDst = fDst.lock();
 
   stream << Terminator::textRepresentation() << " condjmp ("
-         << cond->textRepresentation() << ") bb" << lockedTDst->getId() << " bb"
-         << lockedFDst->getId();
+         << cond->textRepresentation() << ") " << lockedTDst->referenceString()
+         << " " << lockedFDst->referenceString();
 
   return stream.str();
 }
@@ -65,10 +66,10 @@ std::string YieldTerminator::textRepresentation() const {
 
   stream << Terminator::textRepresentation() << " yield";
   if (lockedRes) {
-    stream << "-> " << lockedRes->getName();
+    stream << "-> " << lockedRes->referenceString();
   }
 
-  stream << " bb" << lockedDst->getId();
+  stream << " " << lockedDst->referenceString();
 
   return stream.str();
 }

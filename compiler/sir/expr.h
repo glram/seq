@@ -31,7 +31,7 @@ public:
   void setBlock(std::weak_ptr<BasicBlock> block);
   std::weak_ptr<BasicBlock> getBlock();
 
-  virtual std::string textRepresentation() const;
+  virtual std::string textRepresentation() const override;
 };
 
 class VarExpression : public Expression {
@@ -40,7 +40,10 @@ private:
 
 public:
   explicit VarExpression(std::weak_ptr<Var> var);
-  std::string textRepresentation() const;
+
+  std::weak_ptr<Var> getVar();
+
+  std::string textRepresentation() const override;
 };
 
 class CallExpression : public Expression {
@@ -53,7 +56,7 @@ public:
                           std::vector<std::shared_ptr<Expression>> args);
   CallExpression(const CallExpression &other);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class GetMemberExpression : public Expression {
@@ -65,7 +68,7 @@ public:
   explicit GetMemberExpression(std::shared_ptr<Expression> lhs,
                                std::string field);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class PipelineExpression : public Expression {
@@ -78,7 +81,7 @@ public:
                               std::vector<bool> parallel);
   PipelineExpression(const PipelineExpression &other);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class MatchExpression : public Expression {
@@ -90,7 +93,7 @@ public:
   explicit MatchExpression(std::shared_ptr<Expression> expr,
                            std::shared_ptr<Pattern> pattern);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class LiteralExpression : public Expression {
@@ -105,7 +108,7 @@ private:
 public:
   explicit IntLiteralExpression(seq_int_t value);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class DoubleLiteralExpression : public LiteralExpression {
@@ -115,7 +118,7 @@ private:
 public:
   explicit DoubleLiteralExpression(double value);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class StringLiteralExpression : public LiteralExpression {
@@ -125,7 +128,7 @@ private:
 public:
   explicit StringLiteralExpression(std::string value);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class BoolLiteralExpression : public LiteralExpression {
@@ -135,7 +138,7 @@ private:
 public:
   explicit BoolLiteralExpression(bool value);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 
 class SeqLiteralExpression : public LiteralExpression {
@@ -145,7 +148,7 @@ private:
 public:
   explicit SeqLiteralExpression(std::string value);
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 } // namespace ir
 } // namespace seq

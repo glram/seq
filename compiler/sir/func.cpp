@@ -45,14 +45,14 @@ std::vector<std::shared_ptr<BasicBlock>> Func::getBlocks() { return blocks; }
 
 void Func::addBlock(std::shared_ptr<BasicBlock> block) {
   blocks.push_back(block);
-  block->setId(blocks.size() - 1);
 }
 
 std::weak_ptr<IRModule> Func::getModule() { return module; }
 
 std::string Func::textRepresentation() const {
   std::stringstream stream;
-  stream << "func " << name << "(";
+  stream << AttributeHolder::textRepresentation() << "def " << referenceString()
+         << "(";
   for (int i = 0; i < argNames.size(); i++) {
     stream << argNames[i] << ": " << argVars[i]->textRepresentation();
     if (i + 1 != argNames.size())
@@ -77,3 +77,7 @@ std::string Func::textRepresentation() const {
 void Func::addVar(std::shared_ptr<Var> var) { vars.push_back(var); }
 
 void Func::setModule(std::weak_ptr<IRModule> module) { this->module = module; }
+
+std::string Func::referenceString() const {
+  return "f$" + name + "#" + std::to_string(id);
+}

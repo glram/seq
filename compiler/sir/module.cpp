@@ -25,8 +25,8 @@ std::string IRModule::textRepresentation() const {
   std::stringstream stream;
 
   stream << AttributeHolder::textRepresentation() << "module " << name << "{";
-  for (auto it = globals.begin(); it != globals.end(); it++) {
-    stream << (*it)->textRepresentation() << "\n";
+  for (const auto &global : globals) {
+    stream << global->textRepresentation() << "\n";
   }
   stream << "}";
   return stream.str();

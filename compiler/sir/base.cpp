@@ -1,5 +1,7 @@
-#include "base.h"
 #include <sstream>
+
+#include "base.h"
+#include "trycatch.h"
 
 using namespace seq;
 using namespace ir;
@@ -14,6 +16,14 @@ BoolAttribute::BoolAttribute(bool value) : value{value} {}
 
 std::string BoolAttribute::textRepresentation() const {
   return (value) ? "true" : "false";
+}
+
+TryCatchAttribute::TryCatchAttribute(std::weak_ptr<TryCatch> handler)
+    : handler{handler} {}
+
+std::string TryCatchAttribute::textRepresentation() const {
+  auto locked = handler.lock();
+  return "try#" + std::to_string(locked->getId());
 }
 
 AttributeHolder::AttributeHolder() : kvStore{} {}
@@ -43,3 +53,5 @@ std::string AttributeHolder::textRepresentation() const {
   stream << "]";
   return stream.str();
 }
+
+std::string AttributeHolder::referenceString() const { return "unnamed"; }

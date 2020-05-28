@@ -25,7 +25,7 @@ public:
 
   std::string getName();
 
-  std::string textRepresentation() const;
+  std::string textRepresentation() const override;
 };
 } // namespace ir
 } // namespace seq

@@ -20,9 +20,9 @@ std::string AssignStatement::textRepresentation() const {
 
   auto lockedLhs = lhs.lock();
 
-  stream << Statement::textRepresentation() << " "
-         << lockedLhs->textRepresentation() << " = "
-         << rhs->textRepresentation();
+  stream << Statement::textRepresentation() << " ("
+         << lockedLhs->textRepresentation() << ") = ("
+         << rhs->textRepresentation() << ")";
   return stream.str();
 }
 
@@ -42,9 +42,9 @@ std::string AssignMemberStatement::textRepresentation() const {
 
   auto lockedLhs = lhs.lock();
 
-  stream << Statement::textRepresentation() << " "
-         << lockedLhs->textRepresentation() << "." << field << " = "
-         << rhs->textRepresentation();
+  stream << Statement::textRepresentation() << " ("
+         << lockedLhs->textRepresentation() << ")." << field << " = ("
+         << rhs->textRepresentation() << ")";
   return stream.str();
 }
 
@@ -54,8 +54,8 @@ ExpressionStatement::ExpressionStatement(std::shared_ptr<Expression> expr)
 std::string ExpressionStatement::textRepresentation() const {
   std::stringstream stream;
 
-  stream << Statement::textRepresentation() << " "
-         << expr->textRepresentation();
+  stream << Statement::textRepresentation() << " ("
+         << expr->textRepresentation() << ")";
 
   return stream.str();
 }

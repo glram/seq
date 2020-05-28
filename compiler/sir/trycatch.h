@@ -11,11 +11,14 @@ class BasicBlock;
 
 class TryCatch : public AttributeHolder {
 private:
+  static int currentId;
+
   std::vector<std::shared_ptr<TryCatch>> children;
   std::vector<std::shared_ptr<restypes::Type>> catchTypes;
   std::vector<std::weak_ptr<BasicBlock>> catchBlocks;
   std::weak_ptr<BasicBlock> finallyBlock;
   std::weak_ptr<TryCatch> parent;
+  int id;
 
 public:
   TryCatch();
@@ -33,7 +36,10 @@ public:
   void setFinallyBlock(std::weak_ptr<BasicBlock> finally);
 
   std::weak_ptr<TryCatch> getParent() const;
-  std::string textRepresentation() const;
+  int getId();
+
+  std::string referenceString() const override;
+  std::string textRepresentation() const override;
 };
 } // namespace ir
 } // namespace seq

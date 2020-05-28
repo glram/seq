@@ -32,10 +32,16 @@ std::string Expression::textRepresentation() const {
 VarExpression::VarExpression(std::weak_ptr<Var> var)
     : Expression{var.lock()->getType()}, var{var} {}
 
+std::weak_ptr<Var> VarExpression::getVar() { return var; }
+
 std::string VarExpression::textRepresentation() const {
   std::stringstream stream;
 
-  stream << Expression::textRepresentation() << " $" << var.lock()->getName();
+  auto varLocked = var.lock();
+
+  stream << Expression::textRepresentation() << " "
+         << varLocked->referenceString();
+
   return stream.str();
 }
 
@@ -43,7 +49,7 @@ CallExpression::CallExpression(std::shared_ptr<Expression> func,
                                std::vector<std::shared_ptr<Expression>> args)
     : Expression{}, func{func}, args{args} {
 
-  // TODO functors
+  // TODO functors/anon
   auto funcType =
       std::dynamic_pointer_cast<restypes::FuncType>(func->getType());
   if (funcType)
@@ -58,8 +64,19 @@ CallExpression::CallExpression(const CallExpression &other)
 std::string CallExpression::textRepresentation() const {
   std::stringstream stream;
 
-  stream << Expression::textRepresentation() << " ("
-         << func->textRepresentation() << ")()";
+  // TODO: functors/anon
+  auto funcVar =
+      std::dynamic_pointer_cast<VarExpression>(func)->getVar().lock();
+
+  stream << Expression::textRepresentation() << " "
+         << funcVar->referenceString() << "(";
+
+  for (auto it = args.begin(); it != args.end(); it++) {
+    stream << "(" << (*it)->textRepresentation() << ")";
+    if (it + 1 != args.end())
+      stream << ", ";
+  }
+  stream << ")";
   return stream.str();
 }
 
