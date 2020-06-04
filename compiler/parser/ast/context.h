@@ -8,9 +8,9 @@
 #include <unordered_set>
 #include <vector>
 
+#include "compiler/parser/ast/types/types.h"
 #include "lang/seq.h"
 #include "parser/ast/ast.h"
-#include "parser/ast/types.h"
 #include "parser/common.h"
 
 namespace seq {

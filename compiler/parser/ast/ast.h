@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "compiler/parser/ast/types/types.h"
 #include "lang/seq.h"
-#include "parser/ast/types.h"
 #include "parser/ast/visitor.h"
 #include "parser/common.h"
 

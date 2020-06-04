@@ -14,10 +14,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "compiler/parser/ast/types/types.h"
 #include "parser/ast/ast.h"
 #include "parser/ast/transform.h"
 #include "parser/ast/transform_ctx.h"
-#include "parser/ast/types.h"
 #include "parser/common.h"
 #include "parser/ocaml.h"
 
