@@ -11,7 +11,7 @@ namespace ir {
 
 class Var;
 
-class IRModule : public AttributeHolder {
+class IRModule : public AttributeHolder<IRModule> {
 private:
   std::vector<std::shared_ptr<Var>> globals;
   std::string name;

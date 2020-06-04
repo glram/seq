@@ -3,26 +3,27 @@
 #include <sstream>
 
 #include "bblock.h"
-#include "stmt.h"
+#include "instr.h"
 #include "terminator.h"
 
 using namespace seq;
 using namespace ir;
 
-BasicBlock::BasicBlock() : statements{}, terminator{nullptr}, id{currentId++} {}
+BasicBlock::BasicBlock()
+    : instructions{}, terminator{nullptr}, id{currentId++} {}
 
 BasicBlock::BasicBlock(const BasicBlock &other)
-    : statements{}, terminator{other.terminator}, id{other.id} {
-  std::copy(other.statements.begin(), other.statements.end(),
-            std::back_inserter(statements));
+    : instructions{}, terminator{other.terminator}, id{other.id} {
+  std::copy(other.instructions.begin(), other.instructions.end(),
+            std::back_inserter(instructions));
 }
 
-void BasicBlock::add(std::shared_ptr<Statement> statement) {
-  statements.push_back(statement);
+void BasicBlock::add(std::shared_ptr<Instr> instruction) {
+  instructions.push_back(instruction);
 }
 
-std::vector<std::shared_ptr<Statement>> BasicBlock::getStatements() const {
-  return statements;
+std::vector<std::shared_ptr<Instr>> BasicBlock::getInstructions() const {
+  return instructions;
 }
 
 void BasicBlock::setTerminator(std::shared_ptr<Terminator> terminator) {
@@ -42,13 +43,12 @@ std::string BasicBlock::referenceString() const {
 std::string BasicBlock::textRepresentation() const {
   std::stringstream stream;
 
-  stream << AttributeHolder::textRepresentation();
   stream << referenceString() << " {";
-  for (auto stmtPtr : statements) {
-    stream << stmtPtr->textRepresentation() << "\n";
+  for (auto instrPtr : instructions) {
+    stream << instrPtr->textRepresentation() << "\n";
   }
   stream << terminator->textRepresentation() << "\n";
-  stream << "}";
+  stream << "}; " << attributeString();
 
   return stream.str();
 }

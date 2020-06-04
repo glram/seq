@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "restypes/types.h"
+#include "types/types.h"
 #include "var.h"
 
 namespace seq {
@@ -25,7 +25,7 @@ private:
 
 public:
   Func(std::string name, std::vector<std::string> argNames,
-       std::shared_ptr<restypes::FuncType> type);
+       std::shared_ptr<types::FuncType> type);
   Func(const Func &other);
 
   std::vector<std::shared_ptr<Var>> getArgVars();

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "base.h"
-#include "restypes/types.h"
+#include "types/types.h"
 #include <vector>
 
 namespace seq {
@@ -9,12 +9,12 @@ namespace ir {
 
 class BasicBlock;
 
-class TryCatch : public AttributeHolder {
+class TryCatch : public AttributeHolder<TryCatch> {
 private:
   static int currentId;
 
   std::vector<std::shared_ptr<TryCatch>> children;
-  std::vector<std::shared_ptr<restypes::Type>> catchTypes;
+  std::vector<std::shared_ptr<types::Type>> catchTypes;
   std::vector<std::weak_ptr<BasicBlock>> catchBlocks;
   std::weak_ptr<BasicBlock> finallyBlock;
   std::weak_ptr<TryCatch> parent;
@@ -27,9 +27,9 @@ public:
   std::vector<std::shared_ptr<TryCatch>> getChildren() const;
   void addChild(std::shared_ptr<TryCatch> child);
 
-  std::vector<std::shared_ptr<restypes::Type>> getCatchTypes() const;
+  std::vector<std::shared_ptr<types::Type>> getCatchTypes() const;
   std::vector<std::weak_ptr<BasicBlock>> getCatchBlocks() const;
-  void addCatch(std::shared_ptr<restypes::Type> catchType,
+  void addCatch(std::shared_ptr<types::Type> catchType,
                 std::weak_ptr<BasicBlock> handler);
 
   std::weak_ptr<BasicBlock> getFinallyBlock() const;

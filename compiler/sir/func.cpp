@@ -10,8 +10,8 @@ using namespace seq;
 using namespace ir;
 
 Func::Func(std::string name, std::vector<std::string> argNames,
-           std::shared_ptr<restypes::FuncType> type)
-    : Var{name, std::dynamic_pointer_cast<restypes::Type>(type)},
+           std::shared_ptr<types::FuncType> type)
+    : Var{name, std::dynamic_pointer_cast<types::Type>(type)},
       argNames{argNames}, vars{}, blocks{} {
 
   argVars = std::vector<std::shared_ptr<Var>>{};
@@ -51,26 +51,23 @@ std::weak_ptr<IRModule> Func::getModule() { return module; }
 
 std::string Func::textRepresentation() const {
   std::stringstream stream;
-  stream << AttributeHolder::textRepresentation() << "def " << referenceString()
-         << "(";
+  stream << "def " << referenceString() << "(\n";
   for (int i = 0; i < argNames.size(); i++) {
     stream << argNames[i] << ": " << argVars[i]->textRepresentation();
-    if (i + 1 != argNames.size())
-      stream << ", ";
+    stream << "\n";
   }
 
   stream << ")[";
-  for (auto it = vars.begin(); it != vars.end(); it++) {
-    stream << (*it)->textRepresentation();
-    if (it + 1 != vars.end())
-      stream << ", ";
+  for (const auto &var : vars) {
+    stream << var->textRepresentation();
+    stream << "\n";
   }
 
   stream << "]{\n";
   for (const auto &block : blocks) {
     stream << block->textRepresentation() << "\n";
   }
-  stream << "}";
+  stream << "}; " << attributeString();
   return stream.str();
 }
 

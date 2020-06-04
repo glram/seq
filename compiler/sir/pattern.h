@@ -5,23 +5,23 @@
 #include <vector>
 
 #include "base.h"
-#include "restypes/types.h"
+#include "types/types.h"
 #include "util/common.h"
 
 namespace seq {
 namespace ir {
 
 class Var;
-class Expression;
+class Operand;
 
-class Pattern : AttributeHolder {
+class Pattern : AttributeHolder<Pattern> {
 private:
-  std::shared_ptr<restypes::Type> type;
+  std::shared_ptr<types::Type> type;
 
 public:
-  explicit Pattern(std::shared_ptr<restypes::Type> type);
+  explicit Pattern(std::shared_ptr<types::Type> type);
 
-  std::shared_ptr<restypes::Type> getType();
+  std::shared_ptr<types::Type> getType();
   virtual std::string textRepresentation() const override;
 };
 
@@ -29,7 +29,7 @@ class WildcardPattern : Pattern {
   std::shared_ptr<Var> var;
 
 public:
-  explicit WildcardPattern(std::shared_ptr<restypes::Type> type);
+  explicit WildcardPattern(std::shared_ptr<types::Type> type);
   WildcardPattern();
 
   std::string textRepresentation() const override;
@@ -139,11 +139,11 @@ public:
 class GuardedPattern : Pattern {
 private:
   std::shared_ptr<Pattern> pattern;
-  std::shared_ptr<Expression> expr;
+  std::shared_ptr<Operand> operand;
 
 public:
   explicit GuardedPattern(std::shared_ptr<Pattern> pattern,
-                          std::shared_ptr<Expression> expr);
+                          std::shared_ptr<Operand> operand);
 
   std::string textRepresentation() const override;
 };

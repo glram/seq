@@ -24,10 +24,10 @@ std::string IRModule::getName() { return name; }
 std::string IRModule::textRepresentation() const {
   std::stringstream stream;
 
-  stream << AttributeHolder::textRepresentation() << "module " << name << "{";
+  stream << "module " << name << "{\n";
   for (const auto &global : globals) {
     stream << global->textRepresentation() << "\n";
   }
-  stream << "}";
+  stream << "}; " << attributeString();
   return stream.str();
 }

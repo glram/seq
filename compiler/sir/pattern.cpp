@@ -2,85 +2,72 @@
 #include <iterator>
 #include <sstream>
 
-#include "expr.h"
+#include "operand.h"
 #include "pattern.h"
 #include "var.h"
 
 using namespace seq;
 using namespace ir;
 
-Pattern::Pattern(std::shared_ptr<restypes::Type> type) : type{type} {}
+// TODO: nested attributes?
 
-std::shared_ptr<restypes::Type> Pattern::getType() { return type; }
+Pattern::Pattern(std::shared_ptr<types::Type> type) : type{type} {}
 
-std::string Pattern::textRepresentation() const {
-  return AttributeHolder::textRepresentation();
-}
+std::shared_ptr<types::Type> Pattern::getType() { return type; }
 
-WildcardPattern::WildcardPattern(std::shared_ptr<restypes::Type> type)
+std::string Pattern::textRepresentation() const { return ""; }
+
+WildcardPattern::WildcardPattern(std::shared_ptr<types::Type> type)
     : Pattern{type}, var{std::make_shared<Var>(type)} {}
 
 WildcardPattern::WildcardPattern()
-    : Pattern{restypes::kAnyType}, var{std::make_shared<Var>(
-                                       restypes::kAnyType)} {}
+    : Pattern{types::kAnyType}, var{std::make_shared<Var>(types::kAnyType)} {}
 
-std::string WildcardPattern::textRepresentation() const {
-  std::stringstream stream;
-  stream << Pattern::textRepresentation() << " _";
-  return stream.str();
-}
+std::string WildcardPattern::textRepresentation() const { return "_"; }
 BoundPattern::BoundPattern(std::shared_ptr<Pattern> pattern)
     : Pattern{pattern->getType()}, pattern{pattern}, var{std::make_shared<Var>(
                                                          pattern->getType())} {}
 
 std::string BoundPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << "(("
-         << pattern->textRepresentation() << ")->" << var->referenceString()
-         << ")";
+  stream << "((" << pattern->textRepresentation() << ")->"
+         << var->referenceString() << ")";
   return stream.str();
 }
 
-StarPattern::StarPattern() : Pattern{restypes::kAnyType} {}
+StarPattern::StarPattern() : Pattern{types::kAnyType} {}
 
-std::string StarPattern::textRepresentation() const {
-  std::stringstream stream;
-  stream << Pattern::textRepresentation() << " ...";
-  return stream.str();
-}
+std::string StarPattern::textRepresentation() const { return "..."; }
 IntPattern::IntPattern(seq_int_t value)
-    : Pattern{std::static_pointer_cast<restypes::Type>(restypes::kIntType)},
+    : Pattern{std::static_pointer_cast<types::Type>(types::kIntType)},
       value{value} {}
 
 std::string IntPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << " " << value;
+  stream << value;
   return stream.str();
 }
 BoolPattern::BoolPattern(bool value)
-    : Pattern{std::static_pointer_cast<restypes::Type>(restypes::kBoolType)},
+    : Pattern{std::static_pointer_cast<types::Type>(types::kBoolType)},
       value{value} {}
 
 std::string BoolPattern::textRepresentation() const {
-  std::stringstream stream;
-  stream << Pattern::textRepresentation() << " "
-         << ((value) ? "true" : "false");
-  return stream.str();
+  return ((value) ? "true" : "false");
 }
 
 StrPattern::StrPattern(std::string value)
-    : Pattern{std::static_pointer_cast<restypes::Type>(restypes::kStringType)},
+    : Pattern{std::static_pointer_cast<types::Type>(types::kStringType)},
       value{value} {}
 
 std::string StrPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << " '" << value << "'";
+  stream << "'" << value << "'";
   return stream.str();
 }
 
 // TODO - what type is this
 RecordPattern::RecordPattern(std::vector<std::shared_ptr<Pattern>> patterns)
-    : Pattern{restypes::kAnyType}, patterns{patterns} {}
+    : Pattern{types::kAnyType}, patterns{patterns} {}
 
 RecordPattern::RecordPattern(RecordPattern &other)
     : Pattern{other.getType()}, patterns{} {
@@ -90,7 +77,7 @@ RecordPattern::RecordPattern(RecordPattern &other)
 
 std::string RecordPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << " {";
+  stream << "{";
   for (auto it = patterns.begin(); it != patterns.end(); it++) {
     stream << "(" << (*it)->textRepresentation() << ")";
     if (it + 1 != patterns.end())
@@ -100,7 +87,7 @@ std::string RecordPattern::textRepresentation() const {
   return stream.str();
 }
 ArrayPattern::ArrayPattern(std::vector<std::shared_ptr<Pattern>> patterns)
-    : Pattern{restypes::kAnyType}, patterns{patterns} {}
+    : Pattern{types::kAnyType}, patterns{patterns} {}
 
 ArrayPattern::ArrayPattern(ArrayPattern &other)
     : Pattern{other.getType()}, patterns{} {
@@ -110,7 +97,7 @@ ArrayPattern::ArrayPattern(ArrayPattern &other)
 
 std::string ArrayPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << " [";
+  stream << "[";
   for (auto it = patterns.begin(); it != patterns.end(); it++) {
     stream << "(" << (*it)->textRepresentation() << ")";
     if (it + 1 != patterns.end())
@@ -125,20 +112,20 @@ OptionalPattern::OptionalPattern(std::shared_ptr<Pattern> pattern)
 
 std::string OptionalPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << "("
-         << pattern->textRepresentation() << ")?";
-  return stream.str()
+  stream << pattern->textRepresentation() << "?";
+  return stream.str();
 }
+
 RangePattern::RangePattern(seq_int_t a, seq_int_t b)
-    : Pattern(restypes::kAnyType), a{a}, b{b} {}
+    : Pattern(types::kAnyType), a{a}, b{b} {}
 
 std::string RangePattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << " " << a << "..." << b;
+  stream << a << "..." << b;
   return stream.str();
 }
 OrPattern::OrPattern(std::vector<std::shared_ptr<Pattern>> patterns)
-    : Pattern{restypes::kAnyType}, patterns{patterns} {}
+    : Pattern{types::kAnyType}, patterns{patterns} {}
 
 OrPattern::OrPattern(OrPattern &other) : Pattern{other.getType()}, patterns{} {
   std::copy(other.patterns.begin(), other.patterns.end(),
@@ -147,7 +134,6 @@ OrPattern::OrPattern(OrPattern &other) : Pattern{other.getType()}, patterns{} {
 
 std::string OrPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << " ";
   for (auto it = patterns.begin(); it != patterns.end(); it++) {
     stream << "(" << (*it)->textRepresentation() << ")";
     if (it + 1 != patterns.end())
@@ -156,13 +142,12 @@ std::string OrPattern::textRepresentation() const {
   return stream.str();
 }
 GuardedPattern::GuardedPattern(std::shared_ptr<Pattern> pattern,
-                               std::shared_ptr<Expression> expr)
-    : Pattern{pattern->getType()}, pattern{pattern}, expr{expr} {}
+                               std::shared_ptr<Operand> operand)
+    : Pattern{pattern->getType()}, pattern{pattern}, operand{operand} {}
 
 std::string GuardedPattern::textRepresentation() const {
   std::stringstream stream;
-  stream << Pattern::textRepresentation() << " ("
-         << pattern->textRepresentation() << ") if "
-         << expr->textRepresentation();
+  stream << "(" << pattern->textRepresentation() << ") if "
+         << operand->textRepresentation();
   return stream.str();
 }

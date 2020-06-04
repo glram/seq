@@ -31,7 +31,7 @@ void TryCatch::addChild(std::shared_ptr<TryCatch> child) {
   children.push_back(child);
 }
 
-std::vector<std::shared_ptr<restypes::Type>> TryCatch::getCatchTypes() const {
+std::vector<std::shared_ptr<types::Type>> TryCatch::getCatchTypes() const {
   return catchTypes;
 }
 
@@ -39,7 +39,7 @@ std::vector<std::weak_ptr<BasicBlock>> TryCatch::getCatchBlocks() const {
   return catchBlocks;
 }
 
-void TryCatch::addCatch(std::shared_ptr<restypes::Type> catchType,
+void TryCatch::addCatch(std::shared_ptr<types::Type> catchType,
                         std::weak_ptr<BasicBlock> handler) {
   catchTypes.push_back(catchType);
   catchBlocks.push_back(handler);
@@ -61,7 +61,7 @@ std::string TryCatch::referenceString() const {
 
 std::string TryCatch::textRepresentation() const {
   std::stringstream stream;
-  stream << AttributeHolder::textRepresentation() << referenceString() << " [";
+  stream << referenceString() << " [";
   for (auto it = children.begin(); it != children.end(); it++) {
     stream << (*it)->textRepresentation();
     if (it + 1 != children.end())
@@ -80,7 +80,8 @@ std::string TryCatch::textRepresentation() const {
 
   auto finally = finallyBlock.lock();
   if (finally)
-    stream << " finally " << finally->referenceString();
+    stream << " finally " << finally->referenceString() << "; "
+           << attributeString();
 
   return stream.str();
 }

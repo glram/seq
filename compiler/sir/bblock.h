@@ -8,14 +8,14 @@
 namespace seq {
 namespace ir {
 
-class Statement;
+class Instr;
 class Terminator;
 
-class BasicBlock : public AttributeHolder {
+class BasicBlock : public AttributeHolder<BasicBlock> {
 private:
   static int currentId;
 
-  std::vector<std::shared_ptr<Statement>> statements;
+  std::vector<std::shared_ptr<Instr>> instructions;
   std::shared_ptr<Terminator> terminator;
 
   int id;
@@ -24,8 +24,8 @@ public:
   BasicBlock();
   BasicBlock(const BasicBlock &other);
 
-  void add(std::shared_ptr<Statement> statement);
-  std::vector<std::shared_ptr<Statement>> getStatements() const;
+  void add(std::shared_ptr<Instr> instruction);
+  std::vector<std::shared_ptr<Instr>> getInstructions() const;
 
   void setTerminator(std::shared_ptr<Terminator> terminator);
   std::shared_ptr<Terminator> getTerminator() const;

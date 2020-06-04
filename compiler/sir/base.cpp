@@ -26,21 +26,23 @@ std::string TryCatchAttribute::textRepresentation() const {
   return "try#" + std::to_string(locked->getId());
 }
 
-AttributeHolder::AttributeHolder() : kvStore{} {}
+template <typename A> AttributeHolder<A>::AttributeHolder() : kvStore{} {}
 
+template <typename A>
 std::shared_ptr<Attribute>
-AttributeHolder::getAttribute(std::string key) const {
+AttributeHolder<A>::getAttribute(std::string key) const {
   auto found = kvStore.find(key);
   return (found != kvStore.end()) ? found->second
                                   : std::shared_ptr<Attribute>{nullptr};
 }
 
-void AttributeHolder::setAttribute(std::string key,
-                                   std::shared_ptr<Attribute> value) {
+template <typename A>
+void AttributeHolder<A>::setAttribute(std::string key,
+                                      std::shared_ptr<Attribute> value) {
   kvStore[key] = value;
 }
 
-std::string AttributeHolder::textRepresentation() const {
+template <typename A> std::string AttributeHolder<A>::attributeString() const {
   std::stringstream stream;
 
   stream << "[";
@@ -54,4 +56,14 @@ std::string AttributeHolder::textRepresentation() const {
   return stream.str();
 }
 
-std::string AttributeHolder::referenceString() const { return "unnamed"; }
+template <typename A> std::shared_ptr<A> AttributeHolder<A>::getShared() const {
+  return this->shared_from_this();
+}
+
+SrcInfoAttribute::SrcInfoAttribute(seq::SrcInfo info) : info{info} {}
+
+seq::SrcInfo SrcInfoAttribute::getInfo() { return info; }
+
+std::string SrcInfoAttribute::textRepresentation() const {
+  return "<srcinfo>>";
+}
