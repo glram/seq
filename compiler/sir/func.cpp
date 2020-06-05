@@ -10,9 +10,8 @@ using namespace seq;
 using namespace ir;
 
 Func::Func(std::string name, std::vector<std::string> argNames,
-           std::shared_ptr<types::FuncType> type)
-    : Var{name, std::dynamic_pointer_cast<types::Type>(type)},
-      argNames{argNames}, vars{}, blocks{} {
+           std::shared_ptr<types::Type> type)
+    : Var{name, type}, argNames{argNames}, vars{}, blocks{} {
 
   argVars = std::vector<std::shared_ptr<Var>>{};
   auto argTypes = type->getArgTypes();

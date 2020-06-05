@@ -25,6 +25,7 @@ public:
 
   std::string getName();
 
+  std::string referenceString() const override { return "module"; };
   std::string textRepresentation() const override;
 };
 } // namespace ir

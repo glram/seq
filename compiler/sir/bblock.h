@@ -32,7 +32,7 @@ public:
 
   int getId();
 
-  virtual std::string referenceString() const override;
+  std::string referenceString() const override;
   std::string textRepresentation() const override;
 };
 } // namespace ir

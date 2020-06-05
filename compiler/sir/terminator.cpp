@@ -64,7 +64,7 @@ std::shared_ptr<Operand> ReturnTerminator::getOperand() const {
 YieldTerminator::YieldTerminator(std::weak_ptr<BasicBlock> dst,
                                  std::shared_ptr<Operand> result,
                                  std::weak_ptr<Var> inVar)
-    : dst{dst}, result{result}, inVar{invar} {}
+    : dst{dst}, result{result}, inVar{inVar} {}
 
 std::weak_ptr<BasicBlock> YieldTerminator::getDst() const { return dst; }
 
@@ -88,7 +88,7 @@ std::string YieldTerminator::textRepresentation() const {
   return stream.str();
 }
 
-std::shared_ptr<Operand> YieldTerminator::getResult() const {return result}
+std::shared_ptr<Operand> YieldTerminator::getResult() const { return result; }
 
 ThrowTerminator::ThrowTerminator(std::shared_ptr<Operand> operand)
     : operand{operand} {}
@@ -97,7 +97,7 @@ std::shared_ptr<Operand> ThrowTerminator::getOperand() const { return operand; }
 
 std::string ThrowTerminator::textRepresentation() const {
   std::stringstream stream;
-  stream << "throw (" << operand->textRepresentation() << ")"
+  stream << "throw (" << operand->textRepresentation() << "); "
          << attributeString();
   return stream.str();
 }

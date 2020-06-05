@@ -25,7 +25,7 @@ private:
 
 public:
   Func(std::string name, std::vector<std::string> argNames,
-       std::shared_ptr<types::FuncType> type);
+       std::shared_ptr<types::Type> type);
   Func(const Func &other);
 
   std::vector<std::shared_ptr<Var>> getArgVars();
@@ -40,7 +40,7 @@ public:
   std::weak_ptr<IRModule> getModule();
   void setModule(std::weak_ptr<IRModule> module);
 
-  virtual std::string referenceString() const override;
+  std::string referenceString() const override;
   std::string textRepresentation() const override;
 };
 } // namespace ir
