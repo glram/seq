@@ -24,11 +24,13 @@ struct RealizationContext {
     std::unordered_map<std::string, std::vector<types::FuncTypePtr>> methods;
   };
   struct FuncRealization {
+    std::string fullName;
     types::FuncTypePtr type;
     std::shared_ptr<FunctionStmt> ast;
     seq::ir::Func *handle;
   };
   struct ClassRealization {
+    std::string fullName;
     types::ClassTypePtr type;
     std::vector<std::pair<std::string, types::ClassTypePtr>> args;
     seq::ir::types::Type *handle;
@@ -100,6 +102,9 @@ public: /* Realizations */
                      std::unordered_map<std::string, ClassRealization>>
       classRealizations;
 
+  std::unordered_map<std::string, std::pair<types::TypePtr, std::string>>
+      realizations;
+
 public:
   std::vector<ClassRealization> getClassRealizations(const std::string &name);
   std::vector<FuncRealization> getFuncRealizations(const std::string &name);
@@ -159,7 +164,7 @@ public:
   void addBlock() { stack.push_front(std::vector<std::string>()); }
   void removeFromMap(const std::string &name) {
     auto i = map.find(name);
-    assert (!(i == map.end() || !i->second.size()));
+    assert(!(i == map.end() || !i->second.size()));
     i->second.pop();
     if (!i->second.size())
       map.erase(name);
@@ -194,6 +199,7 @@ public:
   std::shared_ptr<RealizationContext> getRealizations() { return realizations; }
   std::shared_ptr<ImportContext> getImports() { return imports; }
   std::string getFilename() const { return filename; }
+  void setFilename(const std::string &f) { filename = f; }
 
 public:
   Context(const std::string &filename,

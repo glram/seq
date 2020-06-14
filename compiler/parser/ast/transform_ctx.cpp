@@ -31,7 +31,7 @@ TypeContext::TypeContext(const std::string &filename,
                          shared_ptr<RealizationContext> realizations,
                          shared_ptr<ImportContext> imports)
     : Context<TypeItem::Item>(filename, realizations, imports), module(""),
-      level(0), returnType(nullptr), matchType(nullptr),
+      level(0), returnType(nullptr), matchType(nullptr), baseType(nullptr),
       wasReturnTypeSet(false) {
   stack.push_front(vector<string>());
 }
@@ -44,7 +44,35 @@ shared_ptr<TypeItem::Item> TypeContext::find(const std::string &name,
   if (t)
     return t;
   auto stdlib = imports->getImport("")->tctx;
-  return checkStdlib ? stdlib->find(name, false) : nullptr;
+  if (checkStdlib)
+    t = stdlib->find(name, false);
+  if (t)
+    return t;
+
+  auto r = const_cast<TypeContext *>(this)->getRealizations()->realizations;
+  auto it = r.find(name);
+  if (it != r.end()) {
+    if (CAST(it->second.first, types::ClassType))
+      return make_shared<TypeItem::Class>(it->second.first, it->second.second);
+    else
+      return make_shared<TypeItem::Func>(it->second.first, it->second.second);
+  }
+  return nullptr;
+}
+
+void TypeContext::addRealization(types::TypePtr type) {
+  assert(type->canRealize());
+  auto name = type->realizeString();
+
+  if (getRealizations()->realizations.find(name) !=
+      getRealizations()->realizations.end()) {
+    DBG("whoops {} -> {}", name, *type);
+    assert(false);
+  }
+  if (auto f = CAST(type, types::FuncType))
+    getRealizations()->realizations[name] = {type, getBase()};
+  else
+    getRealizations()->realizations[name] = {type, getBase()};
 }
 
 types::TypePtr TypeContext::findInternal(const string &name) const {
@@ -168,7 +196,7 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
     auto name = t.first;
     auto typ = make_shared<types::ClassType>(name, true);
     realizations->moduleNames[name] = 1;
-    realizations->classRealizations[name][name] = {typ, {}, t.second};
+    realizations->classRealizations[name][name] = {name, typ, {}, t.second};
     stdlib->addType(name, typ);
     stdlib->addType("#" + name, typ);
   }
@@ -179,7 +207,7 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
         make_shared<types::GenericType>(vector<types::GenericType::Generic>{
             {"T",
              make_shared<types::LinkType>(types::LinkType::Generic,
-                                   realizations->unboundCount),
+                                          realizations->unboundCount),
              realizations->unboundCount}}));
     realizations->moduleNames[t] = 1;
     stdlib->addType(t, typ);
@@ -193,7 +221,7 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
         make_shared<types::GenericType>(vector<types::GenericType::Generic>{
             {"N",
              make_shared<types::LinkType>(types::LinkType::Generic,
-                                   realizations->unboundCount),
+                                          realizations->unboundCount),
              realizations->unboundCount, true}}));
     realizations->moduleNames[t] = 1;
     stdlib->addType(t, typ);
@@ -211,34 +239,28 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
   auto stmts = parseFile(stdlibPath);
   auto tv = TransformVisitor(stdlib).realizeBlock(stmts.get(), true);
   stdlib->unsetFlag("internal");
-  stdlib->add("#str", stdlib->find("str"));
-  stdlib->add("#seq", stdlib->find("seq"));
-  stdlib->add("#array", stdlib->find("array"));
-  stdlib->addVar("__argv__", make_shared<types::LinkType>(stdlib->instantiateGeneric(
-                              SrcInfo(), stdlib->find("array")->getType(),
-                              {stdlib->find("str")->getType()})));
+  stdlib->addVar("__argv__",
+                 make_shared<types::LinkType>(stdlib->instantiateGeneric(
+                     SrcInfo(), stdlib->find("array")->getType(),
+                     {stdlib->find("str")->getType()})));
   imports->setBody("", move(tv));
-  // stdlib->dump();
-
-  // auto stmts = ast::parse_file(file);
-  // auto tv = ast::TransformVisitor(stdlib).realizeBlock(stmts.get());
 
   return make_shared<TypeContext>(file, realizations, imports);
 }
 
 void TypeContext::dump(int pad) {
-  auto ordered = std::map<string, decltype(map)::mapped_type>(map.begin(), map.end());
+  auto ordered =
+      std::map<string, decltype(map)::mapped_type>(map.begin(), map.end());
   DBG("base: {}", getBase());
   for (auto &i : ordered) {
     std::string s;
     auto t = i.second.top();
     if (auto im = t->getImport()) {
-      DBG("{}{:.<25} {}", string(pad*2, ' '), i.first, "<import>");
-      getImports()->getImport(im->getFile())->tctx->dump(pad+1);
-    }
-    else
-      DBG("{}{:.<25} {} {}", string(pad*2, ' '), i.first, t->getType()->toString(true),
-      t->getBase());
+      DBG("{}{:.<25} {}", string(pad * 2, ' '), i.first, "<import>");
+      getImports()->getImport(im->getFile())->tctx->dump(pad + 1);
+    } else
+      DBG("{}{:.<25} {} {}", string(pad * 2, ' '), i.first,
+          t->getType()->toString(true), t->getBase());
   }
 }
 

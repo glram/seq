@@ -96,10 +96,21 @@ void TransformVisitor::visit(const ExprStmt *stmt) {
   resultStmt = N<ExprStmt>(transform(stmt->expr));
 }
 
+bool TransformVisitor::wrapOptional(TypePtr lt, ExprPtr &rhs) {
+  auto lc = lt->getClass();
+  auto rc = rhs->getType()->getClass();
+  if (lc && lc->name == "optional" && rc && rc->name != "optional") {
+    rhs = transform(Nx<CallExpr>(rhs.get(), Nx<IdExpr>(rhs.get(), "optional"),
+                                 rhs->clone()));
+    forceUnify(lc, rhs->getType());
+    return true;
+  }
+  return false;
+}
+
 StmtPtr TransformVisitor::addAssignment(const Expr *lhs, const Expr *rhs,
                                         const Expr *type, bool force) {
   if (auto l = dynamic_cast<const IndexExpr *>(lhs)) {
-    /// TODO tuple indices
     vector<ExprPtr> args;
     args.push_back(l->index->clone());
     args.push_back(rhs->clone());
@@ -108,46 +119,33 @@ StmtPtr TransformVisitor::addAssignment(const Expr *lhs, const Expr *rhs,
         Nx<CallExpr>(lhs, Nx<DotExpr>(lhs, l->expr->clone(), "__setitem__"),
                      move(args))));
   } else if (auto l = dynamic_cast<const DotExpr *>(lhs)) {
-    auto lh = transform(lhs), rh = transform(rhs);
-    forceUnify(lh, rh->getType());
-    return Nx<AssignStmt>(lhs, move(lh), move(rh));
+    return transform(
+        Nx<AssignMemberStmt>(lhs, l->expr->clone(), l->member, rhs->clone()));
   } else if (auto l = dynamic_cast<const IdExpr *>(lhs)) {
     auto typExpr = transform(type, true);
     if (typExpr && !typExpr->isType())
       error(typExpr, "expected type expression");
     TypePtr typ = typExpr ? typExpr->getType() : nullptr;
-    auto s = Nx<AssignStmt>(lhs, Nx<IdExpr>(l, l->value), transform(rhs, true),
+    auto s = Nx<AssignStmt>(lhs, l->clone(), transform(rhs, true),
                             move(typExpr), false, force);
-
-    auto fixOptional = [&](ClassTypePtr lc) {
-      auto rc = s->rhs->getType()->getClass();
-      if (lc && lc->name == "optional" && rc && rc->name != "optional") {
-        auto nr = transform(
-            Nx<CallExpr>(rhs, Nx<IdExpr>(rhs, "optional"), move(s->rhs)));
-        s->rhs = move(nr);
-        forceUnify(lc, s->rhs->getType());
-        return true;
-      }
-      return false;
-    };
 
     auto t = processIdentifier(ctx, l->value);
     if (!typ && t && !t->getImport()) {
-      if (!fixOptional(t->getType()->getClass()))
+      if (!wrapOptional(t->getType(), s->rhs))
         s->lhs->setType(forceUnify(s->rhs.get(), t->getType()));
-    } else {
-      if (typ && typ->getClass()) {
-        if (!fixOptional(typ->getClass()))
-          forceUnify(typ, s->rhs->getType());
-      }
-      if (s->rhs->isType())
-        ctx->addType(l->value, s->rhs->getType());
-      else if (dynamic_pointer_cast<FuncType>(s->rhs->getType()))
-        ctx->addFunc(l->value, s->rhs->getType());
-      else
-        ctx->addVar(l->value, s->rhs->getType());
-      s->lhs->setType(s->rhs->getType());
+      return Nx<UpdateStmt>(lhs, move(s->lhs), move(s->rhs));
     }
+    if (typ && typ->getClass()) {
+      if (!wrapOptional(typ, s->rhs))
+        forceUnify(typ, s->rhs->getType());
+    }
+    if (s->rhs->isType())
+      ctx->addType(l->value, s->rhs->getType());
+    else if (dynamic_pointer_cast<FuncType>(s->rhs->getType()))
+      ctx->addFunc(l->value, s->rhs->getType());
+    else
+      ctx->addVar(l->value, s->rhs->getType());
+    s->lhs->setType(s->rhs->getType());
     return s;
   } else {
     error("invalid assignment");
@@ -224,6 +222,24 @@ void TransformVisitor::visit(const AssignStmt *stmt) {
     processAssignment(stmt->lhs.get(), stmt->rhs.get(), stmts);
   }
   resultStmt = stmts.size() == 1 ? move(stmts[0]) : N<SuiteStmt>(move(stmts));
+}
+
+void TransformVisitor::visit(const UpdateStmt *stmt) {
+  auto l = transform(stmt->lhs);
+  auto r = transform(stmt->rhs);
+  forceUnify(l->getType(), r->getType());
+  resultStmt = N<UpdateStmt>(move(l), move(r));
+}
+
+void TransformVisitor::visit(const AssignMemberStmt *stmt) {
+  auto lh = transform(stmt->lhs), rh = transform(stmt->rhs);
+  auto c = lh->getType()->getClass();
+  if (c && c->isRecord())
+    error("records and tuples are read-only ^ {} , {}", *c, *lh);
+  // find a member
+  auto mm = ctx->getRealizations()->findMember(c->name, stmt->member);
+  forceUnify(ctx->instantiate(getSrcInfo(), mm, c), rh->getType());
+  resultStmt = N<AssignMemberStmt>(move(lh), stmt->member, move(rh));
 }
 
 // Transformation
@@ -376,11 +392,11 @@ TransformVisitor::parseGenerics(const vector<Param> &generics) {
   return genericTypes;
 }
 
-void TransformVisitor::addMethod(
-    Stmt *s, const string &canonicalName,
-    const vector<GenericType::Generic> &implicits) {
+StmtPtr
+TransformVisitor::addMethod(Stmt *s, const string &canonicalName,
+                            const vector<GenericType::Generic> &implicits) {
   if (auto f = dynamic_cast<FunctionStmt *>(s)) {
-    transform(f);
+    auto fs = transform(f);
     auto name = ctx->getRealizations()->getCanonicalName(f->getSrcInfo());
     auto val = ctx->find(name);
     assert(val);
@@ -389,9 +405,11 @@ void TransformVisitor::addMethod(
     fv->implicits = implicits;
     ctx->getRealizations()->classes[canonicalName].methods[f->name].push_back(
         fv);
+    return fs;
   } else {
     error(s, "expected a function (only functions are allowed within type "
              "definitions)");
+    return nullptr;
   }
 }
 
@@ -437,8 +455,10 @@ void TransformVisitor::visit(const ExtendStmt *stmt) {
   }
   ctx->increaseLevel();
   ctx->pushBase(c->name);
+  ctx->setBaseType(c);
+  vector<StmtPtr> funcStmts;
   for (auto s : stmt->suite->getStatements())
-    addMethod(s, canonicalName, c->explicits);
+    funcStmts.push_back(addMethod(s, canonicalName, c->explicits));
   ctx->decreaseLevel();
   for (int i = 0; i < generics.size(); i++) {
     if (c->explicits[i].type) {
@@ -450,7 +470,8 @@ void TransformVisitor::visit(const ExtendStmt *stmt) {
     ctx->remove(generics[i]);
   }
   ctx->popBase();
-  resultStmt = nullptr;
+  ctx->setBaseType(nullptr);
+  resultStmt = N<SuiteStmt>(move(funcStmts));
 }
 
 void TransformVisitor::visit(const ImportStmt *stmt) {
@@ -572,16 +593,18 @@ void TransformVisitor::visit(const ExternImportStmt *stmt) {
     t->setSrcInfo(stmt->getSrcInfo());
     t = std::static_pointer_cast<FuncType>(t->generalize(ctx->getLevel()));
 
-    ctx->addFunc(
-        format("{}{}", ctx->getBase(),
-               stmt->name.second != "" ? stmt->name.second : stmt->name.first),
-        t);
+    if (!ctx->getBaseType())
+      ctx->addFunc(format("{}", // ctx->getBase(),
+                          stmt->name.second != "" ? stmt->name.second
+                                                  : stmt->name.first),
+                   t);
     ctx->addFunc(canonicalName, t);
-    ctx->getRealizations()->funcASTs[canonicalName] =
-        make_pair(t, N<FunctionStmt>(canonicalName, nullptr, vector<Param>(),
-                                     move(args), nullptr, vector<string>()));
-    resultStmt = N<FunctionStmt>(stmt->name.first, nullptr, vector<Param>(),
-                                 vector<Param>(), nullptr, vector<string>());
+    ctx->getRealizations()->funcASTs[canonicalName] = make_pair(
+        t, N<FunctionStmt>(canonicalName, nullptr, vector<Param>(), move(args),
+                           nullptr, vector<string>{"$external"}));
+    resultStmt =
+        N<FunctionStmt>(stmt->name.first, nullptr, vector<Param>(),
+                        vector<Param>(), nullptr, vector<string>{"$external"});
   } else if (stmt->lang == "py") {
     vector<StmtPtr> stmts;
     string from = "";
@@ -694,19 +717,21 @@ void TransformVisitor::visit(const FunctionStmt *stmt) {
 
     auto t = make_shared<FuncType>(argTypes, genericTypes);
     t->realizationInfo = make_shared<FuncType::RealizationInfo>(
-        canonicalName, pending, realizationArgs);
+        canonicalName, pending, realizationArgs, ctx->getBaseType());
     t->setSrcInfo(stmt->getSrcInfo());
     t = std::static_pointer_cast<FuncType>(t->generalize(ctx->getLevel()));
 
     // DBG("* [function] {} :- {}", canonicalName, *t);
-    ctx->addFunc(format("{}{}", ctx->getBase(), stmt->name), t);
+    if (!ctx->getBaseType())
+      ctx->addFunc(format("{}", /*ctx->getBase(),*/ stmt->name), t);
     ctx->addFunc(canonicalName, t);
     ctx->getRealizations()->funcASTs[canonicalName] = make_pair(
         t, N<FunctionStmt>(canonicalName, nullptr, CL(stmt->generics),
                            move(args), stmt->suite, stmt->attributes));
   } else {
-    ctx->addFunc(format("{}{}", ctx->getBase(), stmt->name),
-                 ctx->getRealizations()->funcASTs[canonicalName].first);
+    if (!ctx->getBaseType())
+      ctx->addFunc(format("{}", /*ctx->getBase(),*/ stmt->name),
+                   ctx->getRealizations()->funcASTs[canonicalName].first);
     ctx->addFunc(canonicalName,
                  ctx->getRealizations()->funcASTs[canonicalName].first);
   }
@@ -720,18 +745,15 @@ void TransformVisitor::visit(const ClassStmt *stmt) {
       format("{}{}", ctx->getBase(), stmt->name));
   resultStmt = N<ClassStmt>(stmt->isRecord, stmt->name, vector<Param>(),
                             vector<Param>(), N<SuiteStmt>(), stmt->attributes);
-
   auto cit = ctx->getRealizations()->classASTs.find(canonicalName);
   if (cit != ctx->getRealizations()->classASTs.end()) {
     ctx->addType(canonicalName, cit->second);
     ctx->addType(format("{}{}", ctx->getBase(), stmt->name), cit->second);
-    auto c = ctx->getRealizations()->findClass(canonicalName);
-    assert(c);
-    for (auto &m : c->methods)
-      for (auto &mm : m.second)
-        ctx->addFunc(mm->realizationInfo->name, mm);
     return;
   }
+
+  vector<StmtPtr> stmts;
+  stmts.push_back(move(resultStmt));
 
   auto genericTypes = parseGenerics(stmt->generics);
   auto ct = make_shared<ClassType>(canonicalName, stmt->isRecord,
@@ -767,6 +789,7 @@ void TransformVisitor::visit(const ClassStmt *stmt) {
     ctx->addType(canonicalName, ct);
   }
   ctx->pushBase(stmt->name);
+  ctx->setBaseType(ct);
   if (std::find(stmt->attributes.begin(), stmt->attributes.end(), "internal") ==
       stmt->attributes.end()) {
     vector<string> genericNames;
@@ -812,12 +835,13 @@ void TransformVisitor::visit(const ClassStmt *stmt) {
     auto methodNew =
         parseCode(ctx->getFilename(), code, stmt->getSrcInfo().line, 100000);
     for (auto s : methodNew->getStatements())
-      addMethod(s, canonicalName, genericTypes->explicits);
+      stmts.push_back(addMethod(s, canonicalName, genericTypes->explicits));
   }
   for (auto s : stmt->suite->getStatements())
-    addMethod(s, canonicalName, genericTypes->explicits);
+    stmts.push_back(addMethod(s, canonicalName, genericTypes->explicits));
   ctx->decreaseLevel();
   ctx->popBase();
+  ctx->setBaseType(nullptr);
   for (auto &g : stmt->generics) {
     // Generalize in place
     auto val = ctx->find(g.name);
@@ -828,6 +852,7 @@ void TransformVisitor::visit(const ClassStmt *stmt) {
     }
     ctx->remove(g.name);
   }
+  resultStmt = N<SuiteStmt>(move(stmts));
 }
 
 // Transformation
@@ -980,15 +1005,13 @@ TransformVisitor::realizeFunc(FuncTypePtr t) {
     auto name = t->realizationInfo->name;
     auto it = ctx->getRealizations()->funcRealizations.find(name);
     if (it != ctx->getRealizations()->funcRealizations.end()) {
-      auto it2 = it->second.find(t->toString(true));
+      auto it2 = it->second.find(t->realizeString());
       if (it2 != it->second.end())
         return it2->second;
     } else if (name == "$tuple_str") {
-      return {t, nullptr, nullptr}; // already realized
+      return {"$tuple_str", t, nullptr, nullptr}; // TODO already realized
     }
 
-    DBG("Realizing {} |- {} :: {}", t->realizationInfo->name, *t,
-        ctx->getRealizations()->unboundCount);
     ctx->addBlock();
     ctx->increaseLevel();
     assert(ctx->getRealizations()->funcASTs.find(name) !=
@@ -996,18 +1019,16 @@ TransformVisitor::realizeFunc(FuncTypePtr t) {
     auto &ast = ctx->getRealizations()->funcASTs[name];
     ctx->pushBase(ast.second->name);
     // Ensure that all inputs are realized
-    for (auto &g : t->implicits) {
+    for (auto &g : t->implicits)
       if (auto s = g.type->getStatic())
         ctx->addStatic(g.name, s->value);
       else
         ctx->addType(g.name, g.type);
-    }
-    for (auto &g : t->explicits) {
+    for (auto &g : t->explicits)
       if (auto s = g.type->getStatic())
         ctx->addStatic(g.name, s->value);
       else
         ctx->addType(g.name, g.type);
-    }
 
     // There is no AST linked to internal functions, so just ignore them
     bool isInternal =
@@ -1026,8 +1047,10 @@ TransformVisitor::realizeFunc(FuncTypePtr t) {
     ctx->setReturnType(ret);
     ctx->setWasReturnSet(false);
 
+    // __level__++;
     auto realized =
         isInternal ? nullptr : realizeBlock(ast.second->suite.get());
+    // __level__--;
     ctx->popBase();
 
     // DBG("======== BEGIN {} :- {} ========", t->name, *t);
@@ -1040,10 +1063,10 @@ TransformVisitor::realizeFunc(FuncTypePtr t) {
     vector<Param> args;
     for (auto &i : ast.second->args)
       args.push_back({i.name, nullptr, nullptr});
-    // DBG("<:> {} {}", name, t->toString(true));
+    DBG("realized fn {} -> {}", name, t->realizeString());
     auto result =
-        ctx->getRealizations()->funcRealizations[name][t->toString(true)] = {
-            t,
+        ctx->getRealizations()->funcRealizations[name][t->realizeString()] = {
+            t->realizeString(), t,
             Nx<FunctionStmt>(ast.second.get(), name, nullptr, vector<Param>(),
                              move(args), move(realized),
                              ast.second->attributes),
@@ -1052,12 +1075,12 @@ TransformVisitor::realizeFunc(FuncTypePtr t) {
     ctx->setWasReturnSet(oldSeen);
     ctx->decreaseLevel();
     ctx->popBlock();
-    // DBG(">> realized {}::{}", name, *t);
+    ctx->addRealization(t);
     return result;
   } catch (exc::ParserException &e) {
-    e.trackRealize(
-        fmt::format("{}:{}", t->realizationInfo->name, t->toString(1)),
-        getSrcInfo());
+    e.trackRealize(fmt::format("{} (arguments {})", t->realizationInfo->name,
+                               t->toString(1)),
+                   getSrcInfo());
     throw;
   }
 }
@@ -1068,11 +1091,12 @@ TransformVisitor::realizeType(ClassTypePtr t) {
   try {
     auto it = ctx->getRealizations()->classRealizations.find(t->name);
     if (it != ctx->getRealizations()->classRealizations.end()) {
-      auto it2 = it->second.find(t->toString(true));
+      auto it2 = it->second.find(t->realizeString());
       if (it2 != it->second.end())
         return it2->second;
     }
 
+    DBG("realizing ty {} -> {}", t->name, t->realizeString());
     vector<pair<string, ClassTypePtr>> args;
     /// TODO map-vector order?
     for (auto &m : ctx->getRealizations()->classes[t->name].members) {
@@ -1080,17 +1104,17 @@ TransformVisitor::realizeType(ClassTypePtr t) {
       assert(mt->canRealize() && mt->getClass());
       args.push_back(make_pair(m.first, realizeType(mt->getClass()).type));
     }
+    ctx->addRealization(t);
     return ctx->getRealizations()
-               ->classRealizations[t->name][t->toString(true)] = {t, args,
-                                                                  nullptr};
+               ->classRealizations[t->name][t->realizeString()] = {
+               t->realizeString(), t, args, nullptr};
   } catch (exc::ParserException &e) {
     e.trackRealize(t->toString(), getSrcInfo());
     throw;
   }
 }
 
-StmtPtr TransformVisitor::realizeBlock(const Stmt *stmt, bool keepLast,
-                                       FILE *fo) {
+StmtPtr TransformVisitor::realizeBlock(const Stmt *stmt, bool keepLast) {
   if (!stmt)
     return nullptr;
   StmtPtr result = nullptr;
@@ -1099,9 +1123,9 @@ StmtPtr TransformVisitor::realizeBlock(const Stmt *stmt, bool keepLast,
   // types. It is assumed that the unbound count will decrease in each
   // iteration--- if not, the program cannot be type-checked.
   // TODO: this can be probably optimized one day...
-  // int reachSize = ctx->activeUnbounds.size();
   int minUnbound = ctx->getRealizations()->unboundCount;
   for (int iter = 0, prevSize = INT_MAX;; iter++) {
+    // DBG("{}", string(60, '-'));
     ctx->addBlock();
     TransformVisitor v(ctx);
     result = v.transform(result ? result.get() : stmt);
@@ -1140,9 +1164,11 @@ StmtPtr TransformVisitor::realizeBlock(const Stmt *stmt, bool keepLast,
     prevSize = newUnbounds;
     ctx->popBlock();
   }
-  if (fo)
-    fmt::print(fo, "{}", FormatVisitor::format(ctx, result, true));
-
+  // Last pass; TODO: detect if it is needed...
+  ctx->addBlock();
+  TransformVisitor v(ctx);
+  result = v.transform(result);
+  ctx->popBlock();
   return result;
 }
 

@@ -7,9 +7,9 @@
 #include "lang/seq.h"
 #include "parser/ast/codegen.h"
 #include "parser/ast/codegen_ctx.h"
+#include "parser/ast/context.h"
 #include "parser/ast/format.h"
 #include "parser/ast/transform.h"
-#include "parser/ast/context.h"
 #include "parser/ast/transform_ctx.h"
 #include "parser/common.h"
 #include "parser/ocaml.h"
@@ -159,6 +159,14 @@ shared_ptr<LLVMContext> LLVMContext::getContext(const string &file,
   auto block = base->getBlocks()[0].get();
   stdlib->lctx = make_shared<LLVMContext>(stdlib->filename, realizations,
                                           imports, block, base, nullptr);
+
+  auto pod = vector<string>{"void",  "bool", "byte",    "int",
+                            "float", "ptr",  "generic", "optional",
+                            "Int",   "UInt", "tuple",   "function"};
+  CodegenVisitor c(stdlib->lctx);
+  // for (auto &p : pod)
+  // c.visitMethods(p);
+  c.transform(stdlib->statements.get());
   return make_shared<LLVMContext>(file, realizations, imports, block, base,
                                   nullptr);
 }

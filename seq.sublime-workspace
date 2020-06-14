@@ -1,0 +1,2910 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"getB",
+				"getBaseType\ttypes::TypePtr getBaseType() const"
+			],
+			[
+				"addT",
+				"addToCtx"
+			],
+			[
+				"AddT",
+				"addToCtx"
+			],
+			[
+				"Class",
+				"ClassType"
+			],
+			[
+				"real",
+				"realizeString\tstd::string realizeString() const"
+			],
+			[
+				"cla",
+				"getClass\tClassTypePtr getClass()"
+			],
+			[
+				"realiz",
+				"realizeType"
+			],
+			[
+				"get",
+				"getName"
+			],
+			[
+				"result",
+				"resultStmt"
+			],
+			[
+				"ps",
+				"push_back\tvoid push_back(value_type &&__x)"
+			],
+			[
+				"resu",
+				"resultStmt"
+			],
+			[
+				"Stmt",
+				"StmtPtr"
+			],
+			[
+				"stmt",
+				"stmts"
+			],
+			[
+				"type",
+				"typeExpr"
+			],
+			[
+				"Expr",
+				"ExprPtr"
+			],
+			[
+				"atol",
+				"atoll\tlong long atoll(const char *)"
+			],
+			[
+				"force",
+				"forceUnify"
+			],
+			[
+				"rest",
+				"resultExpr"
+			],
+			[
+				"ma",
+				"magic\tstd::vector<MagicMethod> magic"
+			],
+			[
+				"st",
+				"statements\tStmtPtr statements"
+			],
+			[
+				"Func",
+				"FuncStmt"
+			],
+			[
+				"f",
+				"fullName\tstd::string fullName"
+			],
+			[
+				"fmst",
+				"fstmt"
+			],
+			[
+				"re",
+				"result\tstd::string result"
+			],
+			[
+				"render",
+				"renderHTML"
+			],
+			[
+				"us",
+				"using"
+			],
+			[
+				"cl",
+				"clone\tExprPtr clone() const"
+			],
+			[
+				"__le",
+				"__level__"
+			],
+			[
+				"can",
+				"canonicalName"
+			],
+			[
+				"Transform",
+				"TransformVisitor"
+			],
+			[
+				"ty",
+				"type"
+			],
+			[
+				"func",
+				"funcRealizations"
+			],
+			[
+				"reali",
+				"realizationInfo"
+			],
+			[
+				"reco",
+				"recordMembers"
+			],
+			[
+				"res",
+				"resultExpr-"
+			],
+			[
+				"Trans",
+				"TransformVisitor"
+			],
+			[
+				"Type",
+				"TypePtr"
+			],
+			[
+				"rea",
+				"realizationInfo\tstd::shared_ptr<RealizationInfo> realizationInfo"
+			],
+			[
+				"ac",
+				"activeUnbounds"
+			],
+			[
+				"min",
+				"minUnbound"
+			],
+			[
+				"input",
+				"input_bam_ch"
+			],
+			[
+				"sockadd",
+				"sockaddr"
+			],
+			[
+				"thread",
+				"thread_f"
+			],
+			[
+				"SOC",
+				"SOCKETS"
+			],
+			[
+				"end",
+				"endif"
+			],
+			[
+				"from",
+				"from_pid"
+			],
+			[
+				"_buf",
+				"_bufPos"
+			],
+			[
+				"tru",
+				"TRUTH"
+			],
+			[
+				"refere",
+				"reference_name"
+			],
+			[
+				"Read",
+				"read"
+			],
+			[
+				"sam",
+				"sam_ref"
+			],
+			[
+				"haptr",
+				"haptreex"
+			],
+			[
+				"max",
+				"max_items"
+			],
+			[
+				"exome_run_",
+				"exome_run_phaser"
+			],
+			[
+				"prev",
+				"prev_pi"
+			],
+			[
+				"prev_",
+				"prev_bx"
+			],
+			[
+				"no",
+				"no_conflicts"
+			],
+			[
+				"seq",
+				"sequence"
+			],
+			[
+				"mate_",
+				"mate_tid"
+			],
+			[
+				"cont",
+				"continue"
+			],
+			[
+				"a",
+				"argv"
+			],
+			[
+				"vc",
+				"vcf_path"
+			],
+			[
+				"chr",
+				"chr_ordered"
+			],
+			[
+				"cov",
+				"coverages"
+			],
+			[
+				"Reads",
+				"reads"
+			],
+			[
+				"see",
+				"seen_chrs"
+			],
+			[
+				"mate",
+				"mate_unmapped"
+			],
+			[
+				"run_",
+				"run_htx_dase"
+			],
+			[
+				"split_",
+				"split_part_ch"
+			],
+			[
+				"inte",
+				"intervals_ch"
+			],
+			[
+				"dedu",
+				"dedup_ch"
+			],
+			[
+				"int",
+				"intervals"
+			],
+			[
+				"inter",
+				"interval"
+			],
+			[
+				"split",
+				"split_ch"
+			],
+			[
+				"bwa_",
+				"bwa_aligned"
+			],
+			[
+				"bwa",
+				"bwa_bucket"
+			],
+			[
+				"comp_",
+				"comp_snps"
+			],
+			[
+				"sampe",
+				"sample_counts"
+			],
+			[
+				"barc",
+				"barcode_ch"
+			],
+			[
+				"cou",
+				"count_ch"
+			],
+			[
+				"DAS",
+				"DASE_ONLY"
+			],
+			[
+				"bcf",
+				"bcftools"
+			],
+			[
+				"bsq",
+				"bqsr_ch"
+			],
+			[
+				"genome_id",
+				"genome_idx_ch"
+			],
+			[
+				"reca",
+				"recal_ch"
+			],
+			[
+				"gol",
+				"gold_indels_ch"
+			],
+			[
+				"go",
+				"gold_indels"
+			],
+			[
+				"inde",
+				"indels_ch"
+			],
+			[
+				"db",
+				"dbsnp_ch"
+			],
+			[
+				"ded",
+				"dedup_ch"
+			],
+			[
+				"base",
+				"baseName"
+			],
+			[
+				"star_",
+				"star_genome"
+			],
+			[
+				"rev",
+				"revert_ch"
+			],
+			[
+				"VC",
+				"VCF_LINES"
+			],
+			[
+				"rele",
+				"relevant_reads"
+			],
+			[
+				"len",
+				"length"
+			],
+			[
+				"reg",
+				"region"
+			],
+			[
+				"read",
+				"readName"
+			],
+			[
+				"snp",
+				"snpcovs"
+			],
+			[
+				"allele",
+				"alleleNo"
+			],
+			[
+				"SNPcov",
+				"SNPcovList"
+			],
+			[
+				"conf",
+				"conflict_mate"
+			],
+			[
+				"EOF",
+				"EOF_FLAG"
+			],
+			[
+				"acc",
+				"accumbits"
+			],
+			[
+				"accu",
+				"accumbits"
+			],
+			[
+				"Py",
+				"PyLong_SHIFT"
+			],
+			[
+				"is",
+				"is_signed"
+			],
+			[
+				"to_",
+				"to_string"
+			],
+			[
+				"snap",
+				"snap_hg19_index"
+			],
+			[
+				"LD_",
+				"LD_LIBRARY_PATH"
+			],
+			[
+				"para",
+				"parallel"
+			],
+			[
+				"tmp",
+				"tmp_bins"
+			],
+			[
+				"next",
+				"next_bin"
+			],
+			[
+				"shed",
+				"shedskin"
+			],
+			[
+				"comp",
+				"compiler_param"
+			],
+			[
+				"com",
+				"compiler_param"
+			],
+			[
+				"str",
+				"str2rea\t  (string, G.tcache) Hashtbl_intf.Hashtbl.t"
+			],
+			[
+				"Exte",
+				"Extern"
+			],
+			[
+				"indice",
+				"indices'\t  tann ExprNode.t sexp_list"
+			],
+			[
+				"fn_",
+				"fn_stmts"
+			],
+			[
+				"class",
+				"class_name\t  tann class_t -> string"
+			],
+			[
+				"ptr",
+				"ptr_byte"
+			],
+			[
+				"get_T",
+				"get_typ_exn"
+			],
+			[
+				"value",
+				"value_exn"
+			],
+			[
+				"No",
+				"None"
+			],
+			[
+				"add",
+				"additions"
+			],
+			[
+				"ImP",
+				"ImportPaste\t  string -> 'annot StmtNode.tnode"
+			],
+			[
+				"has_",
+				"has_ellipsis"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "stdlib/core/__init__.seq",
+			"settings":
+			{
+				"buffer_size": 16168,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "scratch.seq",
+			"settings":
+			{
+				"buffer_size": 8182,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "compiler/parser/parser.cpp",
+			"settings":
+			{
+				"buffer_size": 3491,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "compiler/parser/ast/transform_expr.cpp",
+			"settings":
+			{
+				"buffer_size": 36298,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "compiler/parser/ast/transform_stmt.cpp",
+			"settings":
+			{
+				"buffer_size": 42311,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "compiler/parser/ast/transform.h",
+			"settings":
+			{
+				"buffer_size": 8694,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "Packages/User/Make (current).sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					""
+				],
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					"Run"
+				]
+			],
+			[
+				"Packages/C++/C++ Single File.sublime-build",
+				""
+			]
+		],
+		[
+			[
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					""
+				],
+				[
+					"Packages/C++/C++ Single File.sublime-build",
+					"Run"
+				],
+				[
+					"Packages/User/Make (current).sublime-build",
+					""
+				]
+			],
+			[
+				"Packages/User/Make (current).sublime-build",
+				""
+			]
+		],
+		[
+			[
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					""
+				],
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					"Traditional"
+				],
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					"PdfLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					"XeLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					"LuaLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					"Basic Builder"
+				],
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					"Basic Builder - PdfLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					"Basic Builder - XeLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					"Basic Builder - LuaLaTeX"
+				],
+				[
+					"Packages/LaTeXTools/LaTeX.sublime-build",
+					"Script Builder"
+				]
+			],
+			[
+				"Packages/LaTeXTools/LaTeX.sublime-build",
+				""
+			]
+		],
+		[
+			[
+				[
+					"Packages/Makefile/Make.sublime-build",
+					""
+				],
+				[
+					"Packages/Makefile/Make.sublime-build",
+					"Clean"
+				]
+			],
+			[
+				"Packages/Makefile/Make.sublime-build",
+				""
+			]
+		],
+		[
+			[
+				[
+					"Packages/SASS Build/SASS - Compressed.sublime-build",
+					""
+				],
+				[
+					"Packages/SASS Build/SASS.sublime-build",
+					""
+				]
+			],
+			[
+				"Packages/SASS Build/SASS.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 392.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"brow",
+				"SFTP: Browse Server…"
+			],
+			[
+				"err",
+				"ECC: Show all errors"
+			],
+			[
+				"colo",
+				"UI: Select Color Scheme"
+			],
+			[
+				"error",
+				"ECC: Show all errors"
+			],
+			[
+				"ecc",
+				"ECC: Show all errors"
+			],
+			[
+				"json",
+				"Formatter: Beautify With JSONMax"
+			],
+			[
+				"keyb",
+				"Preferences: Key Bindings"
+			],
+			[
+				"wo",
+				"Word Wrap: Toggle"
+			],
+			[
+				"insta",
+				"Package Control: Install Package"
+			],
+			[
+				"bro",
+				"SFTP: Browse Server…"
+			],
+			[
+				"brows",
+				"SFTP: Browse Server…"
+			],
+			[
+				"color",
+				"UI: Select Color Scheme"
+			],
+			[
+				"br",
+				"SFTP: Browse Server…"
+			],
+			[
+				"low",
+				"Convert Case: Lower Case"
+			],
+			[
+				"dow",
+				"SFTP: Download File"
+			],
+			[
+				"clang",
+				"Clang Format: Format Selection"
+			],
+			[
+				"word",
+				"Word Wrap: Toggle"
+			],
+			[
+				"so",
+				"Sort Lines"
+			],
+			[
+				"sor",
+				"Sort Lines (Case Sensitive)"
+			],
+			[
+				"uni",
+				"Permute Lines: Unique"
+			],
+			[
+				"un",
+				"Permute Lines: Unique"
+			],
+			[
+				"wor",
+				"Word Wrap: Toggle"
+			],
+			[
+				"unf",
+				"Code Folding: Unfold All"
+			],
+			[
+				"diff",
+				"Diffy Compare"
+			],
+			[
+				"upp",
+				"Convert Case: Upper Case"
+			],
+			[
+				"sft",
+				"SFTP: Browse Server…"
+			],
+			[
+				"browse",
+				"SFTP: Browse Server…"
+			],
+			[
+				"uniq",
+				"Permute Lines: Unique"
+			],
+			[
+				"inst",
+				"Package Control: Install Package"
+			],
+			[
+				"sort",
+				"Sort Lines (Case Sensitive)"
+			],
+			[
+				"sf",
+				"SFTP: Browse Server…"
+			],
+			[
+				"csv",
+				"CSV: Justify columns"
+			],
+			[
+				"spa",
+				"Indentation: Convert to Spaces"
+			],
+			[
+				"bros",
+				"SFTP: Browse Server…"
+			],
+			[
+				"enab",
+				"Package Control: Enable Package"
+			],
+			[
+				"disab",
+				"Package Control: Disable Package"
+			],
+			[
+				"diagn",
+				"LSP: Show Diagnostics"
+			],
+			[
+				"lsp:",
+				"LaTeXTools: Create mousemap in user folder"
+			],
+			[
+				"schedu",
+				"Theme Scheduler: Show Next Change"
+			],
+			[
+				"dia",
+				"LSP: Show Diagnostics"
+			],
+			[
+				"lsp sho",
+				"LSP: Show Diagnostics"
+			],
+			[
+				"resta",
+				"LSP: Restart Servers"
+			],
+			[
+				"gitgutter pref",
+				"Preferences: GitGutter Settings"
+			],
+			[
+				"gitgutter ",
+				"GitGutter: Support Info"
+			],
+			[
+				"gitg",
+				"GitGutter: Compare Against Commit"
+			],
+			[
+				"git h",
+				"GitGutter: Show Comparing Against"
+			],
+			[
+				"remove",
+				"Package Control: Remove Package"
+			],
+			[
+				"disable pa",
+				"Package Control: Disable Package"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"project ",
+				"Project: Edit"
+			],
+			[
+				"lsp se",
+				"Preferences: LSP Settings"
+			],
+			[
+				"package up",
+				"Package Control: Upgrade/Overwrite All Packages"
+			],
+			[
+				"schem",
+				"UI: Select Color Scheme"
+			],
+			[
+				"ins",
+				"Package Control: Install Package"
+			],
+			[
+				"them",
+				"UI: Select Theme"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"lsp",
+				"LSP: Show Diagnostics"
+			],
+			[
+				"theme",
+				"UI: Select Color Scheme"
+			],
+			[
+				"the",
+				"UI: Select Theme"
+			],
+			[
+				"sche",
+				"UI: Select Color Scheme"
+			],
+			[
+				"syntax speci",
+				"Preferences: Settings – Syntax Specific"
+			],
+			[
+				"foldin",
+				"Code Folding: Fold Tag Attributes"
+			],
+			[
+				"tab",
+				"Indentation: Convert to Tabs"
+			],
+			[
+				"spac",
+				"Indentation: Convert to Spaces"
+			],
+			[
+				"inde",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"indent",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"ui:",
+				"UI: Select Theme"
+			],
+			[
+				"ay",
+				"ayu: Activate theme"
+			],
+			[
+				"ayu m",
+				"ayu: Activate theme"
+			],
+			[
+				"disabl",
+				"Package Control: Disable Package"
+			],
+			[
+				"ayi",
+				"ayu: Activate theme"
+			],
+			[
+				"rest",
+				"LSP: Restart Servers"
+			],
+			[
+				"pep",
+				"AutoPEP8: Format Code"
+			],
+			[
+				"ayu",
+				"ayu: Activate theme"
+			],
+			[
+				"au",
+				"AutoPEP8: Format Code"
+			],
+			[
+				"format",
+				"AutoPEP8: Format Code"
+			],
+			[
+				"lsp pause",
+				"LSP: Disable Language Server Globally"
+			],
+			[
+				"tabsex",
+				"TabsExtra: Sort Tabs"
+			],
+			[
+				"indenta",
+				"Indentation: Reindent Lines"
+			],
+			[
+				"lsp set",
+				"Preferences: LSP Settings"
+			],
+			[
+				"enabl",
+				"LSP: Enable Language Server in Project"
+			],
+			[
+				"lsp sett",
+				"Preferences: LSP Settings"
+			],
+			[
+				"enable ",
+				"LSP: Enable Language Server in Project"
+			],
+			[
+				"lps",
+				"LSP: Show Diagnostics"
+			],
+			[
+				"pref",
+				"Preferences: Settings"
+			],
+			[
+				"select",
+				"UI: Select Color Scheme"
+			],
+			[
+				"col",
+				"UI: Select Color Scheme"
+			],
+			[
+				"space",
+				"Indentation: Convert to Spaces"
+			],
+			[
+				"reverse",
+				"Permute Lines: Reverse"
+			],
+			[
+				"dis",
+				"Package Control: Disable Package"
+			],
+			[
+				"disa",
+				"Package Control: Disable Package"
+			],
+			[
+				"sftp",
+				"SFTP: Browse Server…"
+			],
+			[
+				"selec",
+				"UI: Select Color Scheme"
+			],
+			[
+				"lo",
+				"Convert Case: Lower Case"
+			],
+			[
+				"hermes st",
+				"Hermes: Start Kernel"
+			],
+			[
+				"con",
+				"Hermes: Connect Kernel"
+			],
+			[
+				"hermes",
+				"Hermes: Settings"
+			],
+			[
+				"connec",
+				"Hermes: Connect Kernel"
+			],
+			[
+				"py",
+				"Set Syntax: Python"
+			],
+			[
+				"rever",
+				"Permute Lines: Reverse"
+			],
+			[
+				"select the",
+				"UI: Select Theme"
+			],
+			[
+				"w",
+				"Word Wrap: Toggle"
+			],
+			[
+				"packagecon",
+				"Package Control: Add Repository"
+			],
+			[
+				"buil",
+				"Build With: SASS"
+			],
+			[
+				"spaces",
+				"Indentation: Convert to Spaces"
+			],
+			[
+				"boxy",
+				"Boxy Theme: Configuration"
+			],
+			[
+				"box",
+				"Boxy Theme: Activation"
+			],
+			[
+				"trans",
+				"Transpose Word"
+			],
+			[
+				"upper",
+				"Convert Case: Upper Case"
+			],
+			[
+				"ena",
+				"Package Control: Enable Package"
+			],
+			[
+				"scheme",
+				"UI: Select Color Scheme"
+			],
+			[
+				"wordwo",
+				"LaTeXWordCount: Word Count"
+			],
+			[
+				"worwo",
+				"Word Wrap: Toggle"
+			],
+			[
+				"sch",
+				"UI: Select Color Scheme"
+			],
+			[
+				"packa",
+				"PackageResourceViewer: Open Resource"
+			],
+			[
+				"packageres",
+				"PackageResourceViewer: Open Resource"
+			],
+			[
+				"clangcomplete",
+				"EasyClangComplete: Open completion triggers location"
+			],
+			[
+				"compare",
+				"GitGutter: Compare Against Commit"
+			],
+			[
+				"git diff",
+				"GitGutter: Show Diff Popup"
+			],
+			[
+				"git",
+				"GitGutter: Compare Against File Commit"
+			],
+			[
+				"th",
+				"UI: Select Theme"
+			],
+			[
+				"ui",
+				"UI: Select Theme"
+			],
+			[
+				"tabs",
+				"Indentation: Convert to Tabs"
+			],
+			[
+				"package remo",
+				"Package Control: Remove Package"
+			],
+			[
+				"jus",
+				"CSV: Justify columns"
+			],
+			[
+				"j",
+				"CSV: Justify columns"
+			],
+			[
+				"ju",
+				"CSV: Justify columns"
+			],
+			[
+				"wr",
+				"Word Wrap: Toggle"
+			]
+		],
+		"width": 476.0
+	},
+	"console":
+	{
+		"height": 386.0,
+		"history":
+		[
+			"sublime.active_window().active_view().settings().get(\"syntax\") ",
+			"ReverseComplementCommand",
+			"reverse_complement"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/Users/inumanag/Desktop/Projekti/seq/types"
+	],
+	"file_history":
+	[
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/transform_ctx.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/scratch.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/transform_expr.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/codegen.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/transform.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/types.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/transform_ctx.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/slice.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/parser.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/pickle.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/collections/set.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/collections/list.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/collections/dict.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/context.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/bio/pseq.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/gc.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/types/seq.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/__init__.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/types/ptr.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/types/num.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/types/func.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/types/types.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/codegen.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/ast.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/visitor.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/visitor.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/ast.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/aliases.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/types.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/float.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/types/types.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/transform_stmt.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/codegen_ctx.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/lang/func.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/str.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/err.seq",
+		"/Users/inumanag/Desktop/tax/calc",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1591067344/pi/home/pi/osmc_vnc_install_cli.bash",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/bio/fmindex.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/bio/fastq.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/random.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/format.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/format.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/lang/seq.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/common.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/util/common.h",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/context.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/c_stubs.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/bio/__init__.seq",
+		"/Library/Developer/CommandLineTools/usr/include/c++/v1/memory",
+		"/Users/inumanag/Desktop/Projekti/seq/types/seq.sublime-project",
+		"/Users/inumanag/Library/Application Support/Sublime Text 3/Packages/Clang Format/clang_format_custom.sublime-settings",
+		"/Users/inumanag/Library/Application Support/Sublime Text 3/Packages/Clang Format/Default (OSX).sublime-keymap",
+		"/Users/inumanag/Library/Application Support/Sublime Text 3/Packages/User/Default (OSX).sublime-keymap",
+		"/Users/inumanag/Desktop/Projekti/seq/types/parser/ast/context.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/parser/ast/transform_expr.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/parser/ast/transform_stmt.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/parser/ast/codegen.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/core/range.seq",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/typecontext.cpp",
+		"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser/ast/typecontext.h",
+		"/Users/inumanag/.ssh/config",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/rsub-xijnfj/interfaces",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/rsub-6mfwhw/wpa_supplicant.conf",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/rsub-6ghbdt/interfaces",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/rsub-64cbbb/interfaces",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/rsub-v84r06/genRSS.py",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1589345084/cedar/scratch/inumanag/wgac/runavid.py",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1589346362/cedar/scratch/inumanag/wgac/glost.sh",
+		"/Users/inumanag/Desktop/Projekti/seq/newseq/seq.seq",
+		"/Users/inumanag/Desktop/Projekti/aldy/devel/aldy/resources/genes/cyp2c9.yml",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588555625/cedar/scratch/inumanag/wgac/generate.py",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588567003/cedar/scratch/inumanag/wgac/runavid.py",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588556154/cedar/scratch/inumanag/wgac/glost.sh",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1587856608/mume/Users/inumanag/Projekti/sedef/haha.py",
+		"/Users/inumanag/Desktop/Projekti/aldy/devel/aldy/resources/genes/cyp2c19.yml",
+		"/Users/inumanag/Desktop/Projekti/aldy/devel/aldy/gene.py",
+		"/Users/inumanag/Desktop/Projekti/seq/types/stdlib/__root__.seq",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588372230/godzilla/scratch2/ibrahim/ALDYX/aldy/aldy/genotype.py",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588135589/cedar/scratch/inumanag/bcf/code/src/files.seq",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588136396/cedar/scratch/inumanag/bcf/code/src/output.seq",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588135683/cedar/scratch/inumanag/bcf/code/src/output.seq",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1587970310/cedar/scratch/inumanag/bcf/bcf.nf",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588014986/godzilla/scratch2/ibrahim/ALDYX/aldy/aldy/major.py",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588015192/godzilla/scratch2/ibrahim/ALDYX/aldy/aldy/gene.py",
+		"/var/folders/y6/s62ptnc95033thwkbdpljtf80000gn/T/sublime-sftp-browse-1588015648/godzilla/scratch2/ibrahim/ALDYX/aldy/aldy/coverage.py",
+		"/Users/inumanag/Desktop/sedef/Seq/test.seq",
+		"/Users/inumanag/Desktop/sedef/Seq/align.seq",
+		"/Users/inumanag/Desktop/sedef/Seq/hit.seq",
+		"/Users/inumanag/Desktop/sedef/Seq/fasta.seq",
+		"/Users/inumanag/Desktop/secure-gwas/code/mpc.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/code/connect.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/code/socket.h",
+		"/Users/inumanag/Desktop/secure-gwas/code/param.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/code/Makefile",
+		"/Users/inumanag/Desktop/secure-gwas/code/run_mpc.sh",
+		"/Users/inumanag/Desktop/secure-gwas/code/mpc.h",
+		"/Users/inumanag/Desktop/secure-gwas/code/util.h",
+		"/Users/inumanag/Desktop/secure-gwas/code/param.h",
+		"/Users/inumanag/Desktop/secure-gwas/code/GwasClient.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/code/connect.h",
+		"/Users/inumanag/Desktop/secure-gwas/code/crypto.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/code/crypto.h",
+		"/Users/inumanag/Desktop/secure-gwas/code/DataSharingClient.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/code/aesstream.h",
+		"/Users/inumanag/Desktop/secure-gwas/code/aesstream.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/code/NTL_mod/ZZ.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/par/test.par.3.txt",
+		"/Users/inumanag/Desktop/secure-gwas/ntl-10.3.0/src/ZZ_p.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/code/fmt/format.cpp",
+		"/Users/inumanag/Desktop/secure-gwas/ntl-10.3.0/include/NTL/BasicThreadPool.h",
+		"/Users/inumanag/Desktop/hw2/inumanag/prob6.seq",
+		"/Users/inumanag/Desktop/hw2_re/Untitled.ipynb",
+		"/Users/inumanag/Desktop/hw2/rylan/prob2.seq",
+		"/Users/inumanag/Desktop/hw2/grade.sh",
+		"/Users/inumanag/Desktop/hw2/rylan/dbg.seq",
+		"/Users/inumanag/Desktop/hw2/ashley1.seq",
+		"/Users/inumanag/Desktop/hw2/rylan/prob1-bonus.seq",
+		"/Users/inumanag/Desktop/hw2/mateo/prob6.seq",
+		"/Users/inumanag/Desktop/hw2/luke/prob5.seq",
+		"/Users/inumanag/Desktop/hw2/hamza/prob5.seq",
+		"/Users/inumanag/Desktop/hw2/luke/prob2.seq",
+		"/Users/inumanag/Desktop/hw2/luke/prob4.seq",
+		"/Users/inumanag/Desktop/hw2/hamza/prob6.seq",
+		"/Users/inumanag/Desktop/hw2/hs_small.fa",
+		"/Users/inumanag/Desktop/hw2/andrew/p3.txt",
+		"/Users/inumanag/Desktop/hw2/allison/prob6_bonus.txt",
+		"/Users/inumanag/Desktop/hw2/allison/prob5.seq"
+	],
+	"find":
+	{
+		"height": 40.0
+	},
+	"find_in_files":
+	{
+		"height": 134.0,
+		"where_history":
+		[
+			"/Users/inumanag/Desktop/Projekti/seq/types/stdlib",
+			"/Users/inumanag/Desktop/Projekti/seq/types/compiler",
+			"/Users/inumanag/Desktop/Projekti/seq/types/stdlib",
+			"/Users/inumanag/Desktop/Projekti/seq/types/compiler/parser",
+			"<project>/compiler/parser/*",
+			"<project>/compiler/parser",
+			"<project>/compiler/lang/",
+			"<project>/compiler/lang/*.{cpp,h}",
+			"<project>/compiler/lang/**/*.{cpp,h}",
+			"compiler/lang/**/*.{cpp,h}",
+			"types/compiler/lang/**/*.{cpp,h}",
+			"",
+			"*.seq",
+			"*/*.seq",
+			"**/*.seq",
+			"compiler/parser/**/*.{cpp,h}",
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"findbestca",
+			"optional",
+			"setbasetype",
+			"Functionstmt",
+			"->find(",
+			"->find",
+			"pushbase",
+			"functionstmt",
+			"cobj(",
+			"realizationItems",
+			"dotexpr",
+			"DBG(",
+			"patchi",
+			"default",
+			"deflt",
+			"default",
+			"\\.default\\.",
+			".default",
+			"addMethod",
+			"memset",
+			"realizefunc",
+			"prepend",
+			"assignstmt",
+			"AssignMemberStmt",
+			"AssignStmt",
+			"optional",
+			"transformType",
+			"array[T]",
+			"array[byte]",
+			"[byte]",
+			"patchifrea",
+			"realizeType",
+			"baseclass",
+			"Match",
+			"match",
+			"Match",
+			"realizationinfo",
+			"realizationi",
+			"implicits",
+			"parseGenerics",
+			"addmethod",
+			"implicits",
+			"explicit",
+			"functype>",
+			"() ->",
+			"\"todo\"",
+			"error: todo",
+			"error\\: todo",
+			"error: todo",
+			"getbase()",
+			"methods",
+			"COPY_BIN",
+			"dispmanx_vncser",
+			"/dev/null",
+			"APT_UPDATE",
+			"starting",
+			"osmc",
+			"/home/osmc",
+			"isrecord",
+			"read-only",
+			"AssignStmt",
+			"IndexExpr",
+			"stackallocex",
+			"assignmember",
+			"idx",
+			"CallExpr",
+			"__array__",
+			":",
+			"[A-Z]{3,}",
+			"[^\\x00-\\x7F]",
+			"No Congregation Prayer until Further Notice",
+			"EllipsisExpr",
+			"\"__init",
+			"ctx",
+			"ctx->",
+			"::Trans",
+			"usa",
+			"addMethod",
+			"glo",
+			"addMethod",
+			"\"memset",
+			"\"__str",
+			"processident",
+			"DBG",
+			"realizefunc",
+			"getast",
+			"stmt",
+			"realizetype",
+			"stmt",
+			"name",
+			"realizefunc",
+			"result",
+			"pad(inde",
+			"handleImport",
+			"transform",
+			"newline",
+			"ifc",
+			"pad()",
+			"keyword(\"pass",
+			"v.result",
+			"\"pass\"",
+			"\"\"\"",
+			"newline()",
+			"next.default.default_4",
+			"pad\\(",
+			"handleImport",
+			"getImportFile",
+			"# \\{\\}",
+			"handleImport",
+			"suitestmt *",
+			"Context",
+			"context",
+			"filename",
+			"setfile",
+			"filename = ",
+			"setFilename",
+			"import",
+			"auto &a : args",
+			"->add",
+			"prepend\\(",
+			"could not convert string",
+			"transform\\(",
+			"callexpr",
+			"conditionalMagic",
+			"not fo",
+			"i.value",
+			"i\\.value",
+			"not found"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"fi",
+			"(\"{}${}\","
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 1,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "stdlib/core/__init__.seq",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 16168,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								15248,
+								15248
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content"
+							],
+							"git_gutter_is_enabled": true,
+							"incomplete_sync": null,
+							"remote_loading": false,
+							"sorttabs_lastactivated": 1591202503.24,
+							"synced": false,
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"tabs_extra_last_activated": 1591202503.24,
+							"tabs_extra_last_activated_sheet_index": 0,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 6193.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "scratch.seq",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 8182,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1782,
+								1782
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content"
+							],
+							"git_gutter_is_enabled": true,
+							"incomplete_sync": null,
+							"remote_loading": false,
+							"sorttabs_lastactivated": 1591203319.97,
+							"synced": false,
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"tabs_extra_last_activated": 1591203319.98,
+							"tabs_extra_last_activated_sheet_index": 1,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 36.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "compiler/parser/parser.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 3491,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1752,
+								1752
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+									"1":
+									[
+										1822,
+										1823
+									]
+								},
+								"icon":
+								{
+									"1":
+									[
+										"Packages/BracketHighlighter/icons/curly_bracket.png",
+										"region.purplish"
+									]
+								},
+								"open":
+								{
+									"1":
+									[
+										1249,
+										1250
+									]
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content"
+							],
+							"git_gutter_is_enabled": true,
+							"incomplete_sync": null,
+							"remote_loading": false,
+							"sorttabs_lastactivated": 1591202571.28,
+							"synced": false,
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"tabs_extra_last_activated": 1591202571.28,
+							"tabs_extra_last_activated_sheet_index": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 471.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "compiler/parser/ast/transform_expr.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 36298,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								21860,
+								21862
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+									"1":
+									[
+										23089,
+										23090
+									]
+								},
+								"icon":
+								{
+									"1":
+									[
+										"Packages/BracketHighlighter/icons/curly_bracket.png",
+										"region.purplish"
+									]
+								},
+								"open":
+								{
+									"1":
+									[
+										21428,
+										21429
+									]
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content"
+							],
+							"git_gutter_is_enabled": true,
+							"incomplete_sync": null,
+							"remote_loading": false,
+							"sorttabs_lastactivated": 1591202434.72,
+							"synced": false,
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"tabs_extra_last_activated": 1591202434.72,
+							"tabs_extra_last_activated_sheet_index": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 9415.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "compiler/parser/ast/transform_stmt.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 42311,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2530,
+								2530
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+									"1":
+									[
+										2547,
+										2548
+									]
+								},
+								"icon":
+								{
+									"1":
+									[
+										"Packages/BracketHighlighter/icons/round_bracket.png",
+										"region.yellowish"
+									]
+								},
+								"open":
+								{
+									"1":
+									[
+										2525,
+										2526
+									]
+								},
+								"unmatched":
+								{
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content"
+							],
+							"git_gutter_is_enabled": true,
+							"incomplete_sync": null,
+							"remote_loading": false,
+							"sorttabs_lastactivated": 1591202468.46,
+							"synced": false,
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"tabs_extra_last_activated": 1591202468.46,
+							"tabs_extra_last_activated_sheet_index": 3,
+							"tabs_extra_moving":
+							[
+								2,
+								0
+							],
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1046.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "compiler/parser/ast/transform.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 8694,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2539,
+								2539
+							]
+						],
+						"settings":
+						{
+							"bracket_highlighter.busy": false,
+							"bracket_highlighter.locations":
+							{
+								"close":
+								{
+								},
+								"icon":
+								{
+								},
+								"open":
+								{
+								},
+								"unmatched":
+								{
+									"1":
+									[
+										575,
+										576
+									]
+								}
+							},
+							"bracket_highlighter.regions":
+							[
+								"bh_angle",
+								"bh_angle_center",
+								"bh_angle_open",
+								"bh_angle_close",
+								"bh_angle_content",
+								"bh_default",
+								"bh_default_center",
+								"bh_default_open",
+								"bh_default_close",
+								"bh_default_content",
+								"bh_unmatched",
+								"bh_unmatched_center",
+								"bh_unmatched_open",
+								"bh_unmatched_close",
+								"bh_unmatched_content",
+								"bh_square",
+								"bh_square_center",
+								"bh_square_open",
+								"bh_square_close",
+								"bh_square_content",
+								"bh_round",
+								"bh_round_center",
+								"bh_round_open",
+								"bh_round_close",
+								"bh_round_content",
+								"bh_regex",
+								"bh_regex_center",
+								"bh_regex_open",
+								"bh_regex_close",
+								"bh_regex_content",
+								"bh_c_define",
+								"bh_c_define_center",
+								"bh_c_define_open",
+								"bh_c_define_close",
+								"bh_c_define_content",
+								"bh_curly",
+								"bh_curly_center",
+								"bh_curly_open",
+								"bh_curly_close",
+								"bh_curly_content",
+								"bh_single_quote",
+								"bh_single_quote_center",
+								"bh_single_quote_open",
+								"bh_single_quote_close",
+								"bh_single_quote_content",
+								"bh_double_quote",
+								"bh_double_quote_center",
+								"bh_double_quote_open",
+								"bh_double_quote_close",
+								"bh_double_quote_content",
+								"bh_tag",
+								"bh_tag_center",
+								"bh_tag_open",
+								"bh_tag_close",
+								"bh_tag_content"
+							],
+							"git_gutter_is_enabled": true,
+							"incomplete_sync": null,
+							"remote_loading": false,
+							"sorttabs_lastactivated": 1591202470.16,
+							"synced": false,
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"tabs_extra_last_activated": 1591202470.16,
+							"tabs_extra_last_activated_sheet_index": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 576.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 24.0
+	},
+	"input":
+	{
+		"height": 54.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.ECC":
+	{
+		"height": 103.0
+	},
+	"output.autopep8":
+	{
+		"height": 133.0
+	},
+	"output.diagnostics":
+	{
+		"height": 125.0
+	},
+	"output.exec":
+	{
+		"height": 210.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"output.latextools":
+	{
+		"height": 330.0
+	},
+	"output.mdpopups":
+	{
+		"height": 0.0
+	},
+	"output.merlin":
+	{
+		"height": 31.0
+	},
+	"output.references":
+	{
+		"height": 133.0
+	},
+	"output.sftp":
+	{
+		"height": 454.0
+	},
+	"pinned_build_system": "",
+	"project": "seq.sublime-project",
+	"replace":
+	{
+		"height": 44.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"pars",
+				"compiler/parser/parser.cpp"
+			],
+			[
+				"scra",
+				"scratch.seq"
+			],
+			[
+				"_stmt",
+				"compiler/parser/ast/transform_stmt.cpp"
+			],
+			[
+				"_expr",
+				"compiler/parser/ast/transform_expr.cpp"
+			],
+			[
+				"trans",
+				"compiler/parser/ast/transform.h"
+			],
+			[
+				"_ctx",
+				"compiler/parser/ast/transform_ctx.h"
+			],
+			[
+				"sli",
+				"stdlib/core/slice.seq"
+			],
+			[
+				"__",
+				"stdlib/core/__init__.seq"
+			],
+			[
+				"sc",
+				"scratch.seq"
+			],
+			[
+				"par",
+				"compiler/parser/parser.cpp"
+			],
+			[
+				"slice",
+				"stdlib/core/slice.seq"
+			],
+			[
+				"pick",
+				"stdlib/pickle.seq"
+			],
+			[
+				"list",
+				"stdlib/core/collections/list.seq"
+			],
+			[
+				"contex",
+				"compiler/parser/ast/context.h"
+			],
+			[
+				"gc.seq",
+				"stdlib/core/gc.seq"
+			],
+			[
+				"_Ctx",
+				"compiler/parser/ast/transform_ctx.cpp"
+			],
+			[
+				"parse",
+				"compiler/parser/parser.cpp"
+			],
+			[
+				"types",
+				"compiler/parser/ast/types.h"
+			],
+			[
+				"seq.",
+				"compiler/types/seq.cpp"
+			],
+			[
+				"ptr",
+				"compiler/types/ptr.cpp"
+			],
+			[
+				"init",
+				"stdlib/core/__init__.seq"
+			],
+			[
+				"parser",
+				"compiler/parser/parser.cpp"
+			],
+			[
+				"codege",
+				"compiler/parser/ast/codegen.cpp"
+			],
+			[
+				"visit",
+				"compiler/parser/ast/visitor.cpp"
+			],
+			[
+				"ast",
+				"compiler/parser/ast/ast.h"
+			],
+			[
+				"alias",
+				"stdlib/core/aliases.seq"
+			],
+			[
+				"float",
+				"stdlib/core/float.seq"
+			],
+			[
+				"__in",
+				"stdlib/core/__init__.seq"
+			],
+			[
+				"func",
+				"compiler/lang/func.h"
+			],
+			[
+				"conte",
+				"compiler/parser/ast/context.h"
+			],
+			[
+				"code",
+				"compiler/parser/ast/codegen.h"
+			],
+			[
+				"_ct",
+				"compiler/parser/ast/codegen_ctx.cpp"
+			],
+			[
+				"str.s",
+				"stdlib/core/str.seq"
+			],
+			[
+				"err",
+				"stdlib/core/err.seq"
+			],
+			[
+				"type",
+				"compiler/parser/ast/types.h"
+			],
+			[
+				"visi",
+				"compiler/parser/ast/visitor.cpp"
+			],
+			[
+				"stmt",
+				"compiler/parser/ast/transform_stmt.cpp"
+			],
+			[
+				"expr",
+				"compiler/parser/ast/transform_expr.cpp"
+			],
+			[
+				"transf",
+				"compiler/parser/ast/transform.h"
+			],
+			[
+				"tra",
+				"compiler/parser/ast/transform.h"
+			],
+			[
+				"__i",
+				"stdlib/core/__init__.seq"
+			],
+			[
+				"format",
+				"compiler/parser/ast/format.cpp"
+			],
+			[
+				"seq",
+				"compiler/lang/seq.h"
+			],
+			[
+				"comm",
+				"compiler/parser/common.h"
+			],
+			[
+				"seq.h",
+				"compiler/lang/seq.h"
+			],
+			[
+				"commo",
+				"compiler/parser/common.h"
+			],
+			[
+				"codegen",
+				"compiler/parser/ast/codegen.cpp"
+			],
+			[
+				"_Stmt",
+				"compiler/parser/ast/transform_stmt.cpp"
+			],
+			[
+				"forma",
+				"compiler/parser/ast/format.cpp"
+			],
+			[
+				"c_stu",
+				"stdlib/core/c_stubs.seq"
+			],
+			[
+				"floa",
+				"stdlib/core/float.seq"
+			],
+			[
+				"con",
+				"compiler/parser/ast/context.h"
+			],
+			[
+				"context",
+				"compiler/parser/ast/context.cpp"
+			],
+			[
+				"scr",
+				"scratch.seq"
+			],
+			[
+				"types ast",
+				"compiler/parser/ast/types.cpp"
+			],
+			[
+				"range",
+				"stdlib/core/range.seq"
+			],
+			[
+				"_exp",
+				"compiler/parser/ast/transform_expr.cpp"
+			],
+			[
+				"tras",
+				"compiler/parser/ast/transform_stmt.cpp"
+			],
+			[
+				"typec",
+				"compiler/parser/ast/typecontext.h"
+			],
+			[
+				"gwas",
+				"code/GwasClient.cpp"
+			],
+			[
+				"mpc",
+				"code/mpc.cpp"
+			],
+			[
+				"conn",
+				"code/connect.cpp"
+			],
+			[
+				"soc",
+				"code/socket.h"
+			],
+			[
+				"conne",
+				"code/connect.cpp"
+			],
+			[
+				"para",
+				"code/param.cpp"
+			],
+			[
+				"sock",
+				"code/socket.h"
+			],
+			[
+				"param",
+				"code/param.cpp"
+			],
+			[
+				"make",
+				"code/Makefile"
+			],
+			[
+				"socke",
+				"code/socket.h"
+			],
+			[
+				"aess",
+				"code/aesstream.cpp"
+			],
+			[
+				"mpc.h",
+				"code/mpc.h"
+			],
+			[
+				"prob6",
+				"inumanag/prob6.seq"
+			],
+			[
+				"grad",
+				"grade.sh"
+			],
+			[
+				"rylan prob2",
+				"rylan/prob2.seq"
+			],
+			[
+				"ryl",
+				"rylan/dbg.seq"
+			],
+			[
+				"set",
+				"setup.py"
+			],
+			[
+				"vers",
+				"aldy/version.py"
+			],
+			[
+				"minor",
+				"aldy/minor.py"
+			],
+			[
+				"major",
+				"aldy/major.py"
+			],
+			[
+				"sam",
+				"aldy/sam.py"
+			],
+			[
+				"main",
+				"aldy/__main__.py"
+			],
+			[
+				"lpin",
+				"aldy/lpinterface.py"
+			],
+			[
+				"prob2",
+				"prob2.seq"
+			],
+			[
+				"mai",
+				"pyseq/main.seq"
+			],
+			[
+				"alg",
+				"pyseq/alg.seq"
+			],
+			[
+				"datage",
+				"python/datagen.py"
+			],
+			[
+				"gene",
+				"xseq-old/gene.seq"
+			],
+			[
+				"stat",
+				"pypy/stats.py"
+			],
+			[
+				"os/",
+				"seq/stdlib/os/__init__.seq"
+			],
+			[
+				"str",
+				"seq/stdlib/core/str.seq"
+			],
+			[
+				"ba",
+				"seq/stdlib/bio/bam.seq"
+			],
+			[
+				"stats",
+				"pypy/stats.py"
+			],
+			[
+				"ou",
+				"pyseq/output.seq"
+			],
+			[
+				"bam",
+				"seq/stdlib/bio/bam.seq"
+			],
+			[
+				"read",
+				"pyseq/read.seq"
+			],
+			[
+				"grap",
+				"pyseq/graph.seq"
+			],
+			[
+				"a",
+				"pyseq/alg.seq"
+			],
+			[
+				"files",
+				"pyseq/files.seq"
+			],
+			[
+				"dict",
+				"seq/stdlib/core/collections/dict.seq"
+			],
+			[
+				"c_s",
+				"seq/stdlib/core/c_stubs.seq"
+			],
+			[
+				"alig",
+				"seq/stdlib/bio/align.seq"
+			],
+			[
+				"c_",
+				"seq/stdlib/core/c_stubs.seq"
+			],
+			[
+				"sys",
+				"seq/stdlib/sys.seq"
+			],
+			[
+				"buil",
+				"seq/stdlib/core/builtin.seq"
+			],
+			[
+				"time",
+				"seq/stdlib/time.seq"
+			],
+			[
+				"loc",
+				"seq/stdlib/bio/locus.seq"
+			],
+			[
+				"fil",
+				"pyseq/files.seq"
+			],
+			[
+				"al",
+				"pyseq/alg.seq"
+			],
+			[
+				"o",
+				"pypy/output.py"
+			],
+			[
+				"outp",
+				"pyseq/output.seq"
+			],
+			[
+				"file",
+				"pyseq/files.seq"
+			],
+			[
+				"out",
+				"pypy/output.py"
+			],
+			[
+				"man",
+				"pyseq/main.seq"
+			],
+			[
+				"chai",
+				"seq/Chair.cpp"
+			],
+			[
+				"gra",
+				"pyseq/graph.seq"
+			],
+			[
+				"main.s",
+				"pyseq/main.seq"
+			],
+			[
+				"rna",
+				"pyseq/rna.seq"
+			],
+			[
+				"basic_c",
+				"python/basic_class.py"
+			],
+			[
+				"alg.",
+				"pyseq/alg.seq"
+			],
+			[
+				"rna.seq",
+				"pyseq/rna.seq"
+			],
+			[
+				"data",
+				"datagen.py"
+			],
+			[
+				"glo",
+				"pyseq/polyploid/global_vars.py"
+			],
+			[
+				"treal",
+				"parser/typecheck/trealize.ml"
+			],
+			[
+				"texp",
+				"parser/typecheck/texpr.ml"
+			],
+			[
+				"tstmt",
+				"parser/typecheck/tstmt.ml"
+			],
+			[
+				"test",
+				"test/types-test.seq"
+			],
+			[
+				"trea",
+				"parser/typecheck/trealize.ml"
+			],
+			[
+				"tuti",
+				"parser/typecheck/tutil.ml"
+			]
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": false,
+	"side_bar_width": 172.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

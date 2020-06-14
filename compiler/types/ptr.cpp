@@ -17,26 +17,34 @@ void types::PtrType::initOps() {
     return;
 
   vtable.magic = {
-      {"__init__",
+      {"__new__",
        {},
        this,
        [this](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
          return ConstantPointerNull::get(
              getBaseType(0)->getLLVMType(b.getContext())->getPointerTo(0));
        },
-       false},
+       true},
 
-      {"__init__",
+      {"__new__",
        {Int},
        this,
        [this](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
          return getBaseType(0)->alloc(args[0], b.GetInsertBlock());
        },
-       false},
+       true},
 
-      {"__init__",
-       {PtrType::get(Base)},
+      {"__new__",
+       {PtrType::get(Byte)},
        this,
+       [this](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
+         return b.CreateBitCast(args[0], getLLVMType(b.getContext()));
+       },
+       true},
+
+      {"as_byte",
+       {},
+       PtrType::get(Byte),
        [this](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
          return b.CreateBitCast(args[0], getLLVMType(b.getContext()));
        },
