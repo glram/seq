@@ -27,8 +27,8 @@ namespace ast {
 
 LLVMContext::LLVMContext(const string &filename,
                          shared_ptr<RealizationContext> realizations,
-                         shared_ptr<ImportContext> imports, seq::Block *block,
-                         seq::BaseFunc *base, seq::SeqJIT *jit)
+                         shared_ptr<ImportContext> imports, seq::ir::BasicBlock *block,
+                         seq::ir::Func *base, seq::SeqJIT *jit)
     : Context<LLVMItem::Item>(filename, realizations, imports),
       tryCatch(nullptr), jit(jit) {
   stack.push_front(vector<string>());
@@ -58,16 +58,16 @@ shared_ptr<LLVMItem::Item> LLVMContext::find(const string &name, bool onlyLocal,
   }
 }
 
-void LLVMContext::addVar(const string &name, seq::Var *v, bool global) {
+void LLVMContext::addVar(const string &name, seq::ir::Var *v, bool global) {
   add(name, make_shared<LLVMItem::Var>(v, getBase(), global || isToplevel()));
 }
 
-void LLVMContext::addType(const string &name, seq::types::Type *t,
+void LLVMContext::addType(const string &name, seq::ir::types::Type *t,
                           bool global) {
   add(name, make_shared<LLVMItem::Class>(t, getBase(), global || isToplevel()));
 }
 
-void LLVMContext::addFunc(const string &name, seq::BaseFunc *f, bool global) {
+void LLVMContext::addFunc(const string &name, seq::ir::Func *f, bool global) {
   add(name, make_shared<LLVMItem::Func>(f, getBase(), global || isToplevel()));
 }
 
@@ -77,7 +77,7 @@ void LLVMContext::addImport(const string &name, const string &import,
       make_shared<LLVMItem::Import>(import, getBase(), global || isToplevel()));
 }
 
-void LLVMContext::addBlock(seq::Block *newBlock, seq::BaseFunc *newBase) {
+void LLVMContext::addBlock(seq::ir::BasicBlock *newBlock, seq::ir::Func *newBase) {
   Context<LLVMItem::Item>::addBlock();
   if (newBlock)
     topBlockIndex = blocks.size();
@@ -88,6 +88,7 @@ void LLVMContext::addBlock(seq::Block *newBlock, seq::BaseFunc *newBase) {
 }
 
 void LLVMContext::popBlock() {
+  Context<LLVMItem::Item>::popBlock();
   bases.pop_back();
   topBaseIndex = bases.size() - 1;
   while (topBaseIndex && !bases[topBaseIndex])
@@ -100,14 +101,7 @@ void LLVMContext::popBlock() {
 }
 
 void LLVMContext::initJIT() {
-  jit = new seq::SeqJIT();
-  auto fn = new seq::Func();
-  fn->setName("$jit_0");
-
-  addBlock(fn->getBlock(), fn);
-  assert(topBaseIndex == topBlockIndex && topBlockIndex == 0);
-
-  execJIT();
+  throw std::runtime_error("not implemented");
 }
 
 void LLVMContext::execJIT(string varName, seq::Expr *varExpr) {
@@ -136,6 +130,7 @@ void LLVMContext::execJIT(string varName, seq::Expr *varExpr) {
   // fn->setName(format("$jit_{}", ++counter));
   // addBlock(fn->getBlock(), fn);
   // assert(topBaseIndex == topBlockIndex && topBlockIndex == 0);
+  throw std::runtime_error("not implemented");
 }
 
 // void LLVMContext::dump(int pad) {
@@ -155,13 +150,13 @@ void LLVMContext::execJIT(string varName, seq::Expr *varExpr) {
 
 shared_ptr<LLVMContext> LLVMContext::getContext(const string &file,
                                                 shared_ptr<TypeContext> typeCtx,
-                                                seq::SeqModule *module) {
+                                                seq::ir::IRModule *module) {
   auto realizations = typeCtx->getRealizations();
   auto imports = typeCtx->getImports();
   auto stdlib = const_cast<ImportContext::Import *>(imports->getImport(""));
 
-  auto block = module->getBlock();
-  seq::BaseFunc *base = module;
+  auto base = module->getBase().get();
+  auto block = base->getBlocks()[0].get();
   stdlib->lctx = make_shared<LLVMContext>(stdlib->filename, realizations,
                                           imports, block, base, nullptr);
   return make_shared<LLVMContext>(file, realizations, imports, block, base,

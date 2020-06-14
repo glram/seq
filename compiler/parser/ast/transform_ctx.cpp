@@ -11,6 +11,7 @@
 #include "parser/ast/transform.h"
 #include "parser/common.h"
 #include "parser/ocaml.h"
+#include "sir/types/types.h"
 
 using fmt::format;
 using std::dynamic_pointer_cast;
@@ -157,12 +158,12 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
   auto stdlib = make_shared<TypeContext>(stdlibPath, realizations, imports);
   imports->addImport("", stdlibPath, stdlib);
 
-  unordered_map<string, seq::types::Type *> podTypes = {
-      {"void", seq::types::Void},
-      {"bool", seq::types::Bool},
-      {"byte", seq::types::Byte},
-      {"int", seq::types::Int},
-      {"float", seq::types::Float}};
+  unordered_map<string, seq::ir::types::Type *> podTypes = {
+      {"void", seq::ir::types::kVoidType.get()},
+      {"bool", seq::ir::types::kBoolType.get()},
+      {"byte", seq::ir::types::kByteType.get()},
+      {"int", seq::ir::types::kIntType.get()},
+      {"float", seq::ir::types::kFloatType.get()}};
   for (auto &t : podTypes) {
     auto name = t.first;
     auto typ = make_shared<types::ClassType>(name, true);

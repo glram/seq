@@ -4,13 +4,17 @@
 
 #include "module.h"
 #include "var.h"
+#include "func.h"
+#include "bblock.h"
 
 using namespace seq;
 using namespace ir;
 
-IRModule::IRModule(std::string name) : name{name}, globals{} {}
+IRModule::IRModule(std::string name) : name{name}, globals{}, baseFunc{std::make_shared<Func>("base", std::vector<std::string>(), types::kNoArgVoidFuncType)} {
+    baseFunc->addBlock(std::make_shared<BasicBlock>());
+}
 
-IRModule::IRModule(const IRModule &other) : name{name}, globals{} {
+IRModule::IRModule(const IRModule &other) : name{name}, globals{}, baseFunc{other.baseFunc} {
   std::copy(other.globals.begin(), other.globals.end(),
             std::back_inserter(globals));
 }

@@ -8,9 +8,17 @@
 #include <unordered_set>
 #include <vector>
 
-#include "lang/seq.h"
 #include "parser/ast/context.h"
 #include "parser/common.h"
+#include "sir/func.h"
+#include "sir/types/types.h"
+#include "sir/var.h"
+#include "sir/lvalue.h"
+#include "sir/rvalue.h"
+#include "sir/operand.h"
+#include "sir/bblock.h"
+#include "sir/trycatch.h"
+#include "sir/module.h"
 
 namespace seq {
 namespace ast {
@@ -24,15 +32,15 @@ class Class;
 
 class Item {
 protected:
-  seq::BaseFunc *base;
+  seq::ir::Func *base;
   bool global;
   std::unordered_set<std::string> attributes;
 
 public:
-  Item(seq::BaseFunc *base, bool global = false) : base(base), global(global) {}
+  Item(seq::ir::Func *base, bool global = false) : base(base), global(global) {}
   virtual ~Item() {}
 
-  const seq::BaseFunc *getBase() const { return base; }
+  const seq::ir::Func *getBase() const { return base; }
   bool isGlobal() const { return global; }
   bool hasAttr(const std::string &s) const {
     return attributes.find(s) != attributes.end();
@@ -42,67 +50,85 @@ public:
   virtual const Func *getFunc() const { return nullptr; }
   virtual const Var *getVar() const { return nullptr; }
   virtual const Import *getImport() const { return nullptr; }
-  virtual seq::Expr *getExpr() const = 0;
+
+  virtual seq::ir::Lvalue *getLvalue() const = 0;
+  virtual seq::ir::Rvalue *getRvalue() const = 0;
+  virtual seq::ir::Operand *getOperand() const = 0;
 };
 
 class Var : public Item {
-  seq::Var *handle;
+  seq::ir::Var *handle;
 
 public:
-  Var(seq::Var *var, seq::BaseFunc *base, bool global = false)
+  Var(seq::ir::Var *var, seq::ir::Func *base, bool global = false)
       : Item(base, global), handle(var) {}
-  seq::Expr *getExpr() const override { return new seq::VarExpr(handle); }
+
+  virtual seq::ir::Lvalue *getLvalue() const { return new seq::ir::VarLvalue(handle->getShared()); }
+  virtual seq::ir::Rvalue *getRvalue() const { return new seq::ir::OperandRvalue(getOperand()->getShared()); }
+  virtual seq::ir::Operand *getOperand() const { return new seq::ir::VarOperand(handle->getShared()); }
+
   const Var *getVar() const override { return this; }
-  seq::Var *getHandle() const { return handle; }
+  seq::ir::Var *getHandle() const { return handle; }
 };
 
 class Func : public Item {
-  seq::BaseFunc *handle;
+  seq::ir::Func *handle;
 
 public:
-  Func(seq::BaseFunc *f, seq::BaseFunc *base, bool global = false)
+  Func(seq::ir::Func *f, seq::ir::Func *base, bool global = false)
       : Item(base, global), handle(f) {}
-  seq::Expr *getExpr() const override { return new seq::FuncExpr(handle); }
+
+  virtual seq::ir::Lvalue *getLvalue() const { return new seq::ir::VarLvalue(handle->getShared()); }
+  virtual seq::ir::Rvalue *getRvalue() const { return new seq::ir::OperandRvalue(getOperand()->getShared()); }
+  virtual seq::ir::Operand *getOperand() const { return new seq::ir::VarOperand(handle->getShared()); }
+
   const Func *getFunc() const override { return this; }
+  seq::ir::Func *getHandle() const { return handle; }
 };
 
 class Class : public Item {
-  seq::types::Type *type;
+  seq::ir::types::Type *type;
 
 public:
-  Class(seq::types::Type *t, seq::BaseFunc *base, bool global = false)
+  Class(seq::ir::types::Type *t, seq::ir::Func *base, bool global = false)
       : Item(base, global), type(t) {}
 
-  seq::types::Type *getType() const { return type; }
-  seq::Expr *getExpr() const override { return new seq::TypeExpr(type); }
+  seq::ir::types::Type *getType() const { return type; }
   const Class *getClass() const override { return this; }
+
+  virtual seq::ir::Lvalue *getLvalue() const { assert(false); }
+  virtual seq::ir::Rvalue *getRvalue() const { assert(false); }
+  virtual seq::ir::Operand *getOperand() const { assert(false); }
 };
 
 class Import : public Item {
   std::string file;
 
 public:
-  Import(const std::string &file, seq::BaseFunc *base, bool global = false)
+  Import(const std::string &file, seq::ir::Func *base, bool global = false)
       : Item(base, global), file(file) {}
-  seq::Expr *getExpr() const override { assert(false); }
   const Import *getImport() const override { return this; }
   std::string getFile() const { return file; }
+
+  virtual seq::ir::Lvalue *getLvalue() const { assert(false); }
+  virtual seq::ir::Rvalue *getRvalue() const { assert(false); }
+  virtual seq::ir::Operand *getOperand() const { assert(false); }
 };
 } // namespace LLVMItem
 
 class LLVMContext : public Context<LLVMItem::Item> {
-  std::vector<seq::BaseFunc *> bases;
-  std::vector<seq::Block *> blocks;
+  std::vector<seq::ir::Func *> bases;
+  std::vector<seq::ir::BasicBlock *> blocks;
   int topBlockIndex, topBaseIndex;
 
-  seq::TryCatch *tryCatch;
+  seq::ir::TryCatch *tryCatch;
   seq::SeqJIT *jit;
 
 public:
   LLVMContext(const std::string &filename,
               std::shared_ptr<RealizationContext> realizations,
-              std::shared_ptr<ImportContext> imports, seq::Block *block,
-              seq::BaseFunc *base, seq::SeqJIT *jit);
+              std::shared_ptr<ImportContext> imports, seq::ir::BasicBlock *block,
+              seq::ir::Func *base, seq::SeqJIT *jit);
   virtual ~LLVMContext();
 
   std::shared_ptr<LLVMItem::Item> find(const std::string &name,
@@ -110,15 +136,15 @@ public:
                                        bool checkStdlib = true) const;
 
   using Context<LLVMItem::Item>::add;
-  void addVar(const std::string &name, seq::Var *v, bool global = false);
-  void addType(const std::string &name, seq::types::Type *t,
+  void addVar(const std::string &name, seq::ir::Var *v, bool global = false);
+  void addType(const std::string &name, seq::ir::types::Type *t,
                bool global = false);
-  void addFunc(const std::string &name, seq::BaseFunc *f, bool global = false);
+  void addFunc(const std::string &name, seq::ir::Func *f, bool global = false);
   void addImport(const std::string &name, const std::string &import,
                  bool global = false);
-  void addBlock(seq::Block *newBlock = nullptr,
-                seq::BaseFunc *newBase = nullptr);
-  void popBlock();
+  void addBlock(seq::ir::BasicBlock *newBlock = nullptr,
+                seq::ir::Func *newBase = nullptr);
+  void popBlock() override;
 
   void initJIT();
   void execJIT(std::string varName = "", seq::Expr *varExpr = nullptr);
@@ -126,13 +152,13 @@ public:
   // void dump(int pad = 0) override;
 
 public:
-  seq::BaseFunc *getBase() const { return bases[topBaseIndex]; }
-  seq::Block *getBlock() const { return blocks[topBlockIndex]; }
-  seq::TryCatch *getTryCatch() const { return tryCatch; }
-  void setTryCatch(seq::TryCatch *t) { tryCatch = t; }
+  seq::ir::Func *getBase() const { return bases[topBaseIndex]; }
+  seq::ir::BasicBlock *getBlock() const { return blocks[topBlockIndex]; }
+  seq::ir::TryCatch *getTryCatch() const { return tryCatch; }
+  void setTryCatch(seq::ir::TryCatch *t) { tryCatch = t; }
   bool isToplevel() const { return bases.size() == 1; }
   seq::SeqJIT *getJIT() { return jit; }
-  seq::types::Type *getType(const std::string &name) const {
+  seq::ir::types::Type *getType(const std::string &name) const {
     if (auto t = CAST(find(name), LLVMItem::Class))
       return t->getType();
     assert(false);
@@ -142,7 +168,7 @@ public:
 public:
   static std::shared_ptr<LLVMContext>
   getContext(const std::string &file, std::shared_ptr<TypeContext> typeCtx,
-             seq::SeqModule *module);
+             seq::ir::IRModule *module);
 };
 
 } // namespace ast

@@ -23,6 +23,13 @@
 namespace seq {
 namespace ast {
 
+union CodegenResult {
+    seq::ir::Operand* operandResult;
+    seq::ir::Rvalue* rvalueResult;
+    seq::ir::Lvalue* lvalueResult;
+    seq::ir::Pattern* patternResult;
+};
+
 class CodegenVisitor : public ASTVisitor, public SrcObject {
   std::shared_ptr<LLVMContext> ctx;
   seq::Expr *resultExpr;

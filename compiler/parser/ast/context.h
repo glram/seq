@@ -12,6 +12,8 @@
 #include "lang/seq.h"
 #include "parser/ast/ast.h"
 #include "parser/common.h"
+#include "sir/types/types.h"
+#include "sir/func.h"
 
 namespace seq {
 namespace ast {
@@ -24,12 +26,12 @@ struct RealizationContext {
   struct FuncRealization {
     types::FuncTypePtr type;
     std::shared_ptr<FunctionStmt> ast;
-    seq::BaseFunc *handle;
+    seq::ir::Func *handle;
   };
   struct ClassRealization {
     types::ClassTypePtr type;
     std::vector<std::pair<std::string, types::ClassTypePtr>> args;
-    seq::types::Type *handle;
+    seq::ir::types::Type *handle;
   };
   RealizationContext();
 
@@ -162,7 +164,7 @@ public:
     if (!i->second.size())
       map.erase(name);
   }
-  void popBlock() {
+  virtual void popBlock() {
     for (auto &name : stack.front())
       removeFromMap(name);
     stack.pop_front();
