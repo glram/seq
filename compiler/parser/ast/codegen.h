@@ -19,28 +19,59 @@
 #include "parser/ast/visitor.h"
 #include "parser/ast/walk.h"
 #include "parser/common.h"
+#include "sir/base.h"
+#include "sir/pattern.h"
 
 namespace seq {
 namespace ast {
 
-union CodegenResult {
-    seq::ir::Operand* operandResult;
-    seq::ir::Rvalue* rvalueResult;
-    seq::ir::Lvalue* lvalueResult;
-    seq::ir::Pattern* patternResult;
+
+
+struct CodegenResult {
+    enum {OP, RVALUE, LVALUE, PATTERN, NONE} tag;
+    std::shared_ptr<seq::ir::Operand> operandResult;
+    std::shared_ptr<seq::ir::Rvalue> rvalueResult;
+    std::shared_ptr<seq::ir::Lvalue> lvalueResult;
+    std::shared_ptr<seq::ir::Pattern> patternResult;
+
+    CodegenResult() : tag(NONE), operandResult(nullptr), rvalueResult(nullptr), lvalueResult(nullptr), patternResult(
+            nullptr){};
+    explicit CodegenResult(std::shared_ptr<seq::ir::Operand> op) : tag(OP), operandResult(op), rvalueResult(nullptr), lvalueResult(nullptr), patternResult(
+            nullptr){};
+    explicit CodegenResult(std::shared_ptr<seq::ir::Rvalue> rval) : tag(RVALUE), operandResult(nullptr), rvalueResult(rval), lvalueResult(nullptr), patternResult(
+            nullptr){};
+    explicit CodegenResult(std::shared_ptr<seq::ir::Lvalue> lval) : tag(LVALUE), operandResult(nullptr), rvalueResult(nullptr), lvalueResult(lval), patternResult(
+            nullptr){};
+    explicit CodegenResult(std::shared_ptr<seq::ir::Pattern> pattern) : tag(PATTERN), operandResult(nullptr), rvalueResult(nullptr), lvalueResult(
+            nullptr), patternResult(pattern){};
+
+    void addAttribute(std::string key, std::shared_ptr<seq::ir::Attribute> att) {
+        switch (tag) {
+            case OP:
+                operandResult->setAttribute(key, att);
+                break;
+            case RVALUE:
+                rvalueResult->setAttribute(key, att);
+                break;
+            case LVALUE:
+                lvalueResult->setAttribute(key, att);
+                break;
+            case PATTERN:
+                patternResult->setAttribute(key, att);
+                break;
+        }
+    }
 };
 
 class CodegenVisitor : public ASTVisitor, public SrcObject {
   std::shared_ptr<LLVMContext> ctx;
-  seq::Expr *resultExpr;
-  seq::Stmt *resultStmt;
-  seq::Pattern *resultPattern;
+  CodegenResult result;
 
   void defaultVisit(const Expr *expr) override;
   void defaultVisit(const Stmt *expr) override;
   void defaultVisit(const Pattern *expr) override;
 
-  seq::types::Type *realizeType(types::ClassTypePtr t);
+  seq::ir::types::Type *realizeType(types::ClassTypePtr t);
 
   std::shared_ptr<LLVMItem::Item>
   processIdentifier(std::shared_ptr<LLVMContext> tctx, const std::string &id);
@@ -48,11 +79,12 @@ class CodegenVisitor : public ASTVisitor, public SrcObject {
 public:
   CodegenVisitor(std::shared_ptr<LLVMContext> ctx);
 
-  seq::Expr *transform(const Expr *expr);
-  seq::Stmt *transform(const Stmt *stmt);
-  seq::Pattern *transform(const Pattern *pat);
+  CodegenResult transform(const Expr *expr);
+  CodegenResult transform(const Stmt *stmt);
+  CodegenResult transform(const Pattern *pat);
 
   void visitMethods(const std::string &name);
+  CodegenResult flatten(const CodegenResult res);
 
 public:
   void visit(const BoolExpr *) override;
@@ -128,6 +160,15 @@ private:
   void internalError(const char *format, TArgs &&... args) {
     throw exc::ParserException(fmt::format(
         "INTERNAL: {}", fmt::format(format, args...), getSrcInfo()));
+  }
+  template <typename A, typename B, typename... Ts>
+  auto Nas (Ts &&... args) {
+      return std::static_pointer_cast<B>(std::make_shared<A>(std::forward<Ts>(args)...));
+  }
+
+  template <typename A, typename... Ts>
+  auto Ns (Ts &&... args) {
+    return std::make_shared<A>(std::forward<Ts>(args)...);
   }
 };
 

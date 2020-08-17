@@ -11,7 +11,7 @@ namespace types {
 
 // TODO functors/type names
 
-class Type : AttributeHolder<Type> {
+class Type : public AttributeHolder<Type> {
 private:
   bool callable;
   std::string name;

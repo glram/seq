@@ -16,6 +16,10 @@
 #include "parser/ast/format.h"
 #include "parser/ast/transform.h"
 #include "parser/common.h"
+#include "sir/terminator.h"
+#include "sir/instr.h"
+#include "sir/lvalue.h"
+#include "sir/rvalue.h"
 
 using fmt::format;
 using std::get;
@@ -47,24 +51,24 @@ void CodegenVisitor::defaultVisit(const Pattern *n) {
 }
 
 CodegenVisitor::CodegenVisitor(std::shared_ptr<LLVMContext> ctx)
-    : ctx(ctx), resultExpr(nullptr), resultStmt(nullptr),
-      resultPattern(nullptr) {}
+    : ctx(ctx), result() {}
 
-seq::Expr *CodegenVisitor::transform(const Expr *expr) {
+CodegenResult CodegenVisitor::transform(const Expr *expr) {
   if (!expr)
-    return nullptr;
+    return CodegenResult();
   CodegenVisitor v(ctx);
   v.setSrcInfo(expr->getSrcInfo());
   expr->accept(v);
-  if (v.resultExpr) {
-    v.resultExpr->setSrcInfo(expr->getSrcInfo());
-    if (auto t = ctx->getTryCatch())
-      v.resultExpr->setTryCatch(t);
-  }
-  return v.resultExpr;
+  v.result.addAttribute(seq::ir::kSrcInfoAttribute, std::make_shared<seq::ir::SrcInfoAttribute>(v.getSrcInfo()));
+
+  return v.result;
 }
 
-seq::Stmt *CodegenVisitor::transform(const Stmt *stmt) {
+CodegenResult CodegenVisitor::flatten(const CodegenResult res) {
+  internalError("flatten not implemented");
+}
+
+CodegenResult CodegenVisitor::transform(const Stmt *stmt) {
   CodegenVisitor v(ctx);
 
   // FormatVisitor f(nullptr, 0);
@@ -73,38 +77,33 @@ seq::Stmt *CodegenVisitor::transform(const Stmt *stmt) {
 
   stmt->accept(v);
   v.setSrcInfo(stmt->getSrcInfo());
-  if (v.resultStmt) {
-    v.resultStmt->setSrcInfo(stmt->getSrcInfo());
-    v.resultStmt->setBase(ctx->getBase());
-    ctx->getBlock()->add(v.resultStmt);
-  }
-  return v.resultStmt;
+  v.result.addAttribute(seq::ir::kSrcInfoAttribute, std::make_shared<seq::ir::SrcInfoAttribute>(v.getSrcInfo()));
+//    v.resultStmt->setBase(ctx->getBase());
+//    ctx->getBlock()->add(v.resultStmt);
+
+  return v.result;
 }
 
-seq::Pattern *CodegenVisitor::transform(const Pattern *ptr) {
+CodegenResult CodegenVisitor::transform(const Pattern *ptr) {
   CodegenVisitor v(ctx);
   v.setSrcInfo(ptr->getSrcInfo());
   ptr->accept(v);
-  if (v.resultPattern) {
-    v.resultPattern->setSrcInfo(ptr->getSrcInfo());
-    if (auto t = ctx->getTryCatch())
-      v.resultPattern->setTryCatch(t);
-  }
-  return v.resultPattern;
+  v.result.addAttribute(seq::ir::kSrcInfoAttribute, std::make_shared<seq::ir::SrcInfoAttribute>(v.getSrcInfo()));
+  return v.result;
 }
 
 void CodegenVisitor::visit(const BoolExpr *expr) {
-  resultExpr = N<seq::BoolExpr>(expr->value);
+  result = CodegenResult(Nas<seq::ir::Operand, seq::ir::LiteralOperand>(expr->value));
 }
 
 void CodegenVisitor::visit(const IntExpr *expr) {
   try {
     if (expr->suffix == "u") {
       uint64_t i = std::stoull(expr->value, nullptr, 0);
-      resultExpr = N<seq::IntExpr>(i);
+      result = CodegenResult(Nas<seq::ir::Operand, seq::ir::LiteralOperand>(i));
     } else {
       int64_t i = std::stoull(expr->value, nullptr, 0);
-      resultExpr = N<seq::IntExpr>(i);
+      result = CodegenResult(Nas<seq::ir::Operand, seq::ir::LiteralOperand>(i));
     }
   } catch (std::out_of_range &) {
     error(getSrcInfo(), fmt::format("integer {} out of range",
@@ -114,11 +113,11 @@ void CodegenVisitor::visit(const IntExpr *expr) {
 }
 
 void CodegenVisitor::visit(const FloatExpr *expr) {
-  resultExpr = N<seq::FloatExpr>(expr->value);
+  result = CodegenResult(Nas<seq::ir::Operand, seq::ir::LiteralOperand>(expr->value));
 }
 
 void CodegenVisitor::visit(const StringExpr *expr) {
-  resultExpr = N<seq::StrExpr>(expr->value);
+  result = CodegenResult(Nas<seq::ir::Operand, seq::ir::LiteralOperand>(expr->value));
 }
 
 shared_ptr<LLVMItem::Item>
@@ -145,65 +144,144 @@ void CodegenVisitor::visit(const IdExpr *expr) {
   // if (val->getFunc() && f->realizationInfo) {
   // get exact realization !
   // } else
-  resultExpr = i->getExpr();
+  result = CodegenResult(i->getOperand()->getShared());
 }
 
 void CodegenVisitor::visit(const TupleExpr *expr) {
-  vector<seq::Expr *> items;
-  for (auto &&i : expr->items)
-    items.push_back(transform(i));
-  resultExpr = N<seq::RecordExpr>(items, vector<string>(items.size(), ""));
+//  vector<seq::Expr *> items;
+//  for (auto &&i : expr->items)
+//    items.push_back(transform(i));
+//  resultExpr = N<seq::RecordExpr>(items, vector<string>(items.size(), ""));
+  internalError("TupleExpr codegen not supported");
 }
 
 void CodegenVisitor::visit(const IfExpr *expr) {
-  resultExpr = N<seq::CondExpr>(transform(expr->cond), transform(expr->eif),
-                                transform(expr->eelse));
+  auto var = Ns<seq::ir::Var>(realizeType(expr->getType()->getClass())->getShared());
+  // ctx->addVar(var->referenceString(), var.get());
+  ctx->getBase()->addVar(var);
+  
+  auto condResultOp = flatten(transform(expr->cond)).operandResult;
+
+  auto curBlock = ctx->getBlock();
+  auto newBlock = Ns<seq::ir::BasicBlock>();
+  auto tBlock = Ns<seq::ir::BasicBlock>();
+  auto fBlock = Ns<seq::ir::BasicBlock>();
+
+  curBlock->setTerminator(Nas<seq::ir::CondJumpTerminator, seq::ir::Terminator>(tBlock, fBlock, condResultOp));
+
+  ctx->addBlock(tBlock.get());
+  auto tResultOp = flatten(transform(expr->eif)).operandResult;
+  tBlock->add(Nas<seq::ir::AssignInstr, seq::ir::Instr>(
+      Nas<seq::ir::VarLvalue, seq::ir::Lvalue>(var),
+      Nas<seq::ir::OperandRvalue, seq::ir::Rvalue>(tResultOp)
+      ));
+  tBlock->setTerminator(Nas<seq::ir::JumpTerminator, seq::ir::Terminator>(newBlock));
+  ctx->popBlock();
+
+  ctx->addBlock(fBlock.get());
+  auto fResultOp = flatten(transform(expr->eelse)).operandResult;
+  fBlock->add(Nas<seq::ir::AssignInstr, seq::ir::Instr>(
+      Nas<seq::ir::VarLvalue, seq::ir::Lvalue>(var),
+      Nas<seq::ir::OperandRvalue, seq::ir::Rvalue>(fResultOp)
+  ));
+  fBlock->setTerminator(Nas<seq::ir::JumpTerminator, seq::ir::Terminator>(newBlock));
+  ctx->popBlock();
+
+  ctx->popBlock();
+  ctx->addBlock(newBlock.get());
+
+  result = CodegenResult(Nas<seq::ir::VarOperand, seq::ir::Operand>(var));
 }
 
 void CodegenVisitor::visit(const UnaryExpr *expr) {
-  assert(expr->op == "!");
-  resultExpr = N<seq::UOpExpr>(seq::uop(expr->op), transform(expr->expr));
+  internalError("UnaryExpr not supported");
 }
 
 void CodegenVisitor::visit(const BinaryExpr *expr) {
-  assert(expr->op == "is" || expr->op == "&&" || expr->op == "||");
-  if (expr->op == "is")
-    resultExpr = N<seq::IsExpr>(transform(expr->lexpr), transform(expr->rexpr));
-  else
-    resultExpr = N<seq::BOpExpr>(seq::bop(expr->op), transform(expr->lexpr),
-                                 transform(expr->rexpr));
+  assert(expr->op == "&&" || expr->op == "||");
+
+  auto var = Ns<seq::ir::Var>(seq::ir::types::kBoolType);
+  //ctx->addVar(var->referenceString(), var.get());
+  ctx->getBase()->addVar(var);
+
+  auto lhsOp = flatten(transform(expr->lexpr)).operandResult;
+
+  auto currentBlock = ctx->getBlock();
+  auto newBlock = Ns<seq::ir::BasicBlock>();
+  auto trueBlock = Ns<seq::ir::BasicBlock>();
+  auto falseBlock = Ns<seq::ir::BasicBlock>();
+
+  auto trueOperand = Nas<seq::ir::LiteralOperand, seq::ir::Operand>(true);
+  auto falseOperand = Nas<seq::ir::LiteralOperand, seq::ir::Operand>(false);
+
+  if (expr->op == "&&") {
+    auto tLeftBlock = Ns<seq::ir::BasicBlock>();
+    currentBlock->setTerminator(Nas<seq::ir::CondJumpTerminator, seq::ir::Terminator>(
+            tLeftBlock, falseBlock, lhsOp));
+
+    ctx->addBlock(tLeftBlock.get());
+    auto rhsOp = flatten(transform(expr->rexpr)).operandResult;
+    tLeftBlock->setTerminator(Nas<seq::ir::CondJumpTerminator, seq::ir::Terminator>(trueBlock, falseBlock, rhsOp));
+    ctx->popBlock();
+  } else {
+    auto fLeftBlock = Ns<seq::ir::BasicBlock>();
+    currentBlock->setTerminator(Nas<seq::ir::CondJumpTerminator, seq::ir::Terminator>(
+        trueBlock, fLeftBlock, lhsOp));
+
+    ctx->addBlock(fLeftBlock.get());
+    auto rhsOp = flatten(transform(expr->rexpr)).operandResult;
+    fLeftBlock->setTerminator(Nas<seq::ir::CondJumpTerminator, seq::ir::Terminator>(trueBlock, falseBlock, rhsOp));
+    ctx->popBlock();
+  }
+
+  ctx->addBlock(trueBlock.get());
+  trueBlock->add(Nas<seq::ir::AssignInstr, seq::ir::Instr>(
+      Nas<seq::ir::VarLvalue, seq::ir::Lvalue>(var),
+      Nas<seq::ir::OperandRvalue, seq::ir::Rvalue>(trueOperand)
+  ));
+  trueBlock->setTerminator(Nas<seq::ir::JumpTerminator, seq::ir::Terminator>(newBlock));
+  ctx->popBlock();
+
+  ctx->addBlock(falseBlock.get());
+  falseBlock->add(Nas<seq::ir::AssignInstr, seq::ir::Instr>(
+      Nas<seq::ir::VarLvalue, seq::ir::Lvalue>(var),
+      Nas<seq::ir::OperandRvalue, seq::ir::Rvalue>(falseOperand)
+  ));
+  falseBlock->setTerminator(Nas<seq::ir::JumpTerminator, seq::ir::Terminator>(newBlock));
+  ctx->popBlock();
+
+  ctx->popBlock();
+  ctx->addBlock(newBlock.get());
+
+  result = CodegenResult(Nas<seq::ir::VarOperand, seq::ir::Operand>(var));
 }
 
 void CodegenVisitor::visit(const PipeExpr *expr) {
-  vector<seq::Expr *> exprs;
-  for (int i = 0; i < expr->items.size(); i++)
-    exprs.push_back(transform(expr->items[i].expr));
-  auto p = new seq::PipeExpr(exprs);
-  for (int i = 0; i < expr->items.size(); i++)
-    if (expr->items[i].op == "||>")
-      p->setParallel(i);
-  resultExpr = p;
+  vector<std::shared_ptr<seq::ir::Operand>> ops;
+  vector<bool> parallel;
+  for (const auto & item : expr->items) {
+    ops.push_back(flatten(transform(item.expr)).operandResult);
+    parallel.push_back(item.op == "||>");
+  }
+  result = CodegenResult(Nas<seq::ir::PipelineRvalue, seq::ir::Rvalue>(ops, parallel));
 }
 
 void CodegenVisitor::visit(const TupleIndexExpr *expr) {
-  resultExpr = N<seq::ArrayLookupExpr>(transform(expr->expr),
-                                       N<seq::IntExpr>(expr->index));
+  internalError("TupleIndexExpr codegen not supported");
 }
 
 void CodegenVisitor::visit(const CallExpr *expr) {
-  auto lhs = transform(expr->expr);
-  vector<seq::Expr *> items;
-  vector<string> names;
+  auto lhs = flatten(transform(expr->expr)).operandResult;
+  vector<std::shared_ptr<seq::ir::Operand>> items;
   bool isPartial = false;
   for (auto &&i : expr->args) {
-    items.push_back(transform(i.value));
-    names.push_back("");
+    items.push_back(flatten(transform(i.value)).operandResult);
     isPartial |= !items.back();
   }
   if (isPartial)
-    resultExpr = N<seq::PartialCallExpr>(lhs, items, names);
+    internalError("Partial call codegen not supported");
   else
-    resultExpr = N<seq::CallExpr>(lhs, items, names);
+    result = CodegenResult(Nas<seq::ir::CallRValue, seq::ir::Rvalue>(lhs, items));
 }
 
 void CodegenVisitor::visit(const StackAllocExpr *expr) {
@@ -590,7 +668,7 @@ void CodegenVisitor::visit(const GuardedPattern *pat) {
       N<seq::GuardedPattern>(transform(pat->pattern), transform(pat->cond));
 }
 
-seq::types::Type *CodegenVisitor::realizeType(types::ClassTypePtr t) {
+seq::ir::types::Type *CodegenVisitor::realizeType(types::ClassTypePtr t) {
   // DBG("looking for {} / {}", t->name, t->toString(true));
   assert(t && t->canRealize());
   auto it = ctx->getRealizations()->classRealizations.find(t->name);

@@ -14,7 +14,7 @@ namespace ir {
 class Var;
 class Operand;
 
-class Pattern : AttributeHolder<Pattern> {
+class Pattern : public AttributeHolder<Pattern> {
 private:
   std::shared_ptr<types::Type> type;
 

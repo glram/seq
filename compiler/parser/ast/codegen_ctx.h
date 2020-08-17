@@ -30,6 +30,8 @@ class Var;
 class Func;
 class Class;
 
+// TODO sharedct
+
 class Item {
 protected:
   seq::ir::Func *base;
