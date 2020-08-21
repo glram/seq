@@ -5,6 +5,7 @@
 #include <string>
 
 #include "util/common.h"
+#include "util/fmt/format.h"
 
 namespace seq {
 namespace ir {
@@ -13,48 +14,31 @@ class TryCatch;
 
 static const std::string kSrcInfoAttribute = "srcInfo";
 
-class Attribute {
-public:
+struct Attribute {
   virtual std::string textRepresentation() const = 0;
 };
 
-class StringAttribute : public Attribute {
-private:
+struct StringAttribute : public Attribute {
   std::string value;
 
-public:
-  explicit StringAttribute(std::string value);
-
   std::string textRepresentation() const override;
 };
 
-class BoolAttribute : public Attribute {
-private:
+struct BoolAttribute : public Attribute {
   bool value;
 
-public:
-  explicit BoolAttribute(bool value);
-
   std::string textRepresentation() const override;
 };
 
-class TryCatchAttribute : public Attribute {
-private:
+struct TryCatchAttribute : public Attribute {
   std::weak_ptr<TryCatch> handler;
 
-public:
-  explicit TryCatchAttribute(std::weak_ptr<TryCatch> handler);
   std::string textRepresentation() const override;
 };
 
-class SrcInfoAttribute : public Attribute {
-private:
+struct SrcInfoAttribute : public Attribute {
   seq::SrcInfo info;
 
-public:
-  explicit SrcInfoAttribute(seq::SrcInfo info);
-
-  seq::SrcInfo getInfo();
   std::string textRepresentation() const override;
 };
 
@@ -64,16 +48,31 @@ private:
   std::map<std::string, std::shared_ptr<Attribute>> kvStore;
 
 public:
-  AttributeHolder();
-
   virtual std::string textRepresentation() const = 0;
   virtual std::string referenceString() const = 0;
-  std::string attributeString() const;
+  std::string attributeString() const {
+    fmt::memory_buffer buf;
+    buf.push_back('{');
+    for (auto &it : kvStore) {
+      fmt::format_to(buf, FMT_STRING("{}: {}, "), it.first,
+                     it.second->textRepresentation());
+    }
+    buf.push_back('}');
+    return std::string(buf.data(), buf.size());
+  }
 
-  void setAttribute(std::string key, std::shared_ptr<Attribute> value);
-  std::shared_ptr<Attribute> getAttribute(std::string key) const;
+  void setAttribute(const std::string &key, std::shared_ptr<Attribute> value) {
+    kvStore[key] = std::move(value);
+  }
 
-  std::shared_ptr<A> getShared() const;
+  std::shared_ptr<Attribute> getAttribute(const std::string &key) {
+    return kvStore[key];
+  }
+
+  std::shared_ptr<A> getShared() {
+    return std::static_pointer_cast<A>(shared_from_this());
+  }
 };
+
 } // namespace ir
 } // namespace seq

@@ -293,6 +293,11 @@ void FormatVisitor::visit(const AssignStmt *stmt) {
   }
 }
 
+void FormatVisitor::visit(const UpdateStmt *stmt) {
+  result = fmt::format("{} = {}  # update", transform(stmt->lhs),
+                       transform(stmt->rhs));
+}
+
 void FormatVisitor::visit(const DelStmt *stmt) {
   result = fmt::format("{} {}", keyword("del"), transform(stmt->expr));
 }
@@ -468,19 +473,18 @@ void FormatVisitor::visit(const ClassStmt *stmt) {
     string key = real.type->isRecord() ? "type" : "class";
     for (auto &a : c->members) {
       auto t = ctx->instantiate(real.type->getSrcInfo(), a.second, real.type);
-      args.push_back(fmt::format("{}: {}", a.first, *t));
+      args.push_back(fmt::format("{}: {}", a.first, t->toString()));
     }
     result = fmt::format("{} {}({})", keyword(key), real.fullName,
                          fmt::join(args, ", "));
   }
   bool added = 0;
   for (auto &m : c->methods) {
-    auto s =
-        FormatVisitor(ctx, renderHTML)
-            .transform(ctx->getRealizations()
-                           ->getAST(m.second.front()->realizationInfo->name)
-                           .get(),
-                       indent);
+    auto s = FormatVisitor(ctx, renderHTML)
+                 .transform(ctx->getRealizations()
+                                ->getAST(m.second.front()->canonicalName)
+                                .get(),
+                            indent);
     if (s.size()) {
       if (result.size()) {
         if (result.substr(result.size() - newline().size()) != newline())

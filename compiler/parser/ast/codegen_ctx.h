@@ -10,15 +10,15 @@
 
 #include "parser/ast/context.h"
 #include "parser/common.h"
+#include "sir/bblock.h"
 #include "sir/func.h"
+#include "sir/lvalue.h"
+#include "sir/module.h"
+#include "sir/operand.h"
+#include "sir/rvalue.h"
+#include "sir/trycatch.h"
 #include "sir/types/types.h"
 #include "sir/var.h"
-#include "sir/lvalue.h"
-#include "sir/rvalue.h"
-#include "sir/operand.h"
-#include "sir/bblock.h"
-#include "sir/trycatch.h"
-#include "sir/module.h"
 
 namespace seq {
 namespace ast {
@@ -65,9 +65,15 @@ public:
   Var(seq::ir::Var *var, seq::ir::Func *base, bool global = false)
       : Item(base, global), handle(var) {}
 
-  virtual seq::ir::Lvalue *getLvalue() const { return new seq::ir::VarLvalue(handle->getShared()); }
-  virtual seq::ir::Rvalue *getRvalue() const { return new seq::ir::OperandRvalue(getOperand()->getShared()); }
-  virtual seq::ir::Operand *getOperand() const { return new seq::ir::VarOperand(handle->getShared()); }
+  virtual seq::ir::Lvalue *getLvalue() const {
+    return new seq::ir::VarLvalue(handle->getShared());
+  }
+  virtual seq::ir::Rvalue *getRvalue() const {
+    return new seq::ir::OperandRvalue(getOperand()->getShared());
+  }
+  virtual seq::ir::Operand *getOperand() const {
+    return new seq::ir::VarOperand(handle->getShared());
+  }
 
   const Var *getVar() const override { return this; }
   seq::ir::Var *getHandle() const { return handle; }
@@ -80,9 +86,15 @@ public:
   Func(seq::ir::Func *f, seq::ir::Func *base, bool global = false)
       : Item(base, global), handle(f) {}
 
-  virtual seq::ir::Lvalue *getLvalue() const { return new seq::ir::VarLvalue(handle->getShared()); }
-  virtual seq::ir::Rvalue *getRvalue() const { return new seq::ir::OperandRvalue(getOperand()->getShared()); }
-  virtual seq::ir::Operand *getOperand() const { return new seq::ir::VarOperand(handle->getShared()); }
+  virtual seq::ir::Lvalue *getLvalue() const {
+    return new seq::ir::VarLvalue(handle->getShared());
+  }
+  virtual seq::ir::Rvalue *getRvalue() const {
+    return new seq::ir::OperandRvalue(getOperand()->getShared());
+  }
+  virtual seq::ir::Operand *getOperand() const {
+    return new seq::ir::VarOperand(handle->getShared());
+  }
 
   const Func *getFunc() const override { return this; }
   seq::ir::Func *getHandle() const { return handle; }
@@ -129,8 +141,9 @@ class LLVMContext : public Context<LLVMItem::Item> {
 public:
   LLVMContext(const std::string &filename,
               std::shared_ptr<RealizationContext> realizations,
-              std::shared_ptr<ImportContext> imports, seq::ir::BasicBlock *block,
-              seq::ir::Func *base, seq::SeqJIT *jit);
+              std::shared_ptr<ImportContext> imports,
+              seq::ir::BasicBlock *block, seq::ir::Func *base,
+              seq::SeqJIT *jit);
   virtual ~LLVMContext();
 
   std::shared_ptr<LLVMItem::Item> find(const std::string &name,
@@ -151,6 +164,7 @@ public:
   void initJIT();
   void execJIT(std::string varName = "", seq::Expr *varExpr = nullptr);
 
+  seq::ir::types::Type *realizeType(types::ClassTypePtr t);
   // void dump(int pad = 0) override;
 
 public:

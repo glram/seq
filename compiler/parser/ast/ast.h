@@ -59,6 +59,7 @@ public:
   void setType(types::TypePtr t) { _type = t; }
   bool isType() const { return _isType; }
   void markType() { _isType = true; }
+  std::string wrap(const std::string &) const;
 
   /// Allow pretty-printing to C++ streams
   friend std::ostream &operator<<(std::ostream &out, const Expr &c) {
@@ -116,6 +117,10 @@ struct Param {
   std::string name;
   ExprPtr type;
   ExprPtr deflt;
+  Param() : name(), type(nullptr), deflt(nullptr) {}
+  Param(const std::string &name, ExprPtr &&type = nullptr,
+        ExprPtr &&deflt = nullptr)
+      : name(name), type(move(type)), deflt(move(deflt)) {}
   Param clone() const;
   std::string toString() const;
 };
@@ -332,6 +337,7 @@ struct PipeExpr : public Expr {
   };
 
   std::vector<Pipe> items;
+  std::vector<types::TypePtr> inTypes;
 
   PipeExpr(std::vector<Pipe> &&it);
   PipeExpr(const PipeExpr &n);

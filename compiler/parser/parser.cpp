@@ -18,77 +18,68 @@ using std::make_shared;
 using std::string;
 using std::vector;
 
+int __level__ = 0;
+int __dbg_level__ = 0;
+
 namespace seq {
 
 void generateDocstr(const std::string &file) {
-  DBG("DOC MODE! {}", 1);
+  LOG("DOC MODE! {}", 1);
   // ast::DocStmtVisitor d;
   // ast::parse_file(file)->accept(d);
 }
 
 seq::SeqModule *parse(const std::string &argv0, const std::string &file,
-                      bool isCode, bool isTest) {
+                      const string &code, bool isCode, bool isTest, int startLine) {
   try {
-    // auto stmts = isCode ? ast::parse_code(argv0, file) :
-    // ast::parse_file(file);
+    auto d = getenv("SEQ_DEBUG");
+    if (d)
+      __dbg_level__ = strtol(d, nullptr, 10);
 
-    vector<string> cases;
-    string line, current;
-    std::ifstream fin(file);
-    while (std::getline(fin, line)) {
-      if (line == "--") {
-        cases.push_back(current);
-        current = "";
-      } else
-        current += line + "\n";
-    }
-    if (current.size())
-      cases.push_back(current);
-    FILE *fo = fopen("tmp/out.htm", "w");
+    char abs[PATH_MAX + 1];
+    realpath(file.c_str(), abs);
+
+    // fprintf(stderr, "%s\n", fmt::format("{} {} {}", abs, isCode, code).c_str());
+    auto ctx = ast::TypeContext::getContext(argv0, abs);
+    ast::StmtPtr stmts = nullptr;
+    if (!isCode)
+      stmts = ast::parseFile(abs);
+    else
+      stmts = ast::parseCode(abs, code, startLine);
+    auto tv = ast::TransformVisitor(ctx).realizeBlock(stmts.get(), false);
+    LOG3("--- Done with typecheck ---");
+
+    // FILE *fo = fopen("tmp/out.htm", "w");
+    // LOG3("{}", ast::FormatVisitor::format(ctx, tv, false, true));
+
     seq::SeqModule *module;
-    for (int ci = 0; ci < cases.size(); ci++) {
-      auto stmts = ast::parseCode(file, cases[ci]);
-      auto ctx = ast::TypeContext::getContext(argv0, file);
-      auto tv = ast::TransformVisitor(ctx).realizeBlock(stmts.get(), false);
+    module = new seq::SeqModule();
+    module->setFileName(abs);
+    auto lctx = ast::LLVMContext::getContext(abs, ctx, module);
+    ast::CodegenVisitor(lctx).transform(tv.get());
+    LOG3("--- Done with codegen ---");
 
-      DBG("Done with typecheck");
-      DBG("{}", ast::FormatVisitor::format(ctx, tv, false, true));
-      module = new seq::SeqModule();
-      module->setFileName(file);
-      auto lctx = ast::LLVMContext::getContext(file, ctx, module);
-      ast::CodegenVisitor(lctx).transform(tv.get());
-      return module;
-
-      fmt::print(fo, "-------------------------------<hr/>\n");
-    }
-    fclose(fo);
-    exit(0);
-
-    // auto cache = make_shared<ast::ImportCache>(argv0);
-    // auto stdlib = make_shared<ast::Context>(cache, module->getBlock(),
-    // module,
-    // nullptr, "");
-    // stdlib->loadStdlib(module->getArgVar());
-    // auto context =
-    // make_shared<ast::Context>(cache,
-    // module->getBlock(), module,
-    //  nullptr, file);
-    // ast::CodegenStmtVisitor(*context).transform(tv);
+    // fmt::print(fo, "-------------------------------<hr/>\n");
     return module;
   } catch (seq::exc::SeqException &e) {
     if (isTest) {
-      throw;
+      LOG("ERROR: {}", e.what());
+    } else {
+      seq::compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
+                            e.getSrcInfo().col);
     }
-    seq::compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
-                          e.getSrcInfo().col);
+    exit(EXIT_FAILURE);
     return nullptr;
   } catch (seq::exc::ParserException &e) {
-    if (isTest)
-      throw;
-    for (int i = 0; i < e.messages.size(); i++)
-      compilationMessage("\033[1;31merror:\033[0m", e.messages[i],
-                         e.locations[i].file, e.locations[i].line,
-                         e.locations[i].col);
+    for (int i = 0; i < e.messages.size(); i++) {
+      if (isTest) {
+        LOG("ERROR: {}", e.messages[i]);
+      } else {
+        compilationMessage("\033[1;31merror:\033[0m", e.messages[i],
+                           e.locations[i].file, e.locations[i].line,
+                           e.locations[i].col);
+      }
+    }
     exit(EXIT_FAILURE);
     return nullptr;
   }
@@ -97,12 +88,13 @@ seq::SeqModule *parse(const std::string &argv0, const std::string &file,
 void execute(seq::SeqModule *module, vector<string> args, vector<string> libs,
              bool debug) {
   config::config().debug = debug;
-  try {
-    module->execute(args, libs);
-  } catch (exc::SeqException &e) {
-    compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
-                     e.getSrcInfo().col);
-  }
+  // try {
+  module->execute(args, libs);
+  // }
+  // catch (exc::SeqException &e) {
+  //   compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
+  //                    e.getSrcInfo().col);
+  // }
 }
 
 void compile(seq::SeqModule *module, const string &out, bool debug) {

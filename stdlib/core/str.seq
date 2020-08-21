@@ -1,24 +1,187 @@
+extend str:
+
+# Magic methods
+
+    def __hash__(self):
+        h = 0
+        p, n = self.ptr, self.len
+        i = 0
+        while i < n:
+            h = 31*h + int(p[i])
+            i += 1
+        return h
+
+    def __eq__(self, other: str):
+        if len(self) != len(other):
+            return False
+        i = 0
+        while i < len(self):
+            if self.ptr[i] != other.ptr[i]:
+                return False
+            i += 1
+        return True
+
+    def __ne__(self, other: str):
+        return not (self == other)
+
+    def __lt__(self, other: str):
+        return self._cmp(other) < 0
+
+    def __le__(self, other: str):
+        return self._cmp(other) <= 0
+
+    def __gt__(self, other: str):
+        return self._cmp(other) > 0
+
+    def __ge__(self, other: str):
+        return self._cmp(other) >= 0
+
+    def __repr__(self):
+        v = list[str](len(self) + 2)
+        v.append("'")
+        for c in self:
+            d = c
+            match c:
+                case '\a': d = "\\a"
+                case '\b': d = "\\b"
+                case '\f': d = "\\f"
+                case '\n': d = "\\n"
+                case '\r': d = "\\r"
+                case '\t': d = "\\t"
+                case '\v': d = "\\v"
+                case '\\': d = "\\\\"
+                case '\'': d = "\\'"
+                case '\?': d = "\\\?"
+                case _: pass
+            v.append(d)
+        v.append("'")
+        return str.cat(v)
+
+    def __getitem__(self, idx: int):
+        if idx < 0:
+            idx += len(self)
+        if not (0 <= idx < len(self)):
+            raise IndexError("string index out of range")
+        return str(self.ptr + idx, 1)
+
+    def __getitem__(self, s: eslice):
+        return self.__copy__()
+
+    def __getitem__(self, s: slice):
+        start, stop, step, length = slice.adjust_indices(len(self), start=s.start, stop=s.end)
+        return str(self.ptr + start, length)
+
+    def __getitem__(self, s: lslice):
+        start, stop, step, length = slice.adjust_indices(len(self), stop=s.end)
+        return str(self.ptr, length)
+
+    def __getitem__(self, s: rslice):
+        start, stop, step, length = slice.adjust_indices(len(self), start=s.start)
+        return str(self.ptr + start, length)
+
+    def _make_from_range(self, start: int, stop: int, step: int, length: int):
+        p = ptr[byte](length)
+        j = 0
+        for i in range(start, stop, step):
+            p[j] = self.ptr[i]
+            j += 1
+        return str(p, length)
+
+    def __getitem__(self, s: esslice):
+        start, stop, step, length = slice.adjust_indices(len(self), step=s.step)
+        return self._make_from_range(start, stop, step, length)
+
+    def __getitem__(self, s: rsslice):
+        start, stop, step, length = slice.adjust_indices(len(self), start=s.start, step=s.step)
+        return self._make_from_range(start, stop, step, length)
+
+    def __getitem__(self, s: lsslice):
+        start, stop, step, length = slice.adjust_indices(len(self), stop=s.end, step=s.step)
+        return self._make_from_range(start, stop, step, length)
+
+    def __getitem__(self, s: sslice):
+        start, stop, step, length = slice.adjust_indices(len(self), start=s.start, stop=s.end, step=s.step)
+        return self._make_from_range(start, stop, step, length)
+
+    def __iter__(self):
+        i = 0
+        n = len(self)
+        while i < n:
+            yield self[i]
+            i += 1
+
+    def __reversed__(self):
+        i = len(self) - 1
+        while i >= 0:
+            yield self[i]
+            i -= 1
+
+    def __mul__(self, x: int):
+        total = x * self.len
+        p = cobj(total)
+        n = 0
+        for _ in range(x):
+            str.memcpy(p + n, self.ptr, self.len)
+            n += self.len
+        return str(p, total)
+
+    def __copy__(self):
+        n = len(self)
+        p = cobj(n)
+        str.memcpy(p, self.ptr, n)
+        return str(p, n)
+
+    def c_str(self):
+        n = len(self)
+        assert n >= 0
+        p = cobj(n + 1)
+        str.memcpy(p, self.ptr, n)
+        p[n] = byte(0)
+        return p
+
+    def cat(v: list[str]):
+        total = 0
+        for s in v:
+            total += len(s)
+        p = cobj(total)
+        n = 0
+        for s in v:
+            str.memcpy(p + n, s.ptr, s.len)
+            n += s.len
+        return str(p, total)
+
+    def _cmp(self, other: str):
+        n = min2(self.len, other.len)
+        i = 0
+        while i < n:
+            c1 = self.ptr[i]
+            c2 = other.ptr[i]
+            if c1 != c2:
+                return int(c1) - int(c2)
+            i += 1
+        return self.len - other.len
+
 import algorithms.strings as algorithms
 
-class __str_internal_join:
-    def __init__(self: __str_internal_join, s: str, x: generator[str]):
+type __str_internal_join(s: str):
+    def __new__(s: str, x: generator[str]) -> __str_internal_join:
         if len(s) == 0:
-            return str.cat(list(x))
+            return (str.cat(list(x)), )
         v = list[str]()
         for a in x:
             v.append(a)
             v.append(s)
         if v:
             del v[-1]
-        return str.cat(v)
+        return (str.cat(v), )
 
-    def __init__(self: __str_internal_join, s: str, x: list[str]):
+    def __new__(s: str, x: list[str]) -> __str_internal_join:
         if len(x) == 0:
-            return ''
+            return ('', )
         if len(x) == 1:
-            return x[0]
+            return (x[0], )
         if len(s) == 0:
-            return str.cat(x)
+            return (str.cat(x), )
 
         # compute length
         n = 0
@@ -41,182 +204,14 @@ class __str_internal_join:
                 r += len(s)
             i += 1
 
-        return str(p, n)
+        return (str(p, n), )
+
 
 extend str:
-
-# Magic methods
-
-    def __hash__(self: str):
-        h = 0
-        p, n = self.ptr, self.len
-        i = 0
-        while i < n:
-            h = 31*h + int(p[i])
-            i += 1
-        return h
-
-    def __eq__(self: str, other: str):
-        if len(self) != len(other):
-            return False
-        i = 0
-        while i < len(self):
-            if self.ptr[i] != other.ptr[i]:
-                return False
-            i += 1
-        return True
-
-    def __ne__(self: str, other: str):
-        return not (self == other)
-
-    def __lt__(self: str, other: str):
-        return self._cmp(other) < 0
-
-    def __le__(self: str, other: str):
-        return self._cmp(other) <= 0
-
-    def __gt__(self: str, other: str):
-        return self._cmp(other) > 0
-
-    def __ge__(self: str, other: str):
-        return self._cmp(other) >= 0
-
-    def __repr__(self: str):
-        v = list[str](capacity=len(self) + 2)
-        v.append("'")
-        for c in self:
-            d = c
-            match c:
-                case '\a': d = "\\a"
-                case '\b': d = "\\b"
-                case '\f': d = "\\f"
-                case '\n': d = "\\n"
-                case '\r': d = "\\r"
-                case '\t': d = "\\t"
-                case '\v': d = "\\v"
-                case '\\': d = "\\\\"
-                case '\'': d = "\\'"
-                case '\?': d = "\\\?"
-                case _: pass
-            v.append(d)
-        v.append("'")
-        return str.cat(v)
-
-    def __len__(self: str):
-        return self.len
-
-    def __bool__(self: str):
-        return self.len != 0
-
-    def __copy__(self: str):
-        return self
-
-    def __add__(self: str, other: str):
-        len1 = self.len
-        len2 = other.len
-        len3 = len1 + len2
-        p = cobj(len3)
-        str.memcpy(p, self.ptr, len1)
-        str.memcpy(p + len1, other.ptr, len2)
-        return str(p, len3)
-
-    def __getitem__(self: str, idx: int):
-        if idx < 0:
-            idx += len(self)
-        if not (0 <= idx < len(self)):
-            raise IndexError("string index out of range")
-        return str(self.ptr + idx, 1)
-
-    def __getitem__(self: str, s: eslice):
-        return self.__copy__()
-
-    def __getitem__(self: str, s: slice):
-        start, stop, step, length = slice.adjust_indices(len(self), start=s.start, stop=s.end)
-        return str(self.ptr + start, length)
-
-    def __getitem__(self: str, s: lslice):
-        start, stop, step, length = slice.adjust_indices(len(self), stop=s.end)
-        return str(self.ptr, length)
-
-    def __getitem__(self: str, s: rslice):
-        start, stop, step, length = slice.adjust_indices(len(self), start=s.start)
-        return str(self.ptr + start, length)
-
-    def _make_from_range(self: str, start: int, stop: int, step: int, length: int):
-        p = ptr[byte](length)
-        j = 0
-        for i in range(start, stop, step):
-            p[j] = self.ptr[i]
-            j += 1
-        return str(p, length)
-
-    def __getitem__(self: str, s: esslice):
-        start, stop, step, length = slice.adjust_indices(len(self), step=s.step)
-        return self._make_from_range(start, stop, step, length)
-
-    def __getitem__(self: str, s: rsslice):
-        start, stop, step, length = slice.adjust_indices(len(self), start=s.start, step=s.step)
-        return self._make_from_range(start, stop, step, length)
-
-    def __getitem__(self: str, s: lsslice):
-        start, stop, step, length = slice.adjust_indices(len(self), end=s.end, step=s.step)
-        return self._make_from_range(start, stop, step, length)
-
-    def __getitem__(self: str, s: sslice):
-        start, stop, step, length = slice.adjust_indices(len(self), start=s.start, stop=s.end, step=s.step)
-        return self._make_from_range(start, stop, step, length)
-
-    def __contains__(self: str, pattern: str):
+    def __contains__(self, pattern: str):
         return self.find(pattern, 0, len(self)) >= 0
 
-    def __iter__(self: str):
-        i = 0
-        n = len(self)
-        while i < n:
-            yield self[i]
-            i += 1
-
-    def __reversed__(self: str):
-        i = len(self) - 1
-        while i >= 0:
-            yield self[i]
-            i -= 1
-
-    def __mul__(self: str, x: int):
-        total = x * self.len
-        p = cobj(total)
-        n = 0
-        for _ in range(x):
-            str.memcpy(p + n, self.ptr, self.len)
-            n += self.len
-        return str(p, total)
-
-    def __copy__(self: str):
-        n = len(self)
-        p = cobj(n)
-        str.memcpy(p, self.ptr, n)
-        return str(p, n)
-
 # Helper methods
-
-    def c_str(self: str):
-        n = len(self)
-        assert n >= 0
-        p = cobj(n + 1)
-        str.memcpy(p, self.ptr, n)
-        p[n] = byte(0)
-        return p
-
-    def cat(v: list[str]):
-        total = 0
-        for s in v:
-            total += len(s)
-        p = cobj(total)
-        n = 0
-        for s in v:
-            str.memcpy(p + n, s.ptr, s.len)
-            n += s.len
-        return str(p, total)
 
     def cati(v: generator[str], total: int):
         p = cobj(total)
@@ -240,8 +235,8 @@ extend str:
             n += s.len
         return str(p, n)
 
-    def join(self: str, l):
-        return __str_internal_join(self, l)
+    def join(self, l):
+        return __str_internal_join(self, l).s
 
     def from_ptr(t: cobj) -> str:
         n = _C.strlen(t)
@@ -249,7 +244,7 @@ extend str:
         str.memcpy(p, t, n)
         return str(p, n)
 
-    def isdigit(self: str) -> bool:
+    def isdigit(self) -> bool:
         """
         str.isdigit() -> bool
 
@@ -270,7 +265,7 @@ extend str:
                 return False
         return True
 
-    def islower(self: str) -> bool:
+    def islower(self) -> bool:
         """
         str.islower() -> bool
 
@@ -294,7 +289,7 @@ extend str:
                 cased = True
         return cased
 
-    def isupper(self: str) -> bool:
+    def isupper(self) -> bool:
         """
         str.isupper() -> bool
 
@@ -318,7 +313,7 @@ extend str:
                 cased = True
         return cased
 
-    def isalnum(self: str) -> bool:
+    def isalnum(self) -> bool:
         """
         str.isalnum() -> bool
 
@@ -339,7 +334,7 @@ extend str:
                 return False
         return True
 
-    def isalpha(self: str) -> bool:
+    def isalpha(self) -> bool:
         """
         str.isalpha() -> bool
 
@@ -360,7 +355,7 @@ extend str:
                 return False
         return True
 
-    def isspace(self: str) -> bool:
+    def isspace(self) -> bool:
         """
         str.isspace() -> bool
 
@@ -381,7 +376,7 @@ extend str:
                 return False
         return True
 
-    def istitle(self: str) -> bool:
+    def istitle(self) -> bool:
         """
         str.istitle() -> bool
 
@@ -416,7 +411,7 @@ extend str:
                 prev_is_cased = False
         return cased
 
-    def capitalize(self: str) -> str:
+    def capitalize(self) -> str:
         """
         str.capitalize() -> copy of str
 
@@ -439,7 +434,7 @@ extend str:
         # Empty string
         return ''
 
-    def isdecimal(self: str) -> bool:
+    def isdecimal(self) -> bool:
         """
         str.isdecimal() -> bool
 
@@ -457,7 +452,7 @@ extend str:
                 return False
         return True
 
-    def lower(self: str) -> str:
+    def lower(self) -> str:
         """
         str.lower() -> copy of str
 
@@ -472,7 +467,7 @@ extend str:
             p[i] = byte(_C.tolower(int(self.ptr[i])))
         return str(p, n)
 
-    def upper(self: str) -> str:
+    def upper(self) -> str:
         """
         str.upper() -> copy of str
 
@@ -487,7 +482,7 @@ extend str:
             p[i] = byte(_C.toupper(int(self.ptr[i])))
         return str(p, n)
 
-    def isascii(self: str) -> bool:
+    def isascii(self) -> bool:
         """
         str.isascii() -> bool
 
@@ -499,7 +494,7 @@ extend str:
                 return False
         return True
 
-    def casefold(self: str) -> str:
+    def casefold(self) -> str:
         """
         str.casefold() -> copy of str
 
@@ -509,7 +504,7 @@ extend str:
         """
         return self.lower()
 
-    def swapcase(self: str) -> str:
+    def swapcase(self) -> str:
         """
         str.swapcase() -> copy of str
 
@@ -530,7 +525,7 @@ extend str:
                 p[i] = self.ptr[i]
         return str(p, n)
 
-    def title(self: str) -> str:
+    def title(self) -> str:
         """
         str.title() -> copy of str
 
@@ -565,7 +560,7 @@ extend str:
                 prev_is_cased = False
         return str(p, n)
 
-    def isnumeric(self: str) -> bool:
+    def isnumeric(self) -> bool:
         """
         str.isdecimal() -> bool
 
@@ -577,7 +572,7 @@ extend str:
         """
         return self.isdecimal()
 
-    def ljust(self: str, width: int, fillchar: str) -> str:
+    def ljust(self, width: int, fillchar: str) -> str:
         """
         ljust(width[, fillchar]) -> string
 
@@ -589,7 +584,7 @@ extend str:
             return self
         return self + (fillchar * (width - len(self)))
 
-    def rjust(self: str, width: int, fillchar: str) -> str:
+    def rjust(self, width: int, fillchar: str) -> str:
         """
         rjust(width[, fillchar]) -> string
 
@@ -601,7 +596,7 @@ extend str:
             return self
         return (fillchar * (width - len(self))) + self
 
-    def center(self: str, width: int, fillchar: str) -> str:
+    def center(self, width: int, fillchar: str) -> str:
         """
         str.center(width[, fillchar]) -> string
 
@@ -617,7 +612,7 @@ extend str:
 
         return ''.join([fillchar * left_pad, self, fillchar * right_pad])
 
-    def zfill(self: str, width: int) -> str:
+    def zfill(self, width: int) -> str:
         """
         str.zfill(width) -> string
 
@@ -645,7 +640,7 @@ extend str:
             s.append(self)
         return ''.join(s)
 
-    def count(self: str, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
+    def count(self, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
         """
         str.count(sub[, start[, end]]) -> int
 
@@ -659,7 +654,7 @@ extend str:
             count += 1
         return count
 
-    def find(self: str, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
+    def find(self, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
         """
         str.find(sub [,start [,end]]) -> int
 
@@ -683,7 +678,7 @@ extend str:
 
         return pos + start  # add start position because of truncation
 
-    def rfind(self: str, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
+    def rfind(self, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
         """
         str.rfind(sub [,start [,end]]) -> int
 
@@ -704,7 +699,7 @@ extend str:
 
         return pos + start  # add start position because of truncation
 
-    def isidentifier(self: str) -> bool:
+    def isidentifier(self) -> bool:
         """
         str.isidentifier() -> bool
 
@@ -729,7 +724,7 @@ extend str:
 
         return True
 
-    def isprintable(self: str) -> bool:
+    def isprintable(self) -> bool:
         """
         str.isprintable() -> bool
 
@@ -741,7 +736,7 @@ extend str:
                 return False
         return True
 
-    def _has_char(self: str, chars: str):
+    def _has_char(self, chars: str):
         if chars:
             for c in chars:
                 if self[0] == c:
@@ -750,7 +745,7 @@ extend str:
         else:
             return self[0].isspace()
 
-    def lstrip(self: str, chars: str = "") -> str:
+    def lstrip(self, chars: str = "") -> str:
         """
         str.lstrip([chars]) -> string
 
@@ -763,7 +758,7 @@ extend str:
             i += 1
         return self[i:]
 
-    def rstrip(self: str, chars: str = "") -> str:
+    def rstrip(self, chars: str = "") -> str:
         """
         str.rstrip([chars]) -> string
 
@@ -776,7 +771,7 @@ extend str:
             i -= 1
         return self[:i+1]
 
-    def strip(self: str, chars: str = "") -> str:
+    def strip(self, chars: str = "") -> str:
         """
         str.strip([chars]) -> string
 
@@ -789,7 +784,7 @@ extend str:
         rstr = lstr.rstrip(chars)
         return rstr
 
-    def partition(self: str, sep: str) -> tuple[str, str, str]:
+    def partition(self, sep: str) -> tuple[str, str, str]:
         """
         str.partition(sep) -> (head, sep, tail)
 
@@ -807,7 +802,7 @@ extend str:
 
         return self[:pos],sep,self[pos+len(sep):]
 
-    def rpartition(self: str, sep: str) -> tuple[str, str, str]:
+    def rpartition(self, sep: str) -> tuple[str, str, str]:
         """
         str.rpartition(sep) -> (head, sep, tail)
 
@@ -830,7 +825,7 @@ extend str:
 
         return self[:pos1], sep, self[pos1+len(sep):]
 
-    def split(self: str, sep: optional[str] = None, maxsplit: int = -1) -> list[str]:
+    def split(self, sep: optional[str] = None, maxsplit: int = -1) -> list[str]:
         """
         str.split([sep [,maxsplit]]) -> list of strings
 
@@ -883,7 +878,7 @@ extend str:
 
         return str_split
 
-    def rsplit(self: str, sep: optional[str] = None, maxsplit: int = -1) -> list[str]:
+    def rsplit(self, sep: optional[str] = None, maxsplit: int = -1) -> list[str]:
         """
         str.rsplit([sep [,maxsplit]]) -> list of strings
 
@@ -940,7 +935,7 @@ extend str:
         str_split.reverse()
         return str_split
 
-    def splitlines(self: str, keepends: bool = False) -> list[str]:
+    def splitlines(self, keepends: bool = False) -> list[str]:
         """
         str.splitlines([keepends]) -> list of strings
 
@@ -1019,7 +1014,7 @@ extend str:
         return line_split
 
 
-    def startswith(self: str, prefix: str, start: int = 0, end: int = 0x7fffffffffffffff) -> bool:
+    def startswith(self, prefix: str, start: int = 0, end: int = 0x7fffffffffffffff) -> bool:
         """
         str.startswith(prefix[, start[, end]]) -> bool
 
@@ -1046,7 +1041,7 @@ extend str:
 
         return prefix == self[start:start + len(prefix)]
 
-    def endswith(self: str, suffix: str, start: int = 0, end: int = 0x7fffffffffffffff) -> bool:
+    def endswith(self, suffix: str, start: int = 0, end: int = 0x7fffffffffffffff) -> bool:
         """
         str.endswith(prefix[, start[, end]]) -> bool
 
@@ -1078,7 +1073,7 @@ extend str:
 
         return suffix == self[start:start + len(suffix)]
 
-    def index(self: str, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
+    def index(self, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
         """
         str.index(sub [,start [,end]]) -> int
 
@@ -1091,7 +1086,7 @@ extend str:
         else:
             return i
 
-    def rindex(self: str, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
+    def rindex(self, sub: str, start: int = 0, end: int = 0x7fffffffffffffff) -> int:
         """
         str.index(sub [,start [,end]]) -> int
 
@@ -1104,7 +1099,7 @@ extend str:
         else:
             return i
 
-    def replace(self: str, old: str, new: str, maxcount: int = -1) -> str:
+    def replace(self, old: str, new: str, maxcount: int = -1) -> str:
         """
         str.replace(old, new[, count]) -> string
 
@@ -1139,7 +1134,7 @@ extend str:
         # delete all occurances of old in self
         return algorithms.replace_delete_substring(self, old, new, maxcount)
 
-    def expandtabs(self: str, tabsize: int = 8) -> str:
+    def expandtabs(self, tabsize: int = 8) -> str:
         """
         str.expandtabs([tabsize]) -> string
 
@@ -1168,7 +1163,7 @@ extend str:
                     j = 0
         return ''.join(u)
 
-    def translate(self: str, table) -> str:
+    def translate(self, table) -> str:
         """
         translate(self, table)
 
@@ -1190,22 +1185,11 @@ extend str:
 
 # Internal helpers
 
-    def _cmp(self: str, other: str):
-        n = min2(self.len, other.len)
-        i = 0
-        while i < n:
-            c1 = self.ptr[i]
-            c2 = other.ptr[i]
-            if c1 != c2:
-                return int(c1) - int(c2)
-            i += 1
-        return self.len - other.len
-
     def _isspace(b: byte):
         return b == byte(32) or b == byte(9) or b == byte(10) or \
                b == byte(11) or b == byte(12) or b == byte(13)
 
-    def _search(self: str, pattern: str):
+    def _search(self, pattern: str):
         if len(pattern) == 1:
             c = pattern.ptr[0]
             i = 0
@@ -1219,7 +1203,7 @@ extend str:
             else:
                 yield from algorithms.string_search_KMP(self, pattern)
 
-    def _rsearch(self: str, pattern: str):
+    def _rsearch(self, pattern: str):
         if len(pattern) == 1:
             c = pattern.ptr[0]
             i = len(self) - 1
@@ -1236,7 +1220,7 @@ extend str:
         v.destroy()
         return n
 
-    def _correct_indices(self: str, start: int, end: int):
+    def _correct_indices(self, start: int, end: int):
         n = len(self)
         if start < 0:
             start += n
@@ -1248,7 +1232,7 @@ extend str:
                 end = 0
         return (start, end)
 
-    def _split_whitespace(self: str, maxcount: int):
+    def _split_whitespace(self, maxcount: int):
         PREALLOC_MAX = 12
         l = list[str](PREALLOC_MAX if maxcount >= PREALLOC_MAX else maxcount + 1)
 
@@ -1275,7 +1259,7 @@ extend str:
 
         return l
 
-    def _rsplit_whitespace(self: str, maxcount: int):
+    def _rsplit_whitespace(self, maxcount: int):
         PREALLOC_MAX = 12
         l = list[str](PREALLOC_MAX if maxcount >= PREALLOC_MAX else maxcount + 1)
 

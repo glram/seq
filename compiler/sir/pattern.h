@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base.h"
@@ -19,9 +20,9 @@ private:
   std::shared_ptr<types::Type> type;
 
 public:
-  explicit Pattern(std::shared_ptr<types::Type> type);
+  explicit Pattern(std::shared_ptr<types::Type> t) : type(std::move(t)) {}
 
-  std::shared_ptr<types::Type> getType();
+  std::shared_ptr<types::Type> getType() { return type; }
   virtual std::string textRepresentation() const override;
 };
 
@@ -41,14 +42,15 @@ private:
   std::shared_ptr<Pattern> pattern;
 
 public:
-  explicit BoundPattern(std::shared_ptr<Pattern> pattern);
+  explicit BoundPattern(std::shared_ptr<Pattern> p);
 
   std::string textRepresentation() const override;
 };
 
 class StarPattern : Pattern {
 public:
-  StarPattern();
+  StarPattern() : Pattern(types::kAnyType) {}
+
   std::string textRepresentation() const override;
 };
 
@@ -57,7 +59,8 @@ private:
   seq_int_t value;
 
 public:
-  explicit IntPattern(seq_int_t value);
+  explicit IntPattern(seq_int_t value)
+      : Pattern(types::kIntType), value(value) {}
 
   std::string textRepresentation() const override;
 };
@@ -67,7 +70,7 @@ private:
   bool value;
 
 public:
-  explicit BoolPattern(bool value);
+  explicit BoolPattern(bool value) : Pattern(types::kBoolType), value(value) {}
 
   std::string textRepresentation() const override;
 };
@@ -77,7 +80,8 @@ private:
   std::string value;
 
 public:
-  explicit StrPattern(std::string value);
+  explicit StrPattern(std::string value)
+      : Pattern(types::kStringType), value(std::move(value)) {}
 
   std::string textRepresentation() const override;
 };
@@ -87,8 +91,8 @@ private:
   std::vector<std::shared_ptr<Pattern>> patterns;
 
 public:
-  explicit RecordPattern(std::vector<std::shared_ptr<Pattern>> patterns);
-  RecordPattern(RecordPattern &other);
+  explicit RecordPattern(std::vector<std::shared_ptr<Pattern>> patterns)
+      : Pattern(types::kAnyType), patterns(std::move(patterns)) {}
 
   std::string textRepresentation() const override;
 };
@@ -98,8 +102,8 @@ private:
   std::vector<std::shared_ptr<Pattern>> patterns;
 
 public:
-  explicit ArrayPattern(std::vector<std::shared_ptr<Pattern>> patterns);
-  ArrayPattern(ArrayPattern &other);
+  explicit ArrayPattern(std::vector<std::shared_ptr<Pattern>> patterns)
+      : Pattern(types::kAnyType), patterns(std::move(patterns)) {}
 
   std::string textRepresentation() const override;
 };
@@ -109,7 +113,8 @@ private:
   std::shared_ptr<Pattern> pattern;
 
 public:
-  explicit OptionalPattern(std::shared_ptr<Pattern> pattern);
+  explicit OptionalPattern(std::shared_ptr<Pattern> pattern)
+      : Pattern(pattern->getType()), pattern(std::move(pattern)) {}
 
   std::string textRepresentation() const override;
 };
@@ -120,7 +125,8 @@ private:
   seq_int_t b;
 
 public:
-  explicit RangePattern(seq_int_t a, seq_int_t b);
+  explicit RangePattern(seq_int_t a, seq_int_t b)
+      : Pattern(types::kAnyType), a(a), b(b) {}
 
   std::string textRepresentation() const override;
 };
@@ -130,8 +136,8 @@ private:
   std::vector<std::shared_ptr<Pattern>> patterns;
 
 public:
-  explicit OrPattern(std::vector<std::shared_ptr<Pattern>> patterns);
-  OrPattern(OrPattern &other);
+  explicit OrPattern(std::vector<std::shared_ptr<Pattern>> patterns)
+      : Pattern(types::kAnyType), patterns(std::move(patterns)) {}
 
   std::string textRepresentation() const override;
 };
@@ -143,9 +149,12 @@ private:
 
 public:
   explicit GuardedPattern(std::shared_ptr<Pattern> pattern,
-                          std::shared_ptr<Operand> operand);
+                          std::shared_ptr<Operand> operand)
+      : Pattern(pattern->getType()), pattern(std::move(pattern)),
+        operand(std::move(operand)) {}
 
   std::string textRepresentation() const override;
 };
+
 } // namespace ir
 } // namespace seq

@@ -28,7 +28,7 @@ private:
 public:
   explicit VarOperand(std::weak_ptr<Var> var);
 
-  std::weak_ptr<Var> getVar() const;
+  std::weak_ptr<Var> getVar() { return var; }
 
   std::string textRepresentation() const override;
 };
@@ -41,8 +41,8 @@ private:
 public:
   explicit VarMemberOperand(std::weak_ptr<Var> var, std::string field);
 
-  std::weak_ptr<Var> getVar() const;
-  std::string getField() const;
+  std::weak_ptr<Var> getVar() { return var; }
+  std::string getField() const { return field; }
 
   std::string textRepresentation() const override;
 };
@@ -60,27 +60,27 @@ private:
 
 public:
   LiteralOperand()
-      : Operand{nullptr}, literalType{LiteralType::NONE}, ival{0}, fval{0.0},
-        bval{false}, sval{}, isSeq{false} {}
+      : Operand(nullptr), literalType(LiteralType::NONE), ival(0), fval(0.0),
+        bval(false), sval(), isSeq(false) {}
   explicit LiteralOperand(seq_int_t ival)
-      : Operand{types::kIntType}, literalType{LiteralType::INT}, ival{ival},
-        fval{0.0}, bval{false}, sval{}, isSeq{false} {}
+      : Operand(types::kIntType), literalType(LiteralType::INT), ival(ival),
+        fval(0.0), bval(false), sval(), isSeq(false) {}
   explicit LiteralOperand(double fval)
-      : Operand{types::kFloatType}, literalType{LiteralType::FLOAT}, ival{0},
-        fval{fval}, bval{false}, sval{}, isSeq{false} {}
+      : Operand(types::kFloatType), literalType(LiteralType::FLOAT), ival(0),
+        fval(fval), bval(false), sval(), isSeq(false) {}
   explicit LiteralOperand(bool bval)
-      : Operand{types::kBoolType}, literalType{LiteralType::BOOL}, ival{0},
-        fval{0.0}, bval{bval}, sval{}, isSeq{false} {}
+      : Operand(types::kBoolType), literalType(LiteralType::BOOL), ival(0),
+        fval(0.0), bval(bval), sval(), isSeq(false) {}
   explicit LiteralOperand(std::string sval, bool seq = false)
-      : Operand{seq ? types::kSeqType : types::kStringType},
-        literalType{seq ? LiteralType::SEQ : LiteralType::STR}, ival{0},
-        fval{0.0}, bval{false}, sval{std::move(sval)}, isSeq{seq} {}
+      : Operand(seq ? types::kSeqType : types::kStringType),
+        literalType(seq ? LiteralType::SEQ : LiteralType::STR), ival(0),
+        fval(0.0), bval(false), sval(std::move(sval)), isSeq(seq) {}
 
-  LiteralType getLiteralType() const;
-  seq_int_t getIval();
-  double getFval();
-  bool getBval();
-  std::string getSval();
+  LiteralType getLiteralType() const { return literalType; }
+  seq_int_t getIval() const { return ival; }
+  double getFval() const { return fval; }
+  bool getBval() const { return bval; }
+  std::string getSval() const { return sval; }
 
   std::string textRepresentation() const override;
 };

@@ -1,7 +1,9 @@
 #pragma once
 
-#include "base.h"
 #include <memory>
+#include <string>
+
+#include "base.h"
 
 namespace seq {
 namespace ir {
@@ -21,10 +23,11 @@ private:
 
 public:
   explicit AssignInstr(std::shared_ptr<Lvalue> left,
-                       std::shared_ptr<Rvalue> right);
+                       std::shared_ptr<Rvalue> right)
+      : left(std::move(left)), right(std::move(right)) {}
 
-  std::shared_ptr<Rvalue> getRhs() const;
-  std::shared_ptr<Lvalue> getLhs() const;
+  std::shared_ptr<Rvalue> getRhs() const { return right; }
+  std::shared_ptr<Lvalue> getLhs() const { return left; }
 
   std::string textRepresentation() const override;
 };
@@ -33,9 +36,10 @@ class RvalueInstr : public Instr {
   std::shared_ptr<Rvalue> rvalue;
 
 public:
-  explicit RvalueInstr(std::shared_ptr<Rvalue> rvalue);
+  explicit RvalueInstr(std::shared_ptr<Rvalue> rvalue)
+      : rvalue(std::move(rvalue)) {}
 
-  std::shared_ptr<Rvalue> getRvalue() const;
+  std::shared_ptr<Rvalue> getRvalue() const { return rvalue; }
 
   std::string textRepresentation() const override;
 };

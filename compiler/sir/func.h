@@ -26,22 +26,22 @@ private:
 public:
   Func(std::string name, std::vector<std::string> argNames,
        std::shared_ptr<types::Type> type);
-  Func(const Func &other);
 
-  std::vector<std::shared_ptr<Var>> getArgVars();
-  std::vector<std::string> getArgNames();
-  std::shared_ptr<Var> getArgVar(std::string name);
+  std::vector<std::shared_ptr<Var>> getArgVars() { return argVars; }
+  std::vector<std::string> getArgNames() const { return argNames; }
+  std::shared_ptr<Var> getArgVar(const std::string &name);
 
-  void addVar(std::shared_ptr<Var> var);
+  void addVar(std::shared_ptr<Var> var) { vars.push_back(var); }
 
-  std::vector<std::shared_ptr<BasicBlock>> getBlocks();
-  void addBlock(std::shared_ptr<BasicBlock> block);
+  std::vector<std::shared_ptr<BasicBlock>> getBlocks() { return blocks; }
+  void addBlock(std::shared_ptr<BasicBlock> block) { blocks.push_back(block); }
 
-  std::weak_ptr<IRModule> getModule();
-  void setModule(std::weak_ptr<IRModule> module);
+  std::weak_ptr<IRModule> getModule() { return module; }
+  void setModule(std::weak_ptr<IRModule> m) { module = m; }
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;
 };
+
 } // namespace ir
 } // namespace seq

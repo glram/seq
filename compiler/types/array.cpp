@@ -25,25 +25,6 @@ void types::ArrayType::initOps() {
     return;
 
   vtable.magic = {
-      {"__elemsize__",
-       {},
-       Int,
-       [this](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
-         const size_t size =
-             getBaseType(0)->size(b.GetInsertBlock()->getModule());
-         return ConstantInt::get(seqIntLLVM(b.getContext()), size);
-       },
-       true},
-
-      {"__atomic__",
-       {},
-       Bool,
-       [this](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
-         const unsigned atomic = getBaseType(0)->isAtomic() ? 1 : 0;
-         return ConstantInt::get(Bool->getLLVMType(b.getContext()), atomic);
-       },
-       true},
-
       {"__new__",
        {Int},
        this,
@@ -197,8 +178,4 @@ types::ArrayType *types::ArrayType::get(Type *baseType) noexcept {
 
 types::ArrayType *types::ArrayType::get() noexcept {
   return new ArrayType(types::BaseType::get());
-}
-
-types::ArrayType *types::ArrayType::clone(Generic *ref) {
-  return get(getBaseType(0)->clone(ref));
 }

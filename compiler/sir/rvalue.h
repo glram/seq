@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <utility>
 
 #include "base.h"
 #include "types/types.h"
@@ -16,9 +17,9 @@ private:
   std::shared_ptr<types::Type> type;
 
 public:
-  Rvalue(std::shared_ptr<types::Type> type) : type{type} {};
+  explicit Rvalue(std::shared_ptr<types::Type> type) : type(std::move(type)){};
 
-  std::shared_ptr<types::Type> getType() const { return type; };
+  std::shared_ptr<types::Type> getType() { return type; };
 
   std::string referenceString() const override { return "rvalue"; };
 };
@@ -32,10 +33,9 @@ public:
   explicit CallRValue(std::shared_ptr<Operand> func);
   CallRValue(std::shared_ptr<Operand> func,
              std::vector<std::shared_ptr<Operand>> args);
-  CallRValue(CallRValue &other);
 
-  std::shared_ptr<Operand> getFunc() const;
-  std::vector<std::shared_ptr<Operand>> getArgs() const;
+  std::shared_ptr<Operand> getFunc() { return func; }
+  std::vector<std::shared_ptr<Operand>> getArgs() { return args; }
 
   std::string textRepresentation() const override;
 };
@@ -47,7 +47,7 @@ private:
 public:
   explicit OperandRvalue(std::shared_ptr<Operand> operand);
 
-  std::shared_ptr<Operand> getOperand() const;
+  std::shared_ptr<Operand> getOperand() { return operand; }
 
   std::string textRepresentation() const override;
 };
@@ -59,10 +59,12 @@ private:
 
 public:
   MatchRvalue(std::shared_ptr<Pattern> pattern,
-              std::shared_ptr<Operand> operand);
+              std::shared_ptr<Operand> operand)
+      : Rvalue(types::kBoolType), pattern(std::move(pattern)),
+        operand(std::move(operand)) {}
 
-  std::shared_ptr<Pattern> getPattern() const;
-  std::shared_ptr<Operand> getOperand() const;
+  std::shared_ptr<Pattern> getPattern() { return pattern; }
+  std::shared_ptr<Operand> getOperand() { return operand; }
 
   std::string textRepresentation() const override;
 };
@@ -75,10 +77,9 @@ private:
 public:
   PipelineRvalue(std::vector<std::shared_ptr<Operand>> stages,
                  std::vector<bool> parallel);
-  PipelineRvalue(PipelineRvalue &other);
 
-  std::vector<std::shared_ptr<Operand>> getStages() const;
-  std::vector<bool> getParallel() const;
+  std::vector<std::shared_ptr<Operand>> getStages() { return stages; }
+  std::vector<bool> getParallel() const { return parallel; }
 
   std::string textRepresentation() const override;
 };

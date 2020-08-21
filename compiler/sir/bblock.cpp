@@ -1,54 +1,26 @@
-#include <algorithm>
-#include <iterator>
-#include <sstream>
+#include "util/fmt/format.h"
 
 #include "bblock.h"
 #include "instr.h"
 #include "terminator.h"
 
-using namespace seq;
-using namespace ir;
-
-BasicBlock::BasicBlock()
-    : instructions{}, terminator{nullptr}, id{currentId++} {}
-
-BasicBlock::BasicBlock(const BasicBlock &other)
-    : instructions{}, terminator{other.terminator}, id{other.id} {
-  std::copy(other.instructions.begin(), other.instructions.end(),
-            std::back_inserter(instructions));
-}
-
-void BasicBlock::add(std::shared_ptr<Instr> instruction) {
-  instructions.push_back(instruction);
-}
-
-std::vector<std::shared_ptr<Instr>> BasicBlock::getInstructions() const {
-  return instructions;
-}
-
-void BasicBlock::setTerminator(std::shared_ptr<Terminator> terminator) {
-  this->terminator = terminator;
-}
-
-std::shared_ptr<Terminator> BasicBlock::getTerminator() const {
-  return terminator;
-}
-
-int BasicBlock::getId() { return id; }
+namespace seq {
+namespace ir {
 
 std::string BasicBlock::referenceString() const {
-  return "bb#" + std::to_string(id);
+  return fmt::format(FMT_STRING("bb#{}"), id);
 }
 
 std::string BasicBlock::textRepresentation() const {
-  std::stringstream stream;
-
-  stream << referenceString() << " {";
-  for (auto instrPtr : instructions) {
-    stream << instrPtr->textRepresentation() << "\n";
+  fmt::memory_buffer buf;
+  fmt::format_to(buf, FMT_STRING("{} {{"), referenceString());
+  for (const auto &instrPtr : instructions) {
+    fmt::format_to(buf, FMT_STRING("{};\n"), instrPtr->textRepresentation());
   }
-  stream << terminator->textRepresentation() << "\n";
-  stream << "}; " << attributeString();
-
-  return stream.str();
+  fmt::format_to(buf, "{};\n}}; {}", terminator->textRepresentation(),
+                 attributeString());
+  return std::string(buf.data(), buf.size());
 }
+
+} // namespace ir
+} // namespace seq

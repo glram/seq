@@ -90,6 +90,14 @@ void types::IntType::initOps() {
        },
        true},
 
+      {"__int__",
+       {},
+       Int,
+       [](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
+         return self;
+       },
+       false},
+
       {"__str__",
        {},
        Str,
@@ -437,7 +445,8 @@ void types::IntType::initOps() {
          [](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
            return b.CreateSExtOrTrunc(args[0],
                                       Int->getLLVMType(b.getContext()));
-         }, true});
+         },
+         true});
 
     vtable.magic.push_back(
         {"__new__",
@@ -446,7 +455,8 @@ void types::IntType::initOps() {
          [](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
            return b.CreateZExtOrTrunc(args[0],
                                       Int->getLLVMType(b.getContext()));
-         }, true});
+         },
+         true});
   }
 }
 
@@ -555,6 +565,17 @@ void types::IntNType::initOps() {
          return args[0];
        },
        true},
+
+      {"__int__",
+       {},
+       Int,
+       [this](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
+         return sign ? b.CreateSExtOrTrunc(self,
+                                           Int->getLLVMType(b.getContext()))
+                     : b.CreateZExtOrTrunc(self,
+                                           Int->getLLVMType(b.getContext()));
+       },
+       false},
 
       {"__copy__",
        {},
@@ -805,7 +826,8 @@ void types::IntNType::initOps() {
          this,
          [this](Value *self, std::vector<Value *> args, IRBuilder<> &b) {
            return b.CreateBitCast(args[0], getLLVMType(b.getContext()));
-         }, true});
+         },
+         true});
   }
 
   addMethod("len",

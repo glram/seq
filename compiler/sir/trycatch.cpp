@@ -1,89 +1,40 @@
-#include <algorithm>
-#include <iterator>
-#include <sstream>
+#include "util/fmt/format.h"
 
 #include "bblock.h"
 #include "trycatch.h"
 
-using namespace seq;
-using namespace ir;
-
-TryCatch::TryCatch()
-    : children{}, catchTypes{}, catchBlocks{},
-      finallyBlock{}, parent{}, id{currentId++} {}
-
-TryCatch::TryCatch(TryCatch &other)
-    : children{}, catchTypes{}, catchBlocks{},
-      finallyBlock{other.finallyBlock}, parent{other.parent}, id{other.id} {
-  std::copy(other.children.begin(), other.children.end(),
-            std::back_inserter(children));
-  std::copy(other.catchTypes.begin(), other.catchTypes.end(),
-            std::back_inserter(catchTypes));
-  std::copy(other.catchBlocks.begin(), other.catchBlocks.end(),
-            std::back_inserter(catchBlocks));
-}
-
-std::vector<std::shared_ptr<TryCatch>> TryCatch::getChildren() const {
-  return children;
-}
-
-void TryCatch::addChild(std::shared_ptr<TryCatch> child) {
-  children.push_back(child);
-}
-
-std::vector<std::shared_ptr<types::Type>> TryCatch::getCatchTypes() const {
-  return catchTypes;
-}
-
-std::vector<std::weak_ptr<BasicBlock>> TryCatch::getCatchBlocks() const {
-  return catchBlocks;
-}
-
-void TryCatch::addCatch(std::shared_ptr<types::Type> catchType,
-                        std::weak_ptr<BasicBlock> handler) {
-  catchTypes.push_back(catchType);
-  catchBlocks.push_back(handler);
-}
-
-std::weak_ptr<BasicBlock> TryCatch::getFinallyBlock() const {
-  return finallyBlock;
-}
-
-void TryCatch::setFinallyBlock(std::weak_ptr<BasicBlock> finally) {
-  finallyBlock = finally;
-}
-
-std::weak_ptr<TryCatch> TryCatch::getParent() const { return parent; }
+namespace seq {
+namespace ir {
 
 std::string TryCatch::referenceString() const {
-  return "try#" + std::to_string(id);
+  return fmt::format(FMT_STRING("try#{}"), id);
 }
 
 std::string TryCatch::textRepresentation() const {
-  std::stringstream stream;
-  stream << referenceString() << " [";
+  fmt::memory_buffer buf;
+  fmt::format_to(buf, FMT_STRING("{}["), referenceString());
   for (auto it = children.begin(); it != children.end(); it++) {
-    stream << (*it)->textRepresentation();
+    fmt::format_to(buf, FMT_STRING("{}"), (*it)->textRepresentation());
     if (it + 1 != children.end())
-      stream << ",\n";
+      fmt::format_to(buf, FMT_STRING(", "));
   }
-  stream << "]{";
-
+  fmt::format_to(buf, FMT_STRING("]{{"));
   for (int i = 0; i < catchBlocks.size(); i++) {
-    auto handler = catchBlocks[i].lock();
-    stream << catchTypes[i]->getName() << ": " << handler->referenceString();
+    fmt::format_to(buf, FMT_STRING("{}: {}"), catchTypes[i]->getName(),
+                   catchBlocks[i].lock()->referenceString());
     if (i + 1 != catchBlocks.size()) {
-      stream << ", ";
+      fmt::format_to(buf, FMT_STRING(", "));
     }
   }
-  stream << "}";
+  buf.push_back('}');
 
   auto finally = finallyBlock.lock();
   if (finally)
-    stream << " finally " << finally->referenceString() << "; "
-           << attributeString();
+    fmt::format_to(buf, FMT_STRING(" finally {}; {}"),
+                   finally->referenceString(), attributeString());
 
-  return stream.str();
+  return std::string(buf.data(), buf.size());
 }
 
-int TryCatch::getId() { return id; }
+} // namespace ir
+} // namespace seq

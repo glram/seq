@@ -25,6 +25,37 @@
 namespace seq {
 namespace ast {
 
+class CaptureVisitor : public WalkVisitor {
+  std::shared_ptr<TypeContext> ctx;
+
+public:
+  std::unordered_set<std::string> captures;
+  using WalkVisitor::visit;
+  CaptureVisitor(std::shared_ptr<TypeContext> ctx);
+  void visit(const IdExpr *) override;
+};
+
+class StaticVisitor : public WalkVisitor {
+  std::shared_ptr<TypeContext> ctx;
+  const std::unordered_map<std::string, types::Generic> *map;
+
+public:
+  std::map<std::string, types::Generic> captures; // map so it is sorted
+  bool evaluated;
+  int value;
+
+  using WalkVisitor::visit;
+  StaticVisitor(
+      std::shared_ptr<TypeContext> ctx,
+      const std::unordered_map<std::string, types::Generic> *m = nullptr);
+  std::pair<bool, int> transform(const Expr *e);
+  void visit(const IdExpr *) override;
+  void visit(const IntExpr *) override;
+  void visit(const IfExpr *) override;
+  void visit(const UnaryExpr *) override;
+  void visit(const BinaryExpr *) override;
+};
+
 class TransformVisitor : public ASTVisitor, public SrcObject {
   std::shared_ptr<TypeContext> ctx;
   std::shared_ptr<std::vector<StmtPtr>> prependStmts;
@@ -53,32 +84,39 @@ class TransformVisitor : public ASTVisitor, public SrcObject {
 
   RealizationContext::FuncRealization realizeFunc(types::FuncTypePtr type);
   RealizationContext::ClassRealization realizeType(types::ClassTypePtr type);
+  int realizeStatic(types::StaticTypePtr st);
 
   ExprPtr conditionalMagic(const ExprPtr &expr, const std::string &type,
                            const std::string &magic);
   ExprPtr makeBoolExpr(const ExprPtr &e);
-  std::shared_ptr<types::GenericType>
-  parseGenerics(const std::vector<Param> &generics);
+  std::vector<types::Generic> parseGenerics(const std::vector<Param> &generics);
 
-  StmtPtr addMethod(Stmt *s, const std::string &canonicalName,
-                    const std::vector<types::GenericType::Generic> &implicits);
-  types::FuncTypePtr findBestCall(types::ClassTypePtr c,
-                                  const std::string &member,
-                                  const std::vector<types::TypePtr> &args,
-                                  bool failOnMultiple = false,
-                                  types::TypePtr retType = nullptr);
+  StmtPtr addMethod(Stmt *s, const std::string &canonicalName);
+  types::FuncTypePtr
+  findBestCall(types::ClassTypePtr c, const std::string &member,
+               const std::vector<std::pair<std::string, types::TypePtr>> &args,
+               bool failOnMultiple = false, types::TypePtr retType = nullptr);
 
   bool wrapOptional(types::TypePtr lt, ExprPtr &rhs);
+  std::string generateVariardicStub(const std::string &name, int len);
 
-  class CaptureVisitor : public WalkVisitor {
-    std::shared_ptr<TypeContext> ctx;
-
-  public:
-    std::unordered_set<std::string> captures;
-    using WalkVisitor::visit;
-    CaptureVisitor(std::shared_ptr<TypeContext> ctx);
-    void visit(const IdExpr *) override;
-  };
+  // std::vector<int> callCallable(types::ClassTypePtr f,
+  // std::vector<CallExpr::Arg> &args, std::vector<CallExpr::Arg>
+  // &reorderedArgs);
+  std::vector<int> callFunc(types::ClassTypePtr f,
+                            std::vector<CallExpr::Arg> &args,
+                            std::vector<CallExpr::Arg> &reorderedArgs,
+                            const std::vector<int> &availableArguments);
+  // std::vector<int> callPartial(types::PartialTypePtr f,
+  //  std::vector<CallExpr::Arg> &args,
+  //  std::vector<CallExpr::Arg> &reorderedArgs);
+  bool handleStackAlloc(const CallExpr *expr);
+  bool getTupleIndex(types::ClassTypePtr tuple, const ExprPtr &expr,
+                     const ExprPtr &index);
+  StmtPtr makeInternalFn(const std::string &name, ExprPtr &&ret,
+                         Param &&arg = Param(), Param &&arg2 = Param());
+  StmtPtr makeInternalFn(const std::string &name, ExprPtr &&ret,
+                         std::vector<Param> &&args);
 
 public:
   TransformVisitor(std::shared_ptr<TypeContext> ctx,

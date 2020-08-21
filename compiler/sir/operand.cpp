@@ -1,39 +1,25 @@
+#include "util/fmt/format.h"
+
 #include "operand.h"
 #include "var.h"
 
-using namespace seq;
-using namespace ir;
+namespace seq {
+namespace ir {
 
 VarOperand::VarOperand(std::weak_ptr<Var> var)
-    : Operand{var.lock()->getType()}, var{var} {}
-
-std::weak_ptr<Var> VarOperand::getVar() const { return var; }
+    : Operand(var.lock()->getType()), var(var) {}
 
 std::string VarOperand::textRepresentation() const {
-  return "read(" + var.lock()->referenceString() + ")";
+  return var.lock()->referenceString();
 };
 
 VarMemberOperand::VarMemberOperand(std::weak_ptr<Var> var, std::string field)
-    : Operand{var.lock()->getType()->getMemberType(field).lock()}, var{var},
-      field{field} {}
-
-std::weak_ptr<Var> VarMemberOperand::getVar() const { return var; }
-
-std::string VarMemberOperand::getField() const { return field; }
+    : Operand(var.lock()->getType()->getMemberType(field).lock()), var(var),
+      field(field) {}
 
 std::string VarMemberOperand::textRepresentation() const {
-  return "read(" + var.lock()->referenceString() + "." + field + ")";
+  return fmt::format(FMT_STRING("{}.{}"), var.lock()->referenceString(), field);
 }
-
-LiteralType LiteralOperand::getLiteralType() const { return literalType; }
-
-seq_int_t LiteralOperand::getIval() { return ival; }
-
-double LiteralOperand::getFval() { return fval; }
-
-bool LiteralOperand::getBval() { return bval; }
-
-std::string LiteralOperand::getSval() { return sval; }
 
 std::string LiteralOperand::textRepresentation() const {
   switch (literalType) {
@@ -46,8 +32,11 @@ std::string LiteralOperand::textRepresentation() const {
   case LiteralType::NONE:
     return "None";
   case LiteralType::SEQ:
-    return "s'" + sval + "'";
+    return fmt::format(FMT_STRING("s'{}'"), sval);
   case LiteralType::STR:
-    return "'" + sval + "'";
+    return fmt::format(FMT_STRING("'{}'"), sval);
   }
 }
+
+} // namespace ir
+} // namespace seq

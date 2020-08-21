@@ -7,7 +7,7 @@ using namespace llvm;
 
 PipeExpr::PipeExpr(std::vector<seq::Expr *> stages, std::vector<bool> parallel)
     : Expr(), stages(std::move(stages)), parallel(std::move(parallel)),
-      entry(nullptr) /* syncReg(nullptr) */ {
+      intermediateTypes(), entry(nullptr), syncReg(nullptr) {
   if (this->parallel.empty())
     this->parallel = std::vector<bool>(this->stages.size(), false);
 }
@@ -17,9 +17,9 @@ void PipeExpr::setParallel(unsigned which) {
   parallel[which] = true;
 }
 
-void PipeExpr::resolveTypes() {
-  for (auto *stage : stages)
-    stage->resolveTypes();
+void PipeExpr::setIntermediateTypes(std::vector<types::Type *> types) {
+  assert(types.size() == stages.size());
+  intermediateTypes = std::move(types);
 }
 
 // Some useful info for codegen'ing the "drain" step after prefetch transform.
@@ -39,19 +39,21 @@ struct DrainState {
   types::GenType *type;      // type of prefetch generator
   std::queue<Expr *> stages; // remaining pipeline stages
   std::queue<bool> parallel;
+  std::queue<types::Type *> types;
 
   DrainState()
       : states(nullptr), filled(nullptr), statesTemp(nullptr), pairs(nullptr),
         pairsTemp(nullptr), bufRef(nullptr), bufQer(nullptr), params(nullptr),
-        hist(nullptr), type(nullptr), stages(), parallel() {}
+        hist(nullptr), type(nullptr), stages(), parallel(), types() {}
 };
 
 struct seq::PipeExpr::PipelineCodegenState {
-  types::Type *type;         // type of current pipeline output
-  Value *val;                // value of current pipeline output
-  BasicBlock *block;         // current codegen block
-  std::queue<Expr *> stages; // stages left to codegen
-  std::queue<bool> parallel; // parallel ("||>") stages
+  types::Type *type;               // type of current pipeline output
+  Value *val;                      // value of current pipeline output
+  BasicBlock *block;               // current codegen block
+  std::queue<Expr *> stages;       // stages left to codegen
+  std::queue<bool> parallel;       // parallel ("||>") stages
+  std::queue<types::Type *> types; // output type of each stage
 
   bool inParallel; // whether current stage is in parallel section
   bool inLoop;     // whether we are in a loop (i.e. past some generator stage)
@@ -60,10 +62,11 @@ struct seq::PipeExpr::PipelineCodegenState {
   DrainState drain; // drain state for prefetch and inter-align optimizations
 
   PipelineCodegenState(BasicBlock *block, std::queue<Expr *> stages,
-                       std::queue<bool> parallel)
+                       std::queue<bool> parallel,
+                       std::queue<types::Type *> types)
       : type(nullptr), val(nullptr), block(block), stages(std::move(stages)),
-        parallel(), inParallel(false), inLoop(false), nestedParallel(false),
-        drain() {
+        parallel(), types(types), inParallel(false), inLoop(false),
+        nestedParallel(false), drain() {
     int numParallels = 0;
     while (!parallel.empty()) {
       bool p = parallel.front();
@@ -76,7 +79,8 @@ struct seq::PipeExpr::PipelineCodegenState {
 
   PipelineCodegenState getDrainState(Value *val, types::Type *type,
                                      BasicBlock *block) {
-    PipelineCodegenState state(block, drain.stages, drain.parallel);
+    PipelineCodegenState state(block, drain.stages, drain.parallel,
+                               drain.types);
     state.val = val;
     state.type = type;
     return state;
@@ -87,12 +91,14 @@ struct seq::PipeExpr::PipelineCodegenState {
 struct UnpackedStage {
   FuncExpr *func;
   std::vector<Expr *> args;
+  types::Type *type;
   bool isCall;
 
-  UnpackedStage(FuncExpr *func, std::vector<Expr *> args, bool isCall)
-      : func(func), args(std::move(args)), isCall(isCall) {}
+  UnpackedStage(FuncExpr *func, std::vector<Expr *> args, types::Type *type,
+                bool isCall)
+      : func(func), args(std::move(args)), type(type), isCall(isCall) {}
 
-  UnpackedStage(Expr *stage) : UnpackedStage(nullptr, {}, false) {
+  UnpackedStage(Expr *stage) : UnpackedStage(nullptr, {}, nullptr, false) {
     if (auto *funcExpr = dynamic_cast<FuncExpr *>(stage)) {
       this->func = funcExpr;
       this->args = {};
@@ -111,6 +117,7 @@ struct UnpackedStage {
         this->isCall = true;
       }
     }
+    this->type = stage->getType();
   }
 
   bool matches(const std::string &name, int argCount = -1) {
@@ -122,7 +129,7 @@ struct UnpackedStage {
 
   Expr *repack(Func *f) {
     assert(func);
-    FuncExpr *newFunc = new FuncExpr(f, func->getTypes());
+    FuncExpr *newFunc = new FuncExpr(f);
     if (!isCall)
       return newFunc;
 
@@ -134,10 +141,10 @@ struct UnpackedStage {
       }
     }
 
-    if (isPartial)
-      return new PartialCallExpr(newFunc, args);
-    else
-      return new CallExpr(newFunc, args);
+    Expr *repacked = isPartial ? (Expr *)new PartialCallExpr(newFunc, args)
+                               : new CallExpr(newFunc, args);
+    repacked->setType(type);
+    return repacked;
   }
 };
 
@@ -163,7 +170,6 @@ static void applyRevCompOptimization(std::vector<Expr *> &stages,
 
       if (!replacement.empty()) {
         stagesNew.push_back(f1.repack(Func::getBuiltin(replacement)));
-        stagesNew.back()->resolveTypes();
         parallelNew.push_back(parallel[i] || parallel[i + 1]);
         i += 2;
         continue;
@@ -208,9 +214,7 @@ static void applyCanonicalKmerOptimization(std::vector<Expr *> &stages,
         replacement = "_kmers_canonical_with_pos";
 
       if (!replacement.empty()) {
-        stagesNew.push_back(
-            new FuncExpr(Func::getBuiltin(replacement), f1.func->getTypes()));
-        stagesNew.back()->resolveTypes();
+        stagesNew.push_back(new FuncExpr(Func::getBuiltin(replacement)));
         parallelNew.push_back(parallel[i] || parallel[i + 1]);
         i += 2;
         continue;
@@ -299,25 +303,25 @@ Value *PipeExpr::codegenPipe(BaseFunc *base,
   Function *func = state.block->getParent();
   TryCatch *tc = getTryCatch();
 
-  Expr *stage = state.stages.front();
-  bool parallelize = state.parallel.front();
-  state.stages.pop();
-  state.parallel.pop();
-
   Value *val0 = state.val;
   types::Type *type0 = state.type;
 
+  Expr *stage = state.stages.front();
+  bool parallelize = state.parallel.front();
+  state.type = state.types.front();
+  state.stages.pop();
+  state.parallel.pop();
+  state.types.pop();
+
   if (!state.val) {
-    assert(!state.type);
-    state.type = stage->getType();
     state.val = stage->codegen(base, state.block);
   } else {
     assert(state.val && state.type);
     ValueExpr arg(state.type, state.val);
-    CallExpr call(
-        stage, {&arg}); // do this through CallExpr for type-parameter deduction
+    CallExpr call(stage, {&arg});
     call.setTryCatch(tc);
-    state.type = call.getType();
+    call.setType(state.type);
+
     types::GenType *genType = state.type->asGen();
 
     if (!(genType && (genType->fromPrefetch() || genType->fromInterAlign()))) {
@@ -370,6 +374,7 @@ Value *PipeExpr::codegenPipe(BaseFunc *base,
       ValueExpr arg(type0, val0);
       CallExpr call(stage, {&arg});
       call.setTryCatch(tc);
+      call.setType(state.type);
       task = call.codegen(base, notFull);
     }
 
@@ -411,6 +416,7 @@ Value *PipeExpr::codegenPipe(BaseFunc *base,
     state.drain.type = genType;
     state.drain.stages = state.stages;
     state.drain.parallel = state.parallel;
+    state.drain.types = state.types;
 
     state.block = genDone;
     codegenPipe(base, state);
@@ -421,6 +427,7 @@ Value *PipeExpr::codegenPipe(BaseFunc *base,
       ValueExpr arg(type0, val0);
       CallExpr call(stage, {&arg});
       call.setTryCatch(tc);
+      call.setType(state.type);
       task = call.codegen(base, genDone);
     }
 
@@ -462,6 +469,7 @@ Value *PipeExpr::codegenPipe(BaseFunc *base,
       ValueExpr arg(type0, val0);
       CallExpr call(stage, {&arg});
       call.setTryCatch(tc);
+      call.setType(state.type);
       task = call.codegen(base, notFull);
     }
 
@@ -538,6 +546,7 @@ Value *PipeExpr::codegenPipe(BaseFunc *base,
     state.drain.type = genType;
     state.drain.stages = state.stages;
     state.drain.parallel = state.parallel;
+    state.drain.types = state.types;
 
     builder.SetInsertPoint(notFull);
     N = builder.CreateLoad(filled);
@@ -574,7 +583,6 @@ Value *PipeExpr::codegenPipe(BaseFunc *base,
         builder.CreateCondBr(cond, body, body); // we set true-branch below
 
     state.block = body;
-    state.type = genType->getBaseType(0);
     state.val = state.type->is(types::Void)
                     ? nullptr
                     : genType->promise(gen, state.block);
@@ -668,26 +676,11 @@ Value *PipeExpr::codegen0(BaseFunc *base, BasicBlock *&block) {
   // unparallelize inter-seq alignment pipelines
   // multithreading will be handled by the alignment kernel
   bool unparallelize = false;
-  {
-    types::Type *type = nullptr;
-    for (auto *stage : stages) {
-      if (!type) {
-        type = stage->getType();
-      } else {
-        ValueExpr arg(type, nullptr);
-        CallExpr call(
-            stage,
-            {&arg}); // do this through CallExpr for type-parameter deduction
-        type = call.getType();
-      }
-
-      types::GenType *genType = type->asGen();
-      if (genType) {
-        if (genType->fromInterAlign()) {
-          unparallelize = true;
-          break;
-        }
-        type = genType->getBaseType(0);
+  for (types::Type *type : intermediateTypes) {
+    if (types::GenType *genType = type->asGen()) {
+      if (genType->fromInterAlign()) {
+        unparallelize = true;
+        break;
       }
     }
   }
@@ -699,12 +692,16 @@ Value *PipeExpr::codegen0(BaseFunc *base, BasicBlock *&block) {
 
   std::queue<Expr *> queue;
   std::queue<bool> parallelQueue;
+  std::queue<types::Type *> typesQueue;
 
   for (auto *stage : stages)
     queue.push(stage);
 
   for (bool parallelize : parallel)
     parallelQueue.push(parallelize && !unparallelize);
+
+  for (types::Type *type : intermediateTypes)
+    typesQueue.push(type);
 
   entry = block;
   IRBuilder<> builder(entry);
@@ -719,7 +716,7 @@ Value *PipeExpr::codegen0(BaseFunc *base, BasicBlock *&block) {
   block = start;
 
   TryCatch *tc = getTryCatch();
-  PipeExpr::PipelineCodegenState state(block, queue, parallelQueue);
+  PipeExpr::PipelineCodegenState state(block, queue, parallelQueue, typesQueue);
 
 #if SEQ_HAS_TAPIR
   // If we have nested parallelism, make sure we use a task group
@@ -860,35 +857,6 @@ Value *PipeExpr::codegen0(BaseFunc *base, BasicBlock *&block) {
   builder.CreateBr(start);
 
   return result;
-}
-
-types::Type *PipeExpr::getType0() const {
-  types::Type *type = nullptr;
-  for (auto *stage : stages) {
-    if (!type) {
-      type = stage->getType();
-    } else {
-      ValueExpr arg(type, nullptr);
-      CallExpr call(
-          stage,
-          {&arg}); // do this through CallExpr for type-parameter deduction
-      type = call.getType();
-    }
-
-    types::GenType *genType = type->asGen();
-    if (genType && (genType->fromPrefetch() || genType->fromInterAlign() ||
-                    stage != stages.back()))
-      return types::Void;
-  }
-  assert(type);
-  return type;
-}
-
-PipeExpr *PipeExpr::clone(Generic *ref) {
-  std::vector<Expr *> stagesCloned;
-  for (auto *stage : stages)
-    stagesCloned.push_back(stage->clone(ref));
-  SEQ_RETURN_CLONE(new PipeExpr(stagesCloned, parallel));
 }
 
 types::RecordType *PipeExpr::getInterAlignYieldType() {

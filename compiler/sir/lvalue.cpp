@@ -1,25 +1,24 @@
+#include "util/fmt/format.h"
+
 #include "lvalue.h"
 #include "var.h"
 
-using namespace seq;
-using namespace ir;
+namespace seq {
+namespace ir {
 
 VarLvalue::VarLvalue(std::weak_ptr<Var> var)
-    : Lvalue{var.lock()->getType()}, var{var} {}
-
-std::weak_ptr<Var> VarLvalue::getVar() const { return var; }
+    : Lvalue(var.lock()->getType()), var(var) {}
 
 std::string VarLvalue::textRepresentation() const {
   return var.lock()->referenceString();
 }
 
 VarMemberLvalue::VarMemberLvalue(std::weak_ptr<Var> var, std::string field)
-    : Lvalue{var.lock()->getType()}, var{var}, field{field} {}
-
-std::weak_ptr<Var> VarMemberLvalue::getVar() const { return var; }
-
-std::string VarMemberLvalue::getField() const { return field; }
+    : Lvalue(var.lock()->getType()), var(var), field(std::move(field)) {}
 
 std::string VarMemberLvalue::textRepresentation() const {
-  return var.lock()->referenceString() + "." + field;
+  return fmt::format(FMT_STRING("{}.{}"), var.lock()->referenceString(), field);
 }
+
+} // namespace ir
+} // namespace seq

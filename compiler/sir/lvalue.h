@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 
 #include "base.h"
 #include "types/types.h"
@@ -15,9 +16,9 @@ private:
   std::shared_ptr<types::Type> type;
 
 public:
-  explicit Lvalue(std::shared_ptr<types::Type> type) : type{type} {};
+  explicit Lvalue(std::shared_ptr<types::Type> type) : type(std::move(type)){};
 
-  std::shared_ptr<types::Type> getType() const { return type; }
+  std::shared_ptr<types::Type> getType() { return type; }
 
   std::string referenceString() const override { return "lvalue"; };
 };
@@ -29,7 +30,7 @@ private:
 public:
   explicit VarLvalue(std::weak_ptr<Var> var);
 
-  std::weak_ptr<Var> getVar() const;
+  std::weak_ptr<Var> getVar() { return var; }
 
   std::string textRepresentation() const override;
 };
@@ -42,8 +43,8 @@ private:
 public:
   explicit VarMemberLvalue(std::weak_ptr<Var> var, std::string field);
 
-  std::weak_ptr<Var> getVar() const;
-  std::string getField() const;
+  std::weak_ptr<Var> getVar() { return var; }
+  std::string getField() const { return field; }
 
   std::string textRepresentation() const override;
 };

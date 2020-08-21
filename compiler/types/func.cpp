@@ -18,30 +18,10 @@ Value *types::FuncType::call(BaseFunc *base, Value *self,
                              const std::vector<Value *> &args,
                              BasicBlock *block, BasicBlock *normal,
                              BasicBlock *unwind) {
-  LLVMContext &context = block->getContext();
-  std::vector<Value *> argsFixed;
-  assert(args.size() == inTypes.size());
-  for (unsigned i = 0; i < args.size(); i++) {
-    // implicit optional conversion allows cases like foo(x, y, z, None)
-    if (types::OptionalType *opt = ::asOpt(inTypes[i])) {
-      Value *arg = dyn_cast<ConstantPointerNull>(args[i]) ? nullptr : args[i];
-      if (arg) {
-        llvm::Type *t1 = opt->getBaseType(0)->getLLVMType(context);
-        llvm::Type *t2 = arg->getType();
-        // this can only happen when passing a variable None as a POD optional,
-        // since the type checker allows 'NoneType' arguments on any optional.
-        if (t1 != t2)
-          arg = nullptr;
-      }
-      argsFixed.push_back(opt->make(arg, block));
-    } else {
-      argsFixed.push_back(args[i]);
-    }
-  }
-
+  // LLVMContext &context = block->getContext();
   IRBuilder<> builder(block);
-  return normal ? (Value *)builder.CreateInvoke(self, normal, unwind, argsFixed)
-                : builder.CreateCall(self, argsFixed);
+  return normal ? (Value *)builder.CreateInvoke(self, normal, unwind, args)
+                : builder.CreateCall(self, args);
 }
 
 Value *types::FuncType::defaultValue(BasicBlock *block) {
@@ -71,7 +51,6 @@ static Value *codegenStr(Value *self, const std::string &name,
 
   ValueExpr nameVal(types::Str, types::Str->make(str, len, block));
   CallExpr strFuncCall(&strsRealExpr, {&ptrVal, &nameVal});
-  strFuncCall.resolveTypes();
   return strFuncCall.codegen(nullptr, block);
 }
 
@@ -119,10 +98,11 @@ types::Type *types::FuncType::getBaseType(unsigned idx) const {
 }
 
 static bool compatibleArgType(types::Type *got, types::Type *exp) {
-  if (::asOpt(exp))
-    return got == types::RefType::none() || types::is(exp->getBaseType(0), got);
-  else
-    return types::is(got, exp);
+  // if (::asOpt(exp))
+  //   return got == types::RefType::none() || types::is(exp->getBaseType(0),
+  //   got);
+  // else
+  return types::is(got, exp);
 }
 
 static std::string expectedTypeName(types::Type *exp) {
@@ -139,10 +119,11 @@ types::Type *types::FuncType::getCallType(const std::vector<Type *> &inTypes) {
                             std::to_string(inTypes.size()));
 
   for (unsigned i = 0; i < inTypes.size(); i++)
-    if (!compatibleArgType(inTypes[i], this->inTypes[i]))
+    if (!compatibleArgType(inTypes[i], this->inTypes[i])) {
       throw exc::SeqException("expected function input type '" +
                               expectedTypeName(this->inTypes[i]) +
                               "', but got '" + inTypes[i]->getName() + "'");
+    }
 
   return outType;
 }
@@ -164,13 +145,6 @@ size_t types::FuncType::size(Module *module) const {
 types::FuncType *types::FuncType::get(std::vector<Type *> inTypes,
                                       Type *outType) {
   return new FuncType(std::move(inTypes), outType);
-}
-
-types::FuncType *types::FuncType::clone(Generic *ref) {
-  std::vector<Type *> inTypesCloned;
-  for (auto *type : inTypes)
-    inTypesCloned.push_back(type->clone(ref));
-  return get(inTypesCloned, outType->clone(ref));
 }
 
 types::GenType::GenType(Type *outType, GenTypeKind kind)
@@ -458,10 +432,6 @@ types::GenType *types::GenType::get(GenTypeKind kind) noexcept {
   return get(types::BaseType::get(), kind);
 }
 
-types::GenType *types::GenType::clone(Generic *ref) {
-  return get(outType->clone(ref), kind);
-}
-
 types::PartialFuncType::PartialFuncType(types::Type *callee,
                                         std::vector<types::Type *> callTypes)
     : Type("partial", BaseType::get()), callee(callee),
@@ -575,11 +545,4 @@ Value *types::PartialFuncType::make(Value *func, std::vector<Value *> args,
   for (unsigned i = 0; i < args.size(); i++)
     self = builder.CreateInsertValue(self, args[i], i + 1);
   return self;
-}
-
-types::PartialFuncType *types::PartialFuncType::clone(Generic *ref) {
-  std::vector<types::Type *> callTypesCloned;
-  for (auto *type : callTypes)
-    callTypesCloned.push_back(type ? type->clone(ref) : nullptr);
-  return get(callee->clone(ref), callTypesCloned);
 }

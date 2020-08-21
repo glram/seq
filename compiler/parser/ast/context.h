@@ -12,28 +12,36 @@
 #include "lang/seq.h"
 #include "parser/ast/ast.h"
 #include "parser/common.h"
-#include "sir/types/types.h"
 #include "sir/func.h"
+#include "sir/types/types.h"
 
 namespace seq {
 namespace ast {
 
 struct RealizationContext {
+  /// List of class methods and members
+  /// Maps canonical class name to a map of methods and members
+  /// and their generalized types
   struct ClassBody {
-    std::unordered_map<std::string, types::TypePtr> members;
+    // Needs vector as the order is important
+    std::vector<std::pair<std::string, types::TypePtr>> members;
     std::unordered_map<std::string, std::vector<types::FuncTypePtr>> methods;
   };
+  std::unordered_map<std::string, ClassBody> classes;
+
   struct FuncRealization {
     std::string fullName;
     types::FuncTypePtr type;
     std::shared_ptr<FunctionStmt> ast;
     seq::ir::Func *handle;
+    std::string base;
   };
   struct ClassRealization {
     std::string fullName;
     types::ClassTypePtr type;
     std::vector<std::pair<std::string, types::ClassTypePtr>> args;
     seq::ir::types::Type *handle;
+    std::string base;
   };
   RealizationContext();
 
@@ -54,16 +62,10 @@ public:
   std::string getCanonicalName(const SrcInfo &info) const;
   /// Generate canonical name for a SrcInfo and original class/function name
   std::string generateCanonicalName(const SrcInfo &info,
-                                    const std::string &module,
                                     const std::string &name);
   int &getUnboundCount();
 
 public: /* Lookup */
-  /// List of class methods and members
-  /// Maps canonical class name to a map of methods and members
-  /// and their generalized types
-  std::unordered_map<std::string, ClassBody> classes;
-
 public:
   /// Getters and setters for the method/member/realization lookup tables
   ClassBody *findClass(const std::string &name);
@@ -102,12 +104,23 @@ public: /* Realizations */
                      std::unordered_map<std::string, ClassRealization>>
       classRealizations;
 
-  std::unordered_map<std::string, std::pair<types::TypePtr, std::string>>
-      realizations;
+  // Maps realizedName to canonicalName
+  std::unordered_map<std::string, std::string> realizationLookup;
+
+  // std::vector<std::set<std::pair<std::string>>>
+  // realizationCache; // add newly realized functions here; useful for jit
 
 public:
   std::vector<ClassRealization> getClassRealizations(const std::string &name);
   std::vector<FuncRealization> getFuncRealizations(const std::string &name);
+
+  std::unordered_map<std::string, types::TypePtr> globalNames;
+  std::unordered_set<std::string> variardicCache;
+
+  int generatedID;
+  SrcInfo getGeneratedPos() {
+    return {"<generated>", generatedID, generatedID++, 0, 0};
+  }
 };
 
 class TypeContext;
@@ -139,7 +152,7 @@ public:
 
 template <typename T>
 class Context : public std::enable_shared_from_this<Context<T>> {
-  typedef std::unordered_map<std::string, std::stack<std::shared_ptr<T>>> Map;
+  typedef std::unordered_map<std::string, std::deque<std::shared_ptr<T>>> Map;
 
 protected:
   Map map;
@@ -148,7 +161,7 @@ protected:
 
   std::shared_ptr<T> find(const std::string &name) const {
     auto it = map.find(name);
-    return it != map.end() ? it->second.top() : nullptr;
+    return it != map.end() ? it->second.front() : nullptr;
   }
 
 public:
@@ -157,15 +170,21 @@ public:
 
   void add(const std::string &name, std::shared_ptr<T> var) {
     assert(!name.empty());
-    // DBG("add {}", name);
-    map[name].push(var);
+    // LOG7("^^ ++ {}", name);
+    map[name].push_front(var);
     stack.front().push_back(name);
+  }
+  void addToplevel(const std::string &name, std::shared_ptr<T> var) {
+    assert(!name.empty());
+    map[name].push_back(var);
+    stack.back().push_back(name); // add to the latest "level"
   }
   void addBlock() { stack.push_front(std::vector<std::string>()); }
   void removeFromMap(const std::string &name) {
     auto i = map.find(name);
+    // LOG7("^^ -- {}", name);
     assert(!(i == map.end() || !i->second.size()));
-    i->second.pop();
+    i->second.pop_front();
     if (!i->second.size())
       map.erase(name);
   }
@@ -175,7 +194,6 @@ public:
     stack.pop_front();
   }
   void remove(const std::string &name) {
-    // DBG("remove {}", name);
     removeFromMap(name);
     for (auto &s : stack) {
       auto i = std::find(s.begin(), s.end(), name);
@@ -196,8 +214,10 @@ protected:
   std::string filename;
 
 public:
-  std::shared_ptr<RealizationContext> getRealizations() { return realizations; }
-  std::shared_ptr<ImportContext> getImports() { return imports; }
+  std::shared_ptr<RealizationContext> getRealizations() const {
+    return realizations;
+  }
+  std::shared_ptr<ImportContext> getImports() const { return imports; }
   std::string getFilename() const { return filename; }
   void setFilename(const std::string &f) { filename = f; }
 

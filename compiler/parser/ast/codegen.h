@@ -25,42 +25,45 @@
 namespace seq {
 namespace ast {
 
-
-
 struct CodegenResult {
-    enum {OP, RVALUE, LVALUE, PATTERN, NONE} tag;
-    std::shared_ptr<seq::ir::Operand> operandResult;
-    std::shared_ptr<seq::ir::Rvalue> rvalueResult;
-    std::shared_ptr<seq::ir::Lvalue> lvalueResult;
-    std::shared_ptr<seq::ir::Pattern> patternResult;
+  enum { OP, RVALUE, LVALUE, PATTERN, NONE } tag;
+  std::shared_ptr<seq::ir::Operand> operandResult;
+  std::shared_ptr<seq::ir::Rvalue> rvalueResult;
+  std::shared_ptr<seq::ir::Lvalue> lvalueResult;
+  std::shared_ptr<seq::ir::Pattern> patternResult;
 
-    CodegenResult() : tag(NONE), operandResult(nullptr), rvalueResult(nullptr), lvalueResult(nullptr), patternResult(
-            nullptr){};
-    explicit CodegenResult(std::shared_ptr<seq::ir::Operand> op) : tag(OP), operandResult(op), rvalueResult(nullptr), lvalueResult(nullptr), patternResult(
-            nullptr){};
-    explicit CodegenResult(std::shared_ptr<seq::ir::Rvalue> rval) : tag(RVALUE), operandResult(nullptr), rvalueResult(rval), lvalueResult(nullptr), patternResult(
-            nullptr){};
-    explicit CodegenResult(std::shared_ptr<seq::ir::Lvalue> lval) : tag(LVALUE), operandResult(nullptr), rvalueResult(nullptr), lvalueResult(lval), patternResult(
-            nullptr){};
-    explicit CodegenResult(std::shared_ptr<seq::ir::Pattern> pattern) : tag(PATTERN), operandResult(nullptr), rvalueResult(nullptr), lvalueResult(
-            nullptr), patternResult(pattern){};
+  CodegenResult()
+      : tag(NONE), operandResult(nullptr), rvalueResult(nullptr),
+        lvalueResult(nullptr), patternResult(nullptr){};
+  explicit CodegenResult(std::shared_ptr<seq::ir::Operand> op)
+      : tag(OP), operandResult(op), rvalueResult(nullptr),
+        lvalueResult(nullptr), patternResult(nullptr){};
+  explicit CodegenResult(std::shared_ptr<seq::ir::Rvalue> rval)
+      : tag(RVALUE), operandResult(nullptr), rvalueResult(rval),
+        lvalueResult(nullptr), patternResult(nullptr){};
+  explicit CodegenResult(std::shared_ptr<seq::ir::Lvalue> lval)
+      : tag(LVALUE), operandResult(nullptr), rvalueResult(nullptr),
+        lvalueResult(lval), patternResult(nullptr){};
+  explicit CodegenResult(std::shared_ptr<seq::ir::Pattern> pattern)
+      : tag(PATTERN), operandResult(nullptr), rvalueResult(nullptr),
+        lvalueResult(nullptr), patternResult(pattern){};
 
-    void addAttribute(std::string key, std::shared_ptr<seq::ir::Attribute> att) {
-        switch (tag) {
-            case OP:
-                operandResult->setAttribute(key, att);
-                break;
-            case RVALUE:
-                rvalueResult->setAttribute(key, att);
-                break;
-            case LVALUE:
-                lvalueResult->setAttribute(key, att);
-                break;
-            case PATTERN:
-                patternResult->setAttribute(key, att);
-                break;
-        }
+  void addAttribute(std::string key, std::shared_ptr<seq::ir::Attribute> att) {
+    switch (tag) {
+    case OP:
+      operandResult->setAttribute(key, att);
+      break;
+    case RVALUE:
+      rvalueResult->setAttribute(key, att);
+      break;
+    case LVALUE:
+      lvalueResult->setAttribute(key, att);
+      break;
+    case PATTERN:
+      patternResult->setAttribute(key, att);
+      break;
     }
+  }
 };
 
 class CodegenVisitor : public ASTVisitor, public SrcObject {
@@ -161,13 +164,12 @@ private:
     throw exc::ParserException(fmt::format(
         "INTERNAL: {}", fmt::format(format, args...), getSrcInfo()));
   }
-  template <typename A, typename B, typename... Ts>
-  auto Nas (Ts &&... args) {
-      return std::static_pointer_cast<B>(std::make_shared<A>(std::forward<Ts>(args)...));
+  template <typename A, typename B, typename... Ts> auto Nas(Ts &&... args) {
+    return std::static_pointer_cast<B>(
+        std::make_shared<A>(std::forward<Ts>(args)...));
   }
 
-  template <typename A, typename... Ts>
-  auto Ns (Ts &&... args) {
+  template <typename A, typename... Ts> auto Ns(Ts &&... args) {
     return std::make_shared<A>(std::forward<Ts>(args)...);
   }
 };

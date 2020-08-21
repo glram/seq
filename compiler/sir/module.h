@@ -19,18 +19,18 @@ private:
   std::shared_ptr<Func> baseFunc;
 
 public:
-  IRModule(std::string name);
-  IRModule(const IRModule &other);
+  explicit IRModule(std::string name);
 
-  std::vector<std::shared_ptr<Var>> getGlobals();
-  void addGlobal(std::shared_ptr<Var> var);
+  std::vector<std::shared_ptr<Var>> getGlobals() { return globals; }
+  void addGlobal(std::shared_ptr<Var> var) { globals.push_back(var); }
 
   std::shared_ptr<Func> getBase() const { return baseFunc; }
 
-  std::string getName();
+  std::string getName() const { return name; }
 
   std::string referenceString() const override { return "module"; };
   std::string textRepresentation() const override;
 };
+
 } // namespace ir
 } // namespace seq

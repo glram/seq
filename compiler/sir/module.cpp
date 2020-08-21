@@ -1,37 +1,29 @@
-#include <algorithm>
-#include <iterator>
-#include <sstream>
+#include "util/fmt/format.h"
 
+#include "bblock.h"
+#include "func.h"
 #include "module.h"
 #include "var.h"
-#include "func.h"
-#include "bblock.h"
 
-using namespace seq;
-using namespace ir;
+namespace seq {
+namespace ir {
 
-IRModule::IRModule(std::string name) : name{name}, globals{}, baseFunc{std::make_shared<Func>("base", std::vector<std::string>(), types::kNoArgVoidFuncType)} {
-    baseFunc->addBlock(std::make_shared<BasicBlock>());
+IRModule::IRModule(std::string name)
+    : name(std::move(name)),
+      baseFunc(std::make_shared<Func>("base", std::vector<std::string>(),
+                                      types::kNoArgVoidFuncType)) {
+  baseFunc->addBlock(std::make_shared<BasicBlock>());
 }
-
-IRModule::IRModule(const IRModule &other) : name{name}, globals{}, baseFunc{other.baseFunc} {
-  std::copy(other.globals.begin(), other.globals.end(),
-            std::back_inserter(globals));
-}
-
-std::vector<std::shared_ptr<Var>> IRModule::getGlobals() { return globals; }
-
-void IRModule::addGlobal(std::shared_ptr<Var> var) { globals.push_back(var); }
-
-std::string IRModule::getName() { return name; }
 
 std::string IRModule::textRepresentation() const {
-  std::stringstream stream;
-
-  stream << "module " << name << "{\n";
+  fmt::memory_buffer buf;
+  fmt::format_to(buf, FMT_STRING("module {}{{\n"), name);
   for (const auto &global : globals) {
-    stream << global->textRepresentation() << "\n";
+    fmt::format_to(buf, FMT_STRING("{}\n"), global->textRepresentation());
   }
-  stream << "}; " << attributeString();
-  return stream.str();
+  fmt::format_to(buf, FMT_STRING("}}; {}"), attributeString());
+  return std::string(buf.data(), buf.size());
 }
+
+} // namespace ir
+} // namespace seq

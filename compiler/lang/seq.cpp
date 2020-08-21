@@ -1,6 +1,7 @@
 #include "lang/seq.h"
 #include "parser/common.h"
 #include <cassert>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <system_error>
@@ -15,7 +16,7 @@ using namespace llvm::orc;
 #include "llvm/CodeGen/CommandFlags.def"
 #endif
 
-config::Config::Config() : context(), debug(false) {}
+config::Config::Config() : context(), debug(false), profile(false) {}
 
 config::Config &seq::config::config() {
   static Config config;
@@ -30,8 +31,7 @@ SeqModule::SeqModule()
   InitializeNativeTargetAsmPrinter();
 
   module = new Module("seq", config::config().context);
-  module->setTargetTriple(
-      EngineBuilder().selectTarget()->getTargetTriple().str());
+  module->setTargetTriple(EngineBuilder().selectTarget()->getTargetTriple().str());
   module->setDataLayout(EngineBuilder().selectTarget()->createDataLayout());
   argVar->setGlobal();
 }
@@ -40,11 +40,7 @@ Block *SeqModule::getBlock() { return scope; }
 
 Var *SeqModule::getArgVar() { return argVar; }
 
-void SeqModule::setFileName(std::string file) {
-  module->setSourceFileName(file);
-}
-
-void SeqModule::resolveTypes() { scope->resolveTypes(); }
+void SeqModule::setFileName(std::string file) { module->setSourceFileName(file); }
 
 static void invokeMain(Function *main, BasicBlock *&block) {
   LLVMContext &context = block->getContext();
@@ -97,8 +93,7 @@ Function *SeqModule::makeCanonicalMainFunc(Function *realMain) {
 
   builder.SetInsertPoint(loop);
   PHINode *control = builder.CreatePHI(LLVM_I32(), 2, "i");
-  Value *next =
-      builder.CreateAdd(control, ConstantInt::get(LLVM_I32(), 1), "next");
+  Value *next = builder.CreateAdd(control, ConstantInt::get(LLVM_I32(), 1), "next");
   Value *cond = builder.CreateICmpSLT(control, argc);
 
   BasicBlock *body = BasicBlock::Create(context, "body", func);
@@ -111,8 +106,8 @@ Function *SeqModule::makeCanonicalMainFunc(Function *realMain) {
                                             seqIntLLVM(context));
   Value *str = types::Str->make(arg, argLen, body);
   Value *idx = builder.CreateZExt(control, types::Int->getLLVMType(context));
-  arrType->callMagic("__setitem__", {types::Int, types::Str}, arr, {idx, str},
-                     body, nullptr);
+  arrType->callMagic("__setitem__", {types::Int, types::Str}, arr, {idx, str}, body,
+                     nullptr);
   builder.CreateBr(loop);
 
   control->addIncoming(ConstantInt::get(LLVM_I32(), 0), entry);
@@ -139,40 +134,36 @@ Function *SeqModule::makeCanonicalMainFunc(Function *realMain) {
                           getKmpc_MicroPointerTy(module->getContext())};
     FunctionType *forkFnTy =
         FunctionType::get(Type::getVoidTy(context), forkParams, true);
-    auto *forkFunc = cast<Function>(
-        module->getOrInsertFunction("__kmpc_fork_call", forkFnTy));
+    auto *forkFunc =
+        cast<Function>(module->getOrInsertFunction("__kmpc_fork_call", forkFnTy));
 
     Type *singleParams[] = {IdentTyPtrTy, LLVM_I32()};
-    FunctionType *singleFnTy =
-        FunctionType::get(LLVM_I32(), singleParams, false);
-    auto *singleFunc = cast<Function>(
-        module->getOrInsertFunction("__kmpc_single", singleFnTy));
+    FunctionType *singleFnTy = FunctionType::get(LLVM_I32(), singleParams, false);
+    auto *singleFunc =
+        cast<Function>(module->getOrInsertFunction("__kmpc_single", singleFnTy));
 
     Type *singleEndParams[] = {IdentTyPtrTy, LLVM_I32()};
     FunctionType *singleEndFnTy =
         FunctionType::get(Type::getVoidTy(context), singleEndParams, false);
-    auto *singleEndFunc = cast<Function>(
-        module->getOrInsertFunction("__kmpc_end_single", singleEndFnTy));
+    auto *singleEndFunc =
+        cast<Function>(module->getOrInsertFunction("__kmpc_end_single", singleEndFnTy));
 
     // make the proxy main function that will be called by __kmpc_fork_call:
     std::vector<Type *> proxyArgs = {PointerType::get(LLVM_I32(), 0),
                                      PointerType::get(LLVM_I32(), 0)};
-    auto *proxyMainTy =
-        FunctionType::get(Type::getVoidTy(context), proxyArgs, false);
-    auto *proxyMain = cast<Function>(
-        module->getOrInsertFunction("seq.proxy_main", proxyMainTy));
+    auto *proxyMainTy = FunctionType::get(Type::getVoidTy(context), proxyArgs, false);
+    auto *proxyMain =
+        cast<Function>(module->getOrInsertFunction("seq.proxy_main", proxyMainTy));
     proxyMain->setLinkage(GlobalValue::PrivateLinkage);
     proxyMain->setPersonalityFn(makePersonalityFunc(module));
-    BasicBlock *proxyBlockEntry =
-        BasicBlock::Create(context, "entry", proxyMain);
+    BasicBlock *proxyBlockEntry = BasicBlock::Create(context, "entry", proxyMain);
     BasicBlock *proxyBlockMain = BasicBlock::Create(context, "main", proxyMain);
     BasicBlock *proxyBlockExit = BasicBlock::Create(context, "exit", proxyMain);
     builder.SetInsertPoint(proxyBlockEntry);
 
     Value *tid = proxyMain->arg_begin();
     tid = builder.CreateLoad(tid);
-    Value *singleCall =
-        builder.CreateCall(singleFunc, {DefaultOpenMPLocation, tid});
+    Value *singleCall = builder.CreateCall(singleFunc, {DefaultOpenMPLocation, tid});
     Value *shouldExit = builder.CreateICmpEQ(singleCall, builder.getInt32(0));
     builder.CreateCondBr(shouldExit, proxyBlockExit, proxyBlockMain);
 
@@ -211,12 +202,11 @@ void SeqModule::codegen(Module *module) {
   if (func)
     return;
 
-  resolveTypes();
   LLVMContext &context = module->getContext();
   this->module = module;
 
-  func = cast<Function>(
-      module->getOrInsertFunction("seq.main", Type::getVoidTy(context)));
+  func =
+      cast<Function>(module->getOrInsertFunction("seq.main", Type::getVoidTy(context)));
 
   func->setLinkage(GlobalValue::PrivateLinkage);
   func->setPersonalityFn(makePersonalityFunc(module));
@@ -225,8 +215,8 @@ void SeqModule::codegen(Module *module) {
   preambleBlock = BasicBlock::Create(context, "preamble", func);
   IRBuilder<> builder(preambleBlock);
 
-  initFunc = cast<Function>(
-      module->getOrInsertFunction("seq_init", Type::getVoidTy(context)));
+  initFunc =
+      cast<Function>(module->getOrInsertFunction("seq_init", Type::getVoidTy(context)));
   initFunc->setCallingConv(CallingConv::C);
 
   strlenFunc = cast<Function>(module->getOrInsertFunction(
@@ -249,7 +239,10 @@ void SeqModule::codegen(Module *module) {
 
 static void verifyModuleFailFast(Module &module) {
   if (verifyModule(module, &errs())) {
-    errs() << module;
+    auto fo = fopen("llvm.dump", "w");
+    raw_fd_ostream fout(fileno(fo), true);
+    fout << module;
+    fout.close();
     assert(0);
   }
 }
@@ -265,12 +258,14 @@ static TargetMachine *getTargetMachine(Triple triple, StringRef cpuStr,
   if (!target)
     return nullptr;
 
-  return target->createTargetMachine(triple.getTriple(), cpuStr, featuresStr,
-                                     options, getRelocModel(), getCodeModel(),
+  return target->createTargetMachine(triple.getTriple(), cpuStr, featuresStr, options,
+                                     getRelocModel(), getCodeModel(),
                                      CodeGenOpt::Aggressive);
 }
 
 static void applyDebugTransformations(Module *module) {
+  if (!config::config().debug && !config::config().profile)
+    return;
   // remove tail calls and fix linkage for stack traces
   for (Function &f : *module) {
     f.setLinkage(GlobalValue::ExternalLinkage);
@@ -295,8 +290,8 @@ static void applyDebugTransformations(Module *module) {
 static void applyGCTransformations(Module *module) {
   LLVMContext &context = module->getContext();
   auto *addRoots = cast<Function>(module->getOrInsertFunction(
-      "seq_gc_add_roots", Type::getVoidTy(context),
-      IntegerType::getInt8PtrTy(context), IntegerType::getInt8PtrTy(context)));
+      "seq_gc_add_roots", Type::getVoidTy(context), IntegerType::getInt8PtrTy(context),
+      IntegerType::getInt8PtrTy(context)));
   addRoots->setDoesNotThrow();
 
   // insert add_roots calls where needed
@@ -325,8 +320,7 @@ static void applyGCTransformations(Module *module) {
 
 static void optimizeModule(Module *module) {
   const bool debug = config::config().debug;
-  if (debug)
-    applyDebugTransformations(module);
+  applyDebugTransformations(module);
   std::unique_ptr<legacy::PassManager> pm(new legacy::PassManager());
   std::unique_ptr<legacy::FunctionPassManager> fpm(
       new legacy::FunctionPassManager(module));
@@ -388,8 +382,7 @@ static void optimizeModule(Module *module) {
     fpm->run(f);
   fpm->doFinalization();
   pm->run(*module);
-  if (debug)
-    applyDebugTransformations(module);
+  applyDebugTransformations(module);
 }
 
 void SeqModule::optimize() { optimizeModule(module); }
@@ -440,9 +433,8 @@ private:
   /// Vector of (start, end) address pairs registered with GC.
   std::vector<std::pair<void *, void *>> roots;
 
-  uint8_t *allocateDataSection(uintptr_t size, unsigned alignment,
-                               unsigned sectionID, StringRef sectionName,
-                               bool isReadOnly) override {
+  uint8_t *allocateDataSection(uintptr_t size, unsigned alignment, unsigned sectionID,
+                               StringRef sectionName, bool isReadOnly) override {
     uint8_t *result = SectionMemoryManager::allocateDataSection(
         size, alignment, sectionID, sectionName, isReadOnly);
     void *start = result;
@@ -496,8 +488,7 @@ void SeqModule::execute(const std::vector<std::string> &args,
 
   if (debug) {
     for (const std::string &name : functionNames) {
-      void *addr =
-          eng->getPointerToNamedFunction(name, /*AbortOnFailure=*/false);
+      void *addr = eng->getPointerToNamedFunction(name, /*AbortOnFailure=*/false);
       if (addr)
         seq_add_symbol(addr, name);
     }
@@ -528,14 +519,11 @@ static std::shared_ptr<Module> optimizeModule(std::shared_ptr<Module> module) {
 }
 
 SeqJIT::SeqJIT()
-    : target(EngineBuilder().selectTarget()),
-      layout(target->createDataLayout()),
+    : target(EngineBuilder().selectTarget()), layout(target->createDataLayout()),
       objLayer([]() { return std::make_shared<BoehmGCMemoryManager>(); }),
       comLayer(objLayer, SimpleCompiler(*target)),
       optLayer(comLayer,
-               [](std::shared_ptr<Module> M) {
-                 return optimizeModule(std::move(M));
-               }),
+               [](std::shared_ptr<Module> M) { return optimizeModule(std::move(M)); }),
       globals(), inputNum(0) {
   sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 }
@@ -666,12 +654,12 @@ void SeqJIT::delVar(Var *var) {
 #endif
 
 void seq::compilationMessage(const std::string &header, const std::string &msg,
-                        const std::string &file, int line, int col) {
+                             const std::string &file, int line, int col) {
   assert(!(file.empty() && (line > 0 || col > 0)));
   assert(!(col > 0 && line <= 0));
   std::cerr << "\033[1m";
   if (!file.empty())
-    std::cerr << file.substr(file.rfind('/') + 1);
+    std::cerr << file; //.substr(file.rfind('/') + 1);
   if (line > 0)
     std::cerr << ":" << line;
   if (col > 0)
@@ -681,13 +669,66 @@ void seq::compilationMessage(const std::string &header, const std::string &msg,
   std::cerr << header << "\033[1m " << msg << "\033[0m" << std::endl;
 }
 
-void seq::compilationError(const std::string &msg, const std::string &file,
-                           int line, int col) {
+void seq::compilationError(const std::string &msg, const std::string &file, int line,
+                           int col) {
   compilationMessage("\033[1;31merror:\033[0m", msg, file, line, col);
   exit(EXIT_FAILURE);
 }
 
-void seq::compilationWarning(const std::string &msg, const std::string &file,
-                             int line, int col) {
+void seq::compilationWarning(const std::string &msg, const std::string &file, int line,
+                             int col) {
   compilationMessage("\033[1;33mwarning:\033[0m", msg, file, line, col);
+}
+
+seq_int_t seq::translateIndex(seq_int_t idx, seq_int_t len, bool clamp) {
+  if (idx < 0)
+    idx += len;
+
+  if (clamp) {
+    if (idx < 0)
+      idx = 0;
+    if (idx > len)
+      idx = len;
+  } else if (idx < 0 || idx >= len) {
+    throw exc::SeqException("tuple index " + std::to_string(idx) +
+                            " out of bounds (len: " + std::to_string(len) + ")");
+  }
+
+  return idx;
+}
+
+// adapted from Python's PySlice_AdjustIndices
+seq_int_t seq::sliceAdjustIndices(seq_int_t length, seq_int_t *start, seq_int_t *stop,
+                                  seq_int_t step) {
+  if (step == 0)
+    throw exc::SeqException("slice step cannot be 0");
+
+  if (*start < 0) {
+    *start += length;
+    if (*start < 0) {
+      *start = (step < 0) ? -1 : 0;
+    }
+  } else if (*start >= length) {
+    *start = (step < 0) ? length - 1 : length;
+  }
+
+  if (*stop < 0) {
+    *stop += length;
+    if (*stop < 0) {
+      *stop = (step < 0) ? -1 : 0;
+    }
+  } else if (*stop >= length) {
+    *stop = (step < 0) ? length - 1 : length;
+  }
+
+  if (step < 0) {
+    if (*stop < *start) {
+      return (*start - *stop - 1) / (-step) + 1;
+    }
+  } else {
+    if (*start < *stop) {
+      return (*stop - *start - 1) / step + 1;
+    }
+  }
+  return 0;
 }

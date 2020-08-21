@@ -28,7 +28,7 @@ namespace ast {
 
 using namespace types;
 
-RealizationContext::RealizationContext() : unboundCount(0) {}
+RealizationContext::RealizationContext() : unboundCount(0), generatedID(0) {}
 
 string RealizationContext::getCanonicalName(const SrcInfo &info) const {
   auto it = canonicalNames.find(info);
@@ -39,18 +39,16 @@ string RealizationContext::getCanonicalName(const SrcInfo &info) const {
 }
 
 string RealizationContext::generateCanonicalName(const SrcInfo &info,
-                                                 const string &module,
                                                  const string &name) {
   auto it = canonicalNames.find(info);
-  // DBG("---- QUE {}.{}.{}.{} ", info.file, info.line, info.col, info.id);
   if (it != canonicalNames.end())
     return it->second;
 
   auto &num = moduleNames[name];
-  auto newName = (module == "" ? "" : module + ".");
-  newName += format("{}{}", name, num ? format(".{}", num) : "");
+  string newName = format("{}{}", name, num ? format(".{}", num) : "");
   num++;
-  return canonicalNames[info] = (newName[0] == '#' ? newName : "#" + newName);
+  canonicalNames[info] = (newName[0] == '.' ? newName : "." + newName);
+  return canonicalNames[info];
 }
 
 int &RealizationContext::getUnboundCount() { return unboundCount; }
@@ -78,9 +76,9 @@ TypePtr RealizationContext::findMember(const string &name,
                                        const string &member) const {
   auto m = classes.find(name);
   if (m != classes.end()) {
-    auto t = m->second.members.find(member);
-    if (t != m->second.members.end())
-      return t->second;
+    for (auto &mm : m->second.members)
+      if (mm.first == member)
+        return mm.second;
   }
   return nullptr;
 }

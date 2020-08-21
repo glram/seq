@@ -22,12 +22,11 @@ static void versMsg(raw_ostream &out) {
 
 int main(int argc, char **argv) {
   opt<string> input(Positional, desc("<input file>"), init("-"));
-  opt<bool> debug("d", desc("Compile in debug mode (disable optimizations; "
-                            "print LLVM IR to stderr)"));
+  opt<bool> debug("d", desc("Compile in debug mode"));
+  opt<bool> profile("prof", desc("Profile LLVM IR using XRay"));
   opt<bool> docstr("docstr", desc("Generate docstrings"));
   opt<string> output(
-      "o",
-      desc("Write LLVM bitcode to specified file instead of running with JIT"));
+      "o", desc("Write LLVM bitcode to specified file instead of running with JIT"));
   cl::list<string> libs("L", desc("Load and link the specified library"));
   cl::list<string> args(ConsumeAfter, desc("<program arguments>..."));
 
@@ -36,12 +35,15 @@ int main(int argc, char **argv) {
   vector<string> libsVec(libs);
   vector<string> argsVec(args);
 
+  config::config().debug = debug.getValue();
+  config::config().profile = profile.getValue();
+
   if (docstr.getValue()) {
     generateDocstr(input);
     return EXIT_SUCCESS;
   }
 
-  SeqModule *s = parse(argv[0], input.c_str(), false, false);
+  SeqModule *s = parse(argv[0], input.c_str(), "", false, false);
   if (output.getValue().empty()) {
     argsVec.insert(argsVec.begin(), input);
     execute(s, argsVec, libsVec, debug.getValue());

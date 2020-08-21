@@ -19,7 +19,6 @@
 #include "types/array.h"
 #include "types/base.h"
 #include "types/func.h"
-#include "types/generic.h"
 #include "types/num.h"
 #include "types/optional.h"
 #include "types/ptr.h"
@@ -40,11 +39,25 @@
 #include "util/fmt/format.h"
 #include "util/fmt/ostream.h"
 
-extern int __level__;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
-#define DBG(c, ...)                                                            \
-  fmt::print("{}" c "\n", std::string(2 * __level__, ' '), ##__VA_ARGS__)
+
+// Level 7
+extern int __dbg_level__;
+extern int __level__;
+#define DBG(l, c, ...)                                                                 \
+  {                                                                                    \
+    if (__dbg_level__ >= l)                                                            \
+      fmt::print("{}" c "\n", std::string(2 * __level__, ' '), ##__VA_ARGS__);         \
+  }
+#define LOG(c, ...) DBG(0, c, ##__VA_ARGS__)
+#define LOG1(c, ...) DBG(1, c, ##__VA_ARGS__)
+#define LOG2(c, ...) DBG(2, c, ##__VA_ARGS__)
+#define LOG3(c, ...) DBG(3, c, ##__VA_ARGS__)
+#define LOG4(c, ...) DBG(4, c, ##__VA_ARGS__)
+#define LOG7(c, ...) DBG(7, c, ##__VA_ARGS__)
+#define LOG8(c, ...) DBG(8, c, ##__VA_ARGS__)
+#define LOG9(c, ...) DBG(9, c, ##__VA_ARGS__)
 #define CAST(s, T) dynamic_cast<T *>(s.get())
 #pragma clang diagnostic pop
 
@@ -53,6 +66,7 @@ namespace config {
 struct Config {
   llvm::LLVMContext context;
   bool debug;
+  bool profile;
 
   Config();
 };
@@ -70,8 +84,6 @@ static FloatType *Float = FloatType::get();
 static BoolType *Bool = BoolType::get();
 static ByteType *Byte = ByteType::get();
 static StrType *Str = StrType::get();
-static ArrayType *Array = ArrayType::get();
-static GenType *Gen = GenType::get();
 } // namespace types
 
 /**
@@ -93,7 +105,6 @@ public:
   Var *getArgVar();
   void setFileName(std::string file);
 
-  void resolveTypes() override;
   void codegen(llvm::Module *module) override;
   void verify();
   void optimize();
@@ -109,11 +120,10 @@ private:
   std::unique_ptr<llvm::TargetMachine> target;
   const llvm::DataLayout layout;
   llvm::orc::RTDyldObjectLinkingLayer objLayer;
-  llvm::orc::IRCompileLayer<decltype(objLayer), llvm::orc::SimpleCompiler>
-      comLayer;
+  llvm::orc::IRCompileLayer<decltype(objLayer), llvm::orc::SimpleCompiler> comLayer;
 
-  using OptimizeFunction = std::function<std::shared_ptr<llvm::Module>(
-      std::shared_ptr<llvm::Module>)>;
+  using OptimizeFunction =
+      std::function<std::shared_ptr<llvm::Module>(std::shared_ptr<llvm::Module>)>;
 
   llvm::orc::IRTransformLayer<decltype(comLayer), OptimizeFunction> optLayer;
 
@@ -147,4 +157,8 @@ void compilationError(const std::string &msg, const std::string &file = "",
 void compilationWarning(const std::string &msg, const std::string &file = "",
                         int line = 0, int col = 0);
 
+seq_int_t sliceAdjustIndices(seq_int_t length, seq_int_t *start, seq_int_t *stop,
+                             seq_int_t step);
+
+seq_int_t translateIndex(seq_int_t idx, seq_int_t len, bool clamp = false);
 } // namespace seq

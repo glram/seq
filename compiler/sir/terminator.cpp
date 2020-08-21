@@ -1,103 +1,57 @@
-#include <sstream>
+#include "util/fmt/format.h"
 
 #include "bblock.h"
 #include "operand.h"
 #include "terminator.h"
 #include "var.h"
 
-using namespace seq;
-using namespace ir;
-
-JumpTerminator::JumpTerminator(std::weak_ptr<BasicBlock> dst) : dst{dst} {}
-
-std::weak_ptr<BasicBlock> JumpTerminator::getDst() const { return dst; }
+namespace seq {
+namespace ir {
 
 std::string JumpTerminator::textRepresentation() const {
-  std::stringstream stream;
-  auto lockedDst = dst.lock();
-
-  stream << "jmp " << lockedDst->referenceString() << "; " << attributeString();
-  return stream.str();
+  return fmt::format(FMT_STRING("jmp {}; {}"), dst.lock()->referenceString(),
+                     attributeString());
 }
 
-CondJumpTerminator::CondJumpTerminator(std::weak_ptr<BasicBlock> tDst,
-                                       std::weak_ptr<BasicBlock> fDst,
-                                       std::shared_ptr<Operand> cond)
-    : tDst{tDst}, fDst{fDst}, cond{cond} {}
-
-std::shared_ptr<Operand> CondJumpTerminator::getCond() const { return cond; }
-
-std::weak_ptr<BasicBlock> CondJumpTerminator::getTDst() const { return tDst; }
-
-std::weak_ptr<BasicBlock> CondJumpTerminator::getFDst() const { return fDst; }
-
 std::string CondJumpTerminator::textRepresentation() const {
-  std::stringstream stream;
-  auto lockedTDst = tDst.lock();
-  auto lockedFDst = fDst.lock();
-
-  stream << "condjmp (" << cond->textRepresentation() << ") "
-         << lockedTDst->referenceString() << " "
-         << lockedFDst->referenceString() << "; " << attributeString();
-
-  return stream.str();
+  return fmt::format(FMT_STRING("condjump ({}) {} {}; {}"),
+                     cond->textRepresentation(), tDst.lock()->referenceString(),
+                     fDst.lock()->referenceString(), attributeString());
 }
 
 std::string ReturnTerminator::textRepresentation() const {
-  std::stringstream stream;
+  fmt::memory_buffer buf;
 
-  stream << "return";
+  fmt::format_to(buf, FMT_STRING("return"));
   if (operand) {
-    stream << " " << operand->textRepresentation();
+    fmt::format_to(buf, FMT_STRING(" {}"), operand->textRepresentation());
   }
-  stream << "; " << attributeString();
-  return stream.str();
+  fmt::format_to(buf, FMT_STRING("; {}"), attributeString());
+  return std::string(buf.data(), buf.size());
 }
-
-ReturnTerminator::ReturnTerminator(std::shared_ptr<Operand> operand)
-    : operand{operand} {}
-
-std::shared_ptr<Operand> ReturnTerminator::getOperand() const {
-  return operand;
-}
-
-YieldTerminator::YieldTerminator(std::weak_ptr<BasicBlock> dst,
-                                 std::shared_ptr<Operand> result,
-                                 std::weak_ptr<Var> inVar)
-    : dst{dst}, result{result}, inVar{inVar} {}
-
-std::weak_ptr<BasicBlock> YieldTerminator::getDst() const { return dst; }
-
-std::weak_ptr<Var> YieldTerminator::getInVar() const { return inVar; }
 
 std::string YieldTerminator::textRepresentation() const {
-  std::stringstream stream;
-  auto lockedDst = dst.lock();
-  auto lockedInVar = inVar.lock();
+  fmt::memory_buffer buf;
 
-  stream << "yield";
-  if (result) {
-    stream << " " << result->textRepresentation();
+  fmt::format_to(buf, FMT_STRING("yield"));
+  if (res) {
+    fmt::format_to(buf, FMT_STRING(" {}"), res->textRepresentation());
   }
-  if (lockedInVar) {
-    stream << "-> " << lockedInVar->referenceString();
+  if (inVar.lock()) {
+    fmt::format_to(buf, FMT_STRING(" -> {}"),
+                   inVar.lock()->textRepresentation());
   }
 
-  stream << " " << lockedDst->referenceString() << "; " << attributeString();
+  fmt::format_to(buf, FMT_STRING("{}; {}"), dst.lock()->referenceString(),
+                 attributeString());
 
-  return stream.str();
+  return std::string(buf.data(), buf.size());
 }
-
-std::shared_ptr<Operand> YieldTerminator::getResult() const { return result; }
-
-ThrowTerminator::ThrowTerminator(std::shared_ptr<Operand> operand)
-    : operand{operand} {}
-
-std::shared_ptr<Operand> ThrowTerminator::getOperand() const { return operand; }
 
 std::string ThrowTerminator::textRepresentation() const {
-  std::stringstream stream;
-  stream << "throw (" << operand->textRepresentation() << "); "
-         << attributeString();
-  return stream.str();
+  return fmt::format(FMT_STRING("throw ({}); {}"),
+                     operand->textRepresentation(), attributeString());
 }
+
+} // namespace ir
+} // namespace seq
