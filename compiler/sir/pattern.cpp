@@ -7,19 +7,16 @@
 namespace seq {
 namespace ir {
 
-std::string Pattern::textRepresentation() const { return ""; }
-
 WildcardPattern::WildcardPattern(std::shared_ptr<types::Type> type)
-    : Pattern(type), var(std::make_shared<Var>(type)) {}
+    : var(std::make_shared<Var>(type)) {}
 
 WildcardPattern::WildcardPattern()
-    : Pattern(types::kAnyType), var(std::make_shared<Var>(types::kAnyType)) {}
+    : var(std::make_shared<Var>(types::kAnyType)) {}
 
 std::string WildcardPattern::textRepresentation() const { return "_"; }
 
 BoundPattern::BoundPattern(std::shared_ptr<Pattern> p)
-    : Pattern(p->getType()), var(std::make_shared<Var>(p->getType())),
-      pattern(p) {}
+    : var(std::make_shared<Var>(types::kAnyType)), pattern(p) {}
 
 std::string BoundPattern::textRepresentation() const {
   return fmt::format(FMT_STRING("(({}->{})"), pattern->textRepresentation(),
@@ -38,6 +35,10 @@ std::string BoolPattern::textRepresentation() const {
 
 std::string StrPattern::textRepresentation() const {
   return fmt::format(FMT_STRING("'{}'"), value);
+}
+
+std::string SeqPattern::textRepresentation() const {
+  return fmt::format(FMT_STRING("s'{}'"), value);
 }
 
 std::string RecordPattern::textRepresentation() const {

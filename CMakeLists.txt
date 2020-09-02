@@ -118,6 +118,7 @@ file(GLOB SEQ_HPPFILES compiler/lang/*.h
                        compiler/sir/types/*.h
                        compiler/parser/*.h
                        compiler/parser/ast/*.h
+                       compiler/parser/ast/types/*.h
                        compiler/parser/ast/transform/*.h
                        compiler/parser/ast/codegen/*.h
                        compiler/parser/ast/format/*.h
@@ -129,6 +130,7 @@ file(GLOB SEQ_CPPFILES compiler/lang/*.cpp
                        compiler/types/*.cpp
                        compiler/parser/*.cpp
                        compiler/parser/ast/*.cpp
+                       compiler/parser/ast/types/*.cpp
                        compiler/parser/ast/transform/*.cpp
                        compiler/parser/ast/codegen/*.cpp
                        compiler/parser/ast/format/*.cpp

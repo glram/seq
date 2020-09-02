@@ -18,6 +18,18 @@ Func::Func(std::string name, std::vector<std::string> argNames,
   for (int i = 0; i < argTypes.size(); i++) {
     argVars.push_back(std::make_shared<Var>(argNames[i], argTypes[i]));
   }
+  blocks.push_back(std::make_shared<BasicBlock>());
+}
+
+void Func::setArgNames(std::vector<std::string> names) { argNames = names; }
+
+void Func::setType(std::shared_ptr<types::Type> type) {
+  Var::setType(type);
+  argVars.clear();
+  auto argTypes = type->getArgTypes();
+  for (int i = 0; i < argTypes.size(); i++) {
+    argVars.push_back(std::make_shared<Var>(argNames[i], argTypes[i]));
+  }
 }
 
 std::shared_ptr<Var> Func::getArgVar(const std::string &name) {

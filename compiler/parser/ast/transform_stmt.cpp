@@ -196,12 +196,15 @@ void TransformVisitor::visit(const ForStmt *stmt) {
     }
   }
 
+  auto nextCall = N<CallExpr>(N<DotExpr>(iter, "next"));
+  auto doneCall = N<CallExpr>(N<DotExpr>(iter, "done"));
+
   ctx->addBlock();
   if (auto i = CAST(stmt->var, IdExpr)) {
     string varName = i->value;
     ctx->addVar(varName, varType);
-    resultStmt =
-        N<ForStmt>(transform(stmt->var), move(iter), transform(stmt->suite));
+    resultStmt = N<ForStmt>(transform(stmt->var), transform(nextCall),
+                            transform(doneCall), transform(stmt->suite));
   } else {
     string varName = getTemporaryVar("for");
     ctx->addVar(varName, varType);
@@ -211,8 +214,9 @@ void TransformVisitor::visit(const ForStmt *stmt) {
                                   false,
                                   /* force */ true));
     stmts.push_back(stmt->suite->clone());
-    resultStmt = N<ForStmt>(var->clone(), move(iter),
-                            transform(N<SuiteStmt>(move(stmts))));
+    resultStmt =
+        N<ForStmt>(var->clone(), transform(nextCall), transform(doneCall),
+                   transform(N<SuiteStmt>(move(stmts))));
   }
   ctx->popBlock();
 }
@@ -854,7 +858,7 @@ void TransformVisitor::visit(const AssignEqStmt *stmt) {
 void TransformVisitor::visit(const YieldFromStmt *stmt) {
   auto var = getTemporaryVar("yield");
   resultStmt = transform(N<ForStmt>(N<IdExpr>(var), stmt->expr->clone(),
-                                    N<YieldStmt>(N<IdExpr>(var))));
+                                    nullptr, N<YieldStmt>(N<IdExpr>(var))));
 }
 
 // Transformation

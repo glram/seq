@@ -6,20 +6,15 @@
 namespace seq {
 namespace ir {
 
-VarOperand::VarOperand(std::weak_ptr<Var> var)
-    : Operand(var.lock()->getType()), var(var) {}
+VarOperand::VarOperand(std::weak_ptr<Var> var) : var(var) {}
+
+std::shared_ptr<types::Type> VarOperand::getType() {
+  return var.lock()->getType();
+}
 
 std::string VarOperand::textRepresentation() const {
   return var.lock()->referenceString();
 };
-
-VarMemberOperand::VarMemberOperand(std::weak_ptr<Var> var, std::string field)
-    : Operand(var.lock()->getType()->getMemberType(field).lock()), var(var),
-      field(field) {}
-
-std::string VarMemberOperand::textRepresentation() const {
-  return fmt::format(FMT_STRING("{}.{}"), var.lock()->referenceString(), field);
-}
 
 std::string LiteralOperand::textRepresentation() const {
   switch (literalType) {

@@ -2,6 +2,7 @@
 
 #include "bblock.h"
 #include "trycatch.h"
+#include "var.h"
 
 namespace seq {
 namespace ir {
@@ -34,6 +35,13 @@ std::string TryCatch::textRepresentation() const {
                    finally->referenceString(), attributeString());
 
   return std::string(buf.data(), buf.size());
+}
+void TryCatch::addCatch(std::shared_ptr<types::Type> catchType,
+                        std::string name, std::weak_ptr<BasicBlock> handler) {
+  catchTypes.push_back(catchType);
+  catchBlocks.push_back(handler);
+  catchVars.push_back(std::make_shared<Var>(name, catchType));
+  catchVarNames.push_back(name);
 }
 
 } // namespace ir

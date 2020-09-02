@@ -74,7 +74,7 @@ class CodegenVisitor : public ASTVisitor, public SrcObject {
   void defaultVisit(const Stmt *expr) override;
   void defaultVisit(const Pattern *expr) override;
 
-  seq::ir::types::Type *realizeType(types::ClassTypePtr t);
+  std::shared_ptr<seq::ir::types::Type> realizeType(types::ClassTypePtr t);
 
   std::shared_ptr<LLVMItem::Item>
   processIdentifier(std::shared_ptr<LLVMContext> tctx, const std::string &id);
@@ -87,7 +87,8 @@ public:
   CodegenResult transform(const Pattern *pat);
 
   void visitMethods(const std::string &name);
-  CodegenResult flatten(const CodegenResult res);
+  std::shared_ptr<seq::ir::Operand> toOperand(const CodegenResult res);
+  std::shared_ptr<seq::ir::Rvalue> toRvalue(const CodegenResult res);
 
 public:
   void visit(const BoolExpr *) override;
@@ -172,6 +173,9 @@ private:
   template <typename A, typename... Ts> auto Ns(Ts &&... args) {
     return std::make_shared<A>(std::forward<Ts>(args)...);
   }
+
+  std::shared_ptr<seq::ir::BasicBlock> newBlock();
+  void condSetTerminator(std::shared_ptr<seq::ir::Terminator> term);
 };
 
 } // namespace ast

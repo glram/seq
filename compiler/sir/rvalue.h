@@ -11,17 +11,28 @@ namespace ir {
 
 class Operand;
 class Pattern;
+class Var;
 
 class Rvalue : public AttributeHolder<Rvalue> {
-private:
-  std::shared_ptr<types::Type> type;
-
 public:
-  explicit Rvalue(std::shared_ptr<types::Type> type) : type(std::move(type)){};
-
-  std::shared_ptr<types::Type> getType() { return type; };
+  virtual std::shared_ptr<types::Type> getType() = 0;
 
   std::string referenceString() const override { return "rvalue"; };
+};
+
+class MemberRvalue : public Rvalue {
+private:
+  std::shared_ptr<Operand> var;
+  std::string field;
+
+public:
+  MemberRvalue(std::shared_ptr<Operand> var, std::string field);
+  std::shared_ptr<types::Type> getType() override;
+
+  std::shared_ptr<Operand> getVar() { return var; }
+  std::string getField() const { return field; }
+
+  std::string textRepresentation() const override;
 };
 
 class CallRValue : public Rvalue {
@@ -33,6 +44,7 @@ public:
   explicit CallRValue(std::shared_ptr<Operand> func);
   CallRValue(std::shared_ptr<Operand> func,
              std::vector<std::shared_ptr<Operand>> args);
+  std::shared_ptr<types::Type> getType() override;
 
   std::shared_ptr<Operand> getFunc() { return func; }
   std::vector<std::shared_ptr<Operand>> getArgs() { return args; }
@@ -46,6 +58,7 @@ private:
 
 public:
   explicit OperandRvalue(std::shared_ptr<Operand> operand);
+  std::shared_ptr<types::Type> getType() override;
 
   std::shared_ptr<Operand> getOperand() { return operand; }
 
@@ -60,8 +73,8 @@ private:
 public:
   MatchRvalue(std::shared_ptr<Pattern> pattern,
               std::shared_ptr<Operand> operand)
-      : Rvalue(types::kBoolType), pattern(std::move(pattern)),
-        operand(std::move(operand)) {}
+      : pattern(std::move(pattern)), operand(std::move(operand)) {}
+  std::shared_ptr<types::Type> getType() override { return types::kBoolType; }
 
   std::shared_ptr<Pattern> getPattern() { return pattern; }
   std::shared_ptr<Operand> getOperand() { return operand; }
@@ -77,6 +90,7 @@ private:
 public:
   PipelineRvalue(std::vector<std::shared_ptr<Operand>> stages,
                  std::vector<bool> parallel);
+  std::shared_ptr<types::Type> getType() override;
 
   std::vector<std::shared_ptr<Operand>> getStages() { return stages; }
   std::vector<bool> getParallel() const { return parallel; }

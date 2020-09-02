@@ -22,13 +22,19 @@ private:
   std::vector<std::shared_ptr<BasicBlock>> blocks;
 
   std::weak_ptr<IRModule> module;
+  std::weak_ptr<Func> enclosing;
+
+  bool external;
 
 public:
   Func(std::string name, std::vector<std::string> argNames,
        std::shared_ptr<types::Type> type);
 
-  std::vector<std::shared_ptr<Var>> getArgVars() { return argVars; }
+  void setArgNames(std::vector<std::string> names);
   std::vector<std::string> getArgNames() const { return argNames; }
+
+  void setType(std::shared_ptr<types::Type> type) override;
+  std::vector<std::shared_ptr<Var>> getArgVars() { return argVars; }
   std::shared_ptr<Var> getArgVar(const std::string &name);
 
   void addVar(std::shared_ptr<Var> var) { vars.push_back(var); }
@@ -38,6 +44,11 @@ public:
 
   std::weak_ptr<IRModule> getModule() { return module; }
   void setModule(std::weak_ptr<IRModule> m) { module = m; }
+
+  void setEnclosingFunc(std::weak_ptr<Func> f) { enclosing = f; }
+
+  void setExternal() { external = true; }
+  bool isExternal() const { return external; }
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;

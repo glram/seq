@@ -25,23 +25,27 @@ private:
   std::vector<std::shared_ptr<Type>> argTypes;
 
 public:
-  Type(bool callable, std::string name);
+  explicit Type(std::string name) : callable(false), name(std::move(name)) {}
   Type(std::shared_ptr<Type> rType, std::vector<std::shared_ptr<Type>> argTypes,
-       std::string name);
+       std::string name)
+      : callable(true), name(std::move(name)), rType(std::move(rType)),
+        argTypes(std::move(argTypes)) {}
   Type(std::vector<std::shared_ptr<Type>> members,
-       std::vector<std::string> names, std::string name);
+       std::vector<std::string> names, std::string name)
+      : callable(false), name(std::move(name)), memberNames(std::move(names)),
+        memberTypes(std::move(members)) {}
 
-  bool isCallable();
+  bool isCallable() const { return callable; }
 
-  std::shared_ptr<Type> getMemberType(std::string name);
-  std::string textRepresentation() const;
-  std::string getName();
+  std::shared_ptr<Type> getMemberType(std::string name){
+      return memberTypes[memberNames.]} std::string
+      textRepresentation() const override {
+    return name;
+  }
+  std::string getName() { return name; }
 
-  std::shared_ptr<Type> getRType();
-  std::vector<std::shared_ptr<Type>> getArgTypes();
-
-  std::shared_ptr<Func> findMagic(std::string name,
-                                  std::vector<std::shared_ptr<Type>> types);
+  std::shared_ptr<Type> getRType() { return rType; }
+  std::vector<std::shared_ptr<Type>> getArgTypes() { return argTypes; }
 
   std::string referenceString() const override { return "type"; };
 };
@@ -87,16 +91,16 @@ public:
 };
 
 // TODO better system
-extern auto kStringType = std::make_shared<Type>(false, "str");
-extern auto kBoolType = std::make_shared<Type>(false, "bool");
-extern auto kSeqType = std::make_shared<Type>(false, "seq");
-extern auto kFloatType = std::make_shared<Type>(false, "float");
-extern auto kIntType = std::make_shared<Type>(false, "int");
-extern auto kAnyType = std::make_shared<Type>(false, "any");
-extern auto kVoidType = std::make_shared<Type>(false, "void");
-extern auto kByteType = std::make_shared<Type>(false, "byte");
+extern const auto kStringType = std::make_shared<Type>("str");
+extern const auto kBoolType = std::make_shared<Type>("bool");
+extern const auto kSeqType = std::make_shared<Type>("seq");
+extern const auto kFloatType = std::make_shared<Type>("float");
+extern const auto kIntType = std::make_shared<Type>("int");
+extern const auto kAnyType = std::make_shared<Type>("any");
+extern const auto kVoidType = std::make_shared<Type>("void");
+extern const auto kByteType = std::make_shared<Type>("byte");
 
-extern auto kNoArgVoidFuncType = std::make_shared<Type>(
+extern const auto kNoArgVoidFuncType = std::make_shared<Type>(
     kVoidType, std::vector<std::shared_ptr<Type>>(), "void->void");
 } // namespace types
 } // namespace ir

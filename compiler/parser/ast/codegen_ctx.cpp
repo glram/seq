@@ -34,10 +34,12 @@ string chop(const string &s) {
 LLVMContext::LLVMContext(const string &filename,
                          shared_ptr<RealizationContext> realizations,
                          shared_ptr<ImportContext> imports,
-                         seq::ir::BasicBlock *block, seq::ir::Func *base,
-                         seq::SeqJIT *jit)
+                         std::shared_ptr<seq::ir::BasicBlock> block,
+                         std::shared_ptr<seq::ir::Func> base,
+                         std::shared_ptr<seq::ir::IRModule> module,
+                         std::shared_ptr<seq::SeqJIT> jit)
     : Context<LLVMItem::Item>(filename, realizations, imports),
-      tryCatch(nullptr), jit(jit) {
+      module(std::move(module)), jit(jit) {
   stack.push_front(vector<string>());
   topBaseIndex = topBlockIndex = 0;
   if (block)
@@ -60,16 +62,19 @@ shared_ptr<LLVMItem::Item> LLVMContext::find(const string &name, bool onlyLocal,
   return nullptr;
 }
 
-void LLVMContext::addVar(const string &name, seq::ir::Var *v, bool global) {
+void LLVMContext::addVar(const string &name, std::shared_ptr<seq::ir::Var> v,
+                         bool global) {
   add(name, make_shared<LLVMItem::Var>(v, getBase(), global || isToplevel()));
 }
 
-void LLVMContext::addType(const string &name, seq::ir::types::Type *t,
+void LLVMContext::addType(const string &name,
+                          std::shared_ptr<seq::ir::types::Type> t,
                           bool global) {
   add(name, make_shared<LLVMItem::Class>(t, getBase(), global || isToplevel()));
 }
 
-void LLVMContext::addFunc(const string &name, seq::ir::Func *f, bool global) {
+void LLVMContext::addFunc(const string &name, std::shared_ptr<seq::ir::Func> f,
+                          bool global) {
   add(name, make_shared<LLVMItem::Func>(f, getBase(), global || isToplevel()));
 }
 
@@ -79,8 +84,8 @@ void LLVMContext::addImport(const string &name, const string &import,
       make_shared<LLVMItem::Import>(import, getBase(), global || isToplevel()));
 }
 
-void LLVMContext::addBlock(seq::ir::BasicBlock *newBlock,
-                           seq::ir::Func *newBase) {
+void LLVMContext::addBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock,
+                           std::shared_ptr<seq::ir::Func> newBase) {
   Context<LLVMItem::Item>::addBlock();
   if (newBlock)
     topBlockIndex = blocks.size();
@@ -105,12 +110,12 @@ void LLVMContext::popBlock() {
 
 void LLVMContext::initJIT() { throw std::runtime_error("not implemented"); }
 
-void LLVMContext::execJIT(string varName, seq::Expr *varExpr) {
+void LLVMContext::execJIT(string varName, std::shared_ptr<seq::Expr> varExpr) {
   // static int counter = 0;
 
   // assert(jit != nullptr);
   // assert(bases.size() == 1);
-  // jit->addFunc((seq::Func *)bases[0]);
+  // jit->addFunc(( std::shared_ptr<seq::Func> )bases[0]);
 
   // vector<pair<string, shared_ptr<LLVMItem::Item>>> items;
   // for (auto &name : stack.front()) {
@@ -140,16 +145,17 @@ void LLVMContext::execJIT(string varName, seq::Expr *varExpr) {
 //     std::string s;
 //     auto t = i.second.top();
 //     if (auto im = t->getImport()) {
-//       DBG("{}{:.<25} {}", string(pad*2, ' '), i.first, '<import>');
-//       getImports()->getImport(im->getFile())->tctx->dump(pad+1);
+//       DBG("{}{:.<25} {}", string( std::shared_ptr<pad> 2, ' '), i.first,
+//       '<import>'); getImports()->getImport(im->getFile())->tctx->dump(pad+1);
 //     }
 //     else
-//       DBG("{}{:.<25} {}", string(pad*2, ' '), i.first,
+//       DBG("{}{:.<25} {}", string( std::shared_ptr<pad> 2, ' '), i.first,
 //       t->getType()->toString(true));
 //   }
 // }
 
-seq::ir::types::Type *LLVMContext::realizeType(types::ClassTypePtr t) {
+std::shared_ptr<seq::ir::types::Type>
+LLVMContext::realizeType(types::ClassTypePtr t) {
   // LOG7("[codegen] looking for ty {} / {}", t->name, t->toString(true));
   assert(t && t->canRealize());
   auto it = getRealizations()->classRealizations.find(t->name);
@@ -158,12 +164,12 @@ seq::ir::types::Type *LLVMContext::realizeType(types::ClassTypePtr t) {
   assert(it2 != it->second.end());
   auto &real = it2->second;
   if (real.handle)
-    return real.handle;
+    return real.handle->getShared();
 
   // LOG7("[codegen] generating ty {}", real.fullName);
 
   // TODO - reuse types with same name
-  vector<seq::ir::types::Type *> types;
+  vector<std::shared_ptr<seq::ir::types::Type>> types;
   vector<int> statics;
   for (auto &m : t->explicits)
     if (auto s = m.type->getStatic())
@@ -172,28 +178,27 @@ seq::ir::types::Type *LLVMContext::realizeType(types::ClassTypePtr t) {
       types.push_back(realizeType(m.type->getClass()));
   auto name = chop(t->name);
   if (name == "str") {
-    real.handle = seq::ir::types::kStringType.get();
+    real.handle = seq::ir::types::kStringType;
   } else if (name == "Int" || name == "UInt") {
     assert(statics.size() == 1 && types.size() == 0);
     assert(statics[0] >= 1 && statics[0] <= 2048);
-    real.handle = seq::ir::types::kIntType.get();
+    real.handle = seq::ir::types::kIntType;
   } else if (name == "array") {
     assert(types.size() == 1 && statics.size() == 0);
     real.handle =
-        std::make_shared<seq::ir::types::Array>(types[0]->getShared()).get();
+        std::make_shared<seq::ir::types::Array>(types[0]->getShared());
   } else if (name == "ptr") {
     assert(types.size() == 1 && statics.size() == 0);
     real.handle =
-        std::make_shared<seq::ir::types::Pointer>(types[0]->getShared()).get();
+        std::make_shared<seq::ir::types::Pointer>(types[0]->getShared());
   } else if (name == "generator") {
     assert(types.size() == 1 && statics.size() == 0);
     real.handle =
-        std::make_shared<seq::ir::types::Generator>(types[0]->getShared())
-            .get();
+        std::make_shared<seq::ir::types::Generator>(types[0]->getShared());
   } else if (name == "optional") {
     assert(types.size() == 1 && statics.size() == 0);
     real.handle =
-        std::make_shared<seq::ir::types::Optional>(types[0]->getShared()).get();
+        std::make_shared<seq::ir::types::Optional>(types[0]->getShared());
   } else if (name.substr(0, 9) == "function.") {
     types.clear();
     for (auto &m : t->args)
@@ -205,7 +210,8 @@ seq::ir::types::Type *LLVMContext::realizeType(types::ClassTypePtr t) {
     auto f = t->getCallable();
     assert(f);
     auto callee = realizeType(f);
-    vector<seq::ir::types::Type *> partials(f->args.size() - 1, nullptr);
+    vector<std::shared_ptr<seq::ir::types::Type>> partials(f->args.size() - 1,
+                                                           nullptr);
     auto p = std::dynamic_pointer_cast<types::PartialType>(t);
     assert(p);
     for (int i = 0; i < p->knownTypes.size(); i++)
@@ -225,67 +231,65 @@ seq::ir::types::Type *LLVMContext::realizeType(types::ClassTypePtr t) {
         x.push_back(t->getName());
       if (name.substr(0, 6) == "tuple.")
         name = "";
-      real.handle =
-          std::make_shared<seq::ir::types::Type>(types, names, name).get();
+      real.handle = std::make_shared<seq::ir::types::Type>(types, names, name);
     } else {
-      real.handle =
-          std::make_shared<seq::ir::types::Reference>(
-              std::make_shared<seq::ir::types::Type>(types, names, name))
-              .get();
+      real.handle = std::make_shared<seq::ir::types::Reference>(
+          std::make_shared<seq::ir::types::Type>(types, names, name));
     }
   }
   // LOG7("{} -> {} -> {}", t->toString(), t->realizeString(t->name, false),
   // real.handle->getName());
-  return real.handle;
+  return real.handle->getShared();
 }
 
-shared_ptr<LLVMContext> LLVMContext::getContext(const string &file,
-                                                shared_ptr<TypeContext> typeCtx,
-                                                seq::ir::IRModule *module) {
+shared_ptr<LLVMContext>
+LLVMContext::getContext(const string &file, shared_ptr<TypeContext> typeCtx,
+                        std::shared_ptr<seq::ir::IRModule> module) {
   auto realizations = typeCtx->getRealizations();
   auto imports = typeCtx->getImports();
   auto stdlib = const_cast<ImportContext::Import *>(imports->getImport(""));
 
-  auto base = module->getBase().get();
-  auto block = base->getBlocks()[0].get();
-  stdlib->lctx = make_shared<LLVMContext>(stdlib->filename, realizations,
-                                          imports, block, base, nullptr);
+  auto base = module->getBase();
+  auto block = base->getBlocks()[0];
+  stdlib->lctx = make_shared<LLVMContext>(
+      stdlib->filename, realizations, imports, block, base, module, nullptr);
   // Now add all realization stubs
   for (auto &ff : realizations->classRealizations)
     for (auto &f : ff.second) {
       auto &real = f.second;
       stdlib->lctx->realizeType(real.type);
-      stdlib->lctx->addType(real.fullName, real.handle);
+      stdlib->lctx->addType(real.fullName, real.handle->getShared());
     }
   for (auto &ff : realizations->funcRealizations)
     for (auto &f : ff.second) {
       // Realization: f.second
       auto &real = f.second;
       auto ast = real.ast;
-      if (in(ast->attributes, "internal")) {
-        // LOG7("[codegen] generating internal fn {} ~ {}", real.fullName,
-        // ast->name);
-        vector<std::shared_ptr<seq::ir::types::Type>> types;
-
-        // static: has self as arg
-        assert(real.type->parent && real.type->parent->getClass());
-        seq::ir::types::Type *typ =
-            stdlib->lctx->realizeType(real.type->parent->getClass());
-        int startI = 1;
-        if (ast->args.size() && ast->args[0].name == "self")
-          startI = 2;
-        for (int i = startI; i < real.type->args.size(); i++)
-          types.push_back(
-              stdlib->lctx->realizeType(real.type->args[i]->getClass())
-                  ->getShared());
-        real.handle = typ->findMagic(ast->name, types).get();
-      } else {
-        // LOG7("[codegen] generating fn stub {}", real.fullName);
-        real.handle = std::make_shared<seq::ir::Func>(
-                          "unnamed", std::vector<std::string>(),
-                          seq::ir::types::kNoArgVoidFuncType)
-                          .get();
-      }
+      // TODO fix internals
+      //      if (in(ast->attributes, "internal")) {
+      //        // LOG7("[codegen] generating internal fn {} ~ {}",
+      //        real.fullName,
+      //        // ast->name);
+      //        vector<std::shared_ptr<seq::ir::types::Type>> types;
+      //
+      //        // static: has self as arg
+      //        assert(real.type->parent && real.type->parent->getClass());
+      //        std::shared_ptr<seq::ir::types::Type> typ =
+      //            stdlib->lctx->realizeType(real.type->parent->getClass());
+      //        int startI = 1;
+      //        if (ast->args.size() && ast->args[0].name == "self")
+      //          startI = 2;
+      //        for (int i = startI; i < real.type->args.size(); i++)
+      //          types.push_back(
+      //              stdlib->lctx->realizeType(real.type->args[i]->getClass())
+      //                  ->getShared());
+      //        real.handle = typ->findMagic(ast->name, types);
+      //      } else {
+      // LOG7("[codegen] generating fn stub {}", real.fullName);
+      real.handle =
+          std::make_shared<seq::ir::Func>("unnamed", std::vector<std::string>(),
+                                          seq::ir::types::kNoArgVoidFuncType);
+      // }
       stdlib->lctx->addFunc(real.fullName, real.handle);
     }
 
@@ -295,7 +299,7 @@ shared_ptr<LLVMContext> LLVMContext::getContext(const string &file,
   auto def = const_cast<ImportContext::Import *>(imports->getImport(file));
   assert(def);
   def->lctx = make_shared<LLVMContext>(file, realizations, imports, block, base,
-                                       nullptr);
+                                       module, nullptr);
   return def->lctx;
 }
 

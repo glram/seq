@@ -25,11 +25,13 @@ public:
       : name(std::move(name)), type(std::move(type)), id(varNum++){};
   explicit Var(std::shared_ptr<types::Type> type) : Var("unnamed", type) {}
 
-  void setType(std::shared_ptr<types::Type> type) {
+  virtual void setType(std::shared_ptr<types::Type> type) {
     this->type = std::move(type);
   }
 
+  void setName(std::string n) { name = n; }
   std::string getName() const { return name; }
+
   std::shared_ptr<types::Type> getType() { return type; }
   int getId() const { return id; }
 

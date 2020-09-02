@@ -13,7 +13,7 @@
 #include "parser/ast/ast.h"
 #include "parser/ast/transform.h"
 #include "parser/ast/transform_ctx.h"
-#include "parser/ast/types.h"
+#include "parser/ast/types/types.h"
 #include "parser/common.h"
 #include "parser/ocaml.h"
 
@@ -91,7 +91,7 @@ TransformVisitor::getGeneratorBlock(const vector<GeneratorExpr::Body> &loops,
       vars.push_back(N<IdExpr>(s));
     prev->stmts.push_back(
         N<ForStmt>(vars.size() == 1 ? move(vars[0]) : N<TupleExpr>(move(vars)),
-                   l.gen->clone(), move(newSuite)));
+                   l.gen->clone(), nullptr, move(newSuite)));
     prev = nextPrev;
     for (auto &cond : l.conds) {
       newSuite = N<SuiteStmt>();

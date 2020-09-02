@@ -33,14 +33,14 @@ struct RealizationContext {
     std::string fullName;
     types::FuncTypePtr type;
     std::shared_ptr<FunctionStmt> ast;
-    seq::ir::Func *handle;
+    std::shared_ptr<seq::ir::Func> handle;
     std::string base;
   };
   struct ClassRealization {
     std::string fullName;
     types::ClassTypePtr type;
     std::vector<std::pair<std::string, types::ClassTypePtr>> args;
-    seq::ir::types::Type *handle;
+    std::shared_ptr<seq::ir::types::Type> handle;
     std::string base;
   };
   RealizationContext();

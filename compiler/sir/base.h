@@ -3,6 +3,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include "util/common.h"
 #include "util/fmt/format.h"
@@ -11,8 +12,12 @@ namespace seq {
 namespace ir {
 
 class TryCatch;
+class BasicBlock;
 
-static const std::string kSrcInfoAttribute = "srcInfo";
+extern const auto kSrcInfoAttribute = "srcInfoAttribute";
+extern const auto kTryCatchAttribute = "tryCatchAttribute";
+extern const auto kLoopAttribute = "loopAttribute";
+extern const auto kFuncAttribute = "funcAttributes";
 
 struct Attribute {
   virtual std::string textRepresentation() const = 0;
@@ -21,24 +26,52 @@ struct Attribute {
 struct StringAttribute : public Attribute {
   std::string value;
 
+  explicit StringAttribute(std::string value) : value(std::move(value)) {}
   std::string textRepresentation() const override;
 };
 
 struct BoolAttribute : public Attribute {
   bool value;
 
+  explicit BoolAttribute(bool value) : value(value) {}
   std::string textRepresentation() const override;
 };
 
 struct TryCatchAttribute : public Attribute {
-  std::weak_ptr<TryCatch> handler;
+  std::shared_ptr<TryCatch> handler;
 
+  explicit TryCatchAttribute(std::shared_ptr<TryCatch> handler)
+      : handler(std::move(handler)) {}
+  std::string textRepresentation() const override;
+};
+
+struct LoopAttribute : public Attribute {
+  std::weak_ptr<BasicBlock> setup;
+  std::weak_ptr<BasicBlock> cond;
+  std::weak_ptr<BasicBlock> begin;
+  std::weak_ptr<BasicBlock> update;
+  std::weak_ptr<BasicBlock> end;
+
+  LoopAttribute(std::weak_ptr<BasicBlock> setup, std::weak_ptr<BasicBlock> cond,
+                std::weak_ptr<BasicBlock> begin,
+                std::weak_ptr<BasicBlock> update, std::weak_ptr<BasicBlock> end)
+      : setup(std::move(setup)), cond(std::move(cond)), begin(std::move(begin)),
+        update(std::move(update)), end(std::move(end)) {}
   std::string textRepresentation() const override;
 };
 
 struct SrcInfoAttribute : public Attribute {
   seq::SrcInfo info;
 
+  explicit SrcInfoAttribute(seq::SrcInfo info) : info(std::move(info)) {}
+  std::string textRepresentation() const override;
+};
+
+struct FuncAttribute : public Attribute {
+  std::vector<std::string> attributes;
+
+  explicit FuncAttribute(std::vector<std::string> attributes)
+      : attributes(std::move(attributes)) {}
   std::string textRepresentation() const override;
 };
 

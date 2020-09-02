@@ -12,14 +12,8 @@ namespace ir {
 class Var;
 
 class Lvalue : public AttributeHolder<Lvalue> {
-private:
-  std::shared_ptr<types::Type> type;
-
 public:
-  explicit Lvalue(std::shared_ptr<types::Type> type) : type(std::move(type)){};
-
-  std::shared_ptr<types::Type> getType() { return type; }
-
+  virtual std::shared_ptr<types::Type> getType() = 0;
   std::string referenceString() const override { return "lvalue"; };
 };
 
@@ -29,6 +23,7 @@ private:
 
 public:
   explicit VarLvalue(std::weak_ptr<Var> var);
+  std::shared_ptr<types::Type> getType() override;
 
   std::weak_ptr<Var> getVar() { return var; }
 
@@ -41,7 +36,8 @@ private:
   std::string field;
 
 public:
-  explicit VarMemberLvalue(std::weak_ptr<Var> var, std::string field);
+  VarMemberLvalue(std::weak_ptr<Var> var, std::string field);
+  std::shared_ptr<types::Type> getType() override;
 
   std::weak_ptr<Var> getVar() { return var; }
   std::string getField() const { return field; }

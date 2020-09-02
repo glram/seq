@@ -16,27 +16,23 @@ class Var;
 class Operand;
 
 class Pattern : public AttributeHolder<Pattern> {
-private:
-  std::shared_ptr<types::Type> type;
-
 public:
-  explicit Pattern(std::shared_ptr<types::Type> t) : type(std::move(t)) {}
-
-  std::shared_ptr<types::Type> getType() { return type; }
-  virtual std::string textRepresentation() const override;
+  std::string referenceString() const override { return "pattern"; }
 };
 
-class WildcardPattern : Pattern {
+class WildcardPattern : public Pattern {
   std::shared_ptr<Var> var;
 
 public:
   explicit WildcardPattern(std::shared_ptr<types::Type> type);
   WildcardPattern();
 
+  std::shared_ptr<Var> getVar() { return var; };
+
   std::string textRepresentation() const override;
 };
 
-class BoundPattern : Pattern {
+class BoundPattern : public Pattern {
 private:
   std::shared_ptr<Var> var;
   std::shared_ptr<Pattern> pattern;
@@ -44,105 +40,114 @@ private:
 public:
   explicit BoundPattern(std::shared_ptr<Pattern> p);
 
+  std::shared_ptr<Var> getVar() { return var; };
+
   std::string textRepresentation() const override;
 };
 
-class StarPattern : Pattern {
+class StarPattern : public Pattern {
 public:
-  StarPattern() : Pattern(types::kAnyType) {}
+  StarPattern() {}
 
   std::string textRepresentation() const override;
 };
 
-class IntPattern : Pattern {
+class IntPattern : public Pattern {
 private:
   seq_int_t value;
 
 public:
-  explicit IntPattern(seq_int_t value)
-      : Pattern(types::kIntType), value(value) {}
+  explicit IntPattern(seq_int_t value) : value(value) {}
 
   std::string textRepresentation() const override;
 };
 
-class BoolPattern : Pattern {
+class BoolPattern : public Pattern {
 private:
   bool value;
 
 public:
-  explicit BoolPattern(bool value) : Pattern(types::kBoolType), value(value) {}
+  explicit BoolPattern(bool value) : value(value) {}
 
   std::string textRepresentation() const override;
 };
 
-class StrPattern : Pattern {
+class StrPattern : public Pattern {
 private:
   std::string value;
 
 public:
-  explicit StrPattern(std::string value)
-      : Pattern(types::kStringType), value(std::move(value)) {}
+  explicit StrPattern(std::string value) : value(std::move(value)) {}
 
   std::string textRepresentation() const override;
 };
 
-class RecordPattern : Pattern {
+class SeqPattern : public Pattern {
+private:
+  std::string value;
+
+public:
+  explicit SeqPattern(std::string value) : value(std::move(value)) {}
+
+  std::string textRepresentation() const override;
+};
+
+class RecordPattern : public Pattern {
 private:
   std::vector<std::shared_ptr<Pattern>> patterns;
 
 public:
   explicit RecordPattern(std::vector<std::shared_ptr<Pattern>> patterns)
-      : Pattern(types::kAnyType), patterns(std::move(patterns)) {}
+      : patterns(std::move(patterns)) {}
 
   std::string textRepresentation() const override;
 };
 
-class ArrayPattern : Pattern {
+class ArrayPattern : public Pattern {
 private:
   std::vector<std::shared_ptr<Pattern>> patterns;
 
 public:
   explicit ArrayPattern(std::vector<std::shared_ptr<Pattern>> patterns)
-      : Pattern(types::kAnyType), patterns(std::move(patterns)) {}
+      : patterns(std::move(patterns)) {}
 
   std::string textRepresentation() const override;
 };
 
-class OptionalPattern : Pattern {
+class OptionalPattern : public Pattern {
 private:
   std::shared_ptr<Pattern> pattern;
 
 public:
   explicit OptionalPattern(std::shared_ptr<Pattern> pattern)
-      : Pattern(pattern->getType()), pattern(std::move(pattern)) {}
+      : pattern(std::move(pattern)) {}
 
   std::string textRepresentation() const override;
 };
 
-class RangePattern : Pattern {
+class RangePattern : public Pattern {
 private:
   seq_int_t a;
   seq_int_t b;
 
 public:
-  explicit RangePattern(seq_int_t a, seq_int_t b)
-      : Pattern(types::kAnyType), a(a), b(b) {}
+  explicit RangePattern(seq_int_t a, seq_int_t b) : a(a), b(b) {}
 
   std::string textRepresentation() const override;
 };
 
-class OrPattern : Pattern {
+class OrPattern : public Pattern {
 private:
   std::vector<std::shared_ptr<Pattern>> patterns;
 
 public:
   explicit OrPattern(std::vector<std::shared_ptr<Pattern>> patterns)
-      : Pattern(types::kAnyType), patterns(std::move(patterns)) {}
+      : patterns(std::move(patterns)) {}
 
   std::string textRepresentation() const override;
 };
 
-class GuardedPattern : Pattern {
+class GuardedPattern : public Pattern {
 private:
   std::shared_ptr<Pattern> pattern;
   std::shared_ptr<Operand> operand;
@@ -150,8 +155,7 @@ private:
 public:
   explicit GuardedPattern(std::shared_ptr<Pattern> pattern,
                           std::shared_ptr<Operand> operand)
-      : Pattern(pattern->getType()), pattern(std::move(pattern)),
-        operand(std::move(operand)) {}
+      : pattern(std::move(pattern)), operand(std::move(operand)) {}
 
   std::string textRepresentation() const override;
 };

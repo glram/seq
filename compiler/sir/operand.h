@@ -11,13 +11,8 @@ namespace ir {
 class Var;
 
 class Operand : public AttributeHolder<Operand> {
-private:
-  std::shared_ptr<types::Type> type;
-
 public:
-  Operand(std::shared_ptr<types::Type> type) : type{type} {};
-
-  std::shared_ptr<types::Type> getType() const { return type; };
+  virtual std::shared_ptr<types::Type> getType() = 0;
   std::string referenceString() const override { return "operand"; };
 };
 
@@ -27,22 +22,9 @@ private:
 
 public:
   explicit VarOperand(std::weak_ptr<Var> var);
+  std::shared_ptr<types::Type> getType() override;
 
   std::weak_ptr<Var> getVar() { return var; }
-
-  std::string textRepresentation() const override;
-};
-
-class VarMemberOperand : public Operand {
-private:
-  std::weak_ptr<Var> var;
-  std::string field;
-
-public:
-  explicit VarMemberOperand(std::weak_ptr<Var> var, std::string field);
-
-  std::weak_ptr<Var> getVar() { return var; }
-  std::string getField() const { return field; }
 
   std::string textRepresentation() const override;
 };
@@ -60,21 +42,37 @@ private:
 
 public:
   LiteralOperand()
-      : Operand(nullptr), literalType(LiteralType::NONE), ival(0), fval(0.0),
-        bval(false), sval(), isSeq(false) {}
+      : literalType(LiteralType::NONE), ival(0), fval(0.0), bval(false), sval(),
+        isSeq(false) {}
   explicit LiteralOperand(seq_int_t ival)
-      : Operand(types::kIntType), literalType(LiteralType::INT), ival(ival),
-        fval(0.0), bval(false), sval(), isSeq(false) {}
+      : literalType(LiteralType::INT), ival(ival), fval(0.0), bval(false),
+        sval(), isSeq(false) {}
   explicit LiteralOperand(double fval)
-      : Operand(types::kFloatType), literalType(LiteralType::FLOAT), ival(0),
-        fval(fval), bval(false), sval(), isSeq(false) {}
+      : literalType(LiteralType::FLOAT), ival(0), fval(fval), bval(false),
+        sval(), isSeq(false) {}
   explicit LiteralOperand(bool bval)
-      : Operand(types::kBoolType), literalType(LiteralType::BOOL), ival(0),
-        fval(0.0), bval(bval), sval(), isSeq(false) {}
+      : literalType(LiteralType::BOOL), ival(0), fval(0.0), bval(bval), sval(),
+        isSeq(false) {}
   explicit LiteralOperand(std::string sval, bool seq = false)
-      : Operand(seq ? types::kSeqType : types::kStringType),
-        literalType(seq ? LiteralType::SEQ : LiteralType::STR), ival(0),
+      : literalType(seq ? LiteralType::SEQ : LiteralType::STR), ival(0),
         fval(0.0), bval(false), sval(std::move(sval)), isSeq(seq) {}
+
+  std::shared_ptr<types::Type> getType() override {
+    switch (literalType) {
+    case INT:
+      return types::kIntType;
+    case FLOAT:
+      return types::kFloatType;
+    case BOOL:
+      return types::kBoolType;
+    case STR:
+      return types::kStringType;
+    case SEQ:
+      return types::kSeqType;
+    default:
+      return nullptr;
+    }
+  }
 
   LiteralType getLiteralType() const { return literalType; }
   seq_int_t getIval() const { return ival; }

@@ -214,12 +214,12 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
   auto stdlib = make_shared<TypeContext>(stdlibPath, realizations, imports);
   imports->addImport("", stdlibPath, stdlib);
 
-  unordered_map<string, seq::ir::types::Type *> podTypes = {
-      {"void", seq::ir::types::kVoidType.get()},
-      {"bool", seq::ir::types::kBoolType.get()},
-      {"byte", seq::ir::types::kByteType.get()},
-      {"int", seq::ir::types::kIntType.get()},
-      {"float", seq::ir::types::kFloatType.get()}};
+  unordered_map<string, shared_ptr<seq::ir::types::Type>> podTypes = {
+      {"void", seq::ir::types::kVoidType},
+      {"bool", seq::ir::types::kBoolType},
+      {"byte", seq::ir::types::kByteType},
+      {"int", seq::ir::types::kIntType},
+      {"float", seq::ir::types::kFloatType}};
   for (auto &t : podTypes) {
     auto name = t.first;
     auto typ = make_shared<types::ClassType>(name, true);

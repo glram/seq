@@ -9,6 +9,7 @@ namespace seq {
 namespace ir {
 
 class BasicBlock;
+class Var;
 
 class TryCatch : public AttributeHolder<TryCatch> {
 private:
@@ -16,6 +17,8 @@ private:
 
   std::vector<std::shared_ptr<TryCatch>> children;
   std::vector<std::shared_ptr<types::Type>> catchTypes;
+  std::vector<std::string> catchVarNames;
+  std::vector<std::shared_ptr<Var>> catchVars;
   std::vector<std::weak_ptr<BasicBlock>> catchBlocks;
   std::weak_ptr<BasicBlock> finallyBlock;
   std::weak_ptr<TryCatch> parent;
@@ -36,11 +39,8 @@ public:
   std::vector<std::weak_ptr<BasicBlock>> getCatchBlocks() {
     return catchBlocks;
   }
-  void addCatch(std::shared_ptr<types::Type> catchType,
-                std::weak_ptr<BasicBlock> handler) {
-    catchTypes.push_back(catchType);
-    catchBlocks.push_back(handler);
-  }
+  void addCatch(std::shared_ptr<types::Type> catchType, std::string name,
+                std::weak_ptr<BasicBlock> handler);
 
   std::weak_ptr<BasicBlock> getFinallyBlock() { return finallyBlock; }
   void setFinallyBlock(std::weak_ptr<BasicBlock> finally) {
@@ -49,6 +49,8 @@ public:
 
   std::weak_ptr<TryCatch> getParent() { return parent; }
   int getId() { return id; }
+
+  std::shared_ptr<Var> getVar(int i) { return catchVars[i]; }
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;
