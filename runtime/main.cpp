@@ -43,19 +43,21 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
   }
 
-  SeqModule *s = parse(argv[0], input.c_str(), "", false, false);
-  if (output.getValue().empty()) {
-    argsVec.insert(argsVec.begin(), input);
-    execute(s, argsVec, libsVec, debug.getValue());
-  } else {
-    if (!libsVec.empty())
-      compilationWarning("ignoring libraries during compilation");
+  auto module = parse(argv[0], input.c_str(), "", false, false);
+//  if (output.getValue().empty()) {
+//    argsVec.insert(argsVec.begin(), input);
+//    execute(s, argsVec, libsVec, debug.getValue());
+//  } else {
+//    if (!libsVec.empty())
+//      compilationWarning("ignoring libraries during compilation");
+//
+//    if (!argsVec.empty())
+//      compilationWarning("ignoring arguments during compilation");
+//
+//    compile(s, output.getValue(), debug.getValue());
+//  }
 
-    if (!argsVec.empty())
-      compilationWarning("ignoring arguments during compilation");
-
-    compile(s, output.getValue(), debug.getValue());
-  }
+  std::cout << module->textRepresentation();
 
   return EXIT_SUCCESS;
 }

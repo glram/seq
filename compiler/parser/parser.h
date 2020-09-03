@@ -2,12 +2,14 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
+#include "sir/module.h"
 #include "lang/seq.h"
 
 namespace seq {
 
-SeqModule *parse(const std::string &argv0, const std::string &file,
+std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string &file,
                  const std::string &code = "", bool isCode = false, bool isTest = false,
                  int startLine = 0);
 void execute(seq::SeqModule *module, std::vector<std::string> args = {},

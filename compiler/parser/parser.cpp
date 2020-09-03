@@ -29,7 +29,7 @@ void generateDocstr(const std::string &file) {
   // ast::parse_file(file)->accept(d);
 }
 
-seq::SeqModule *parse(const std::string &argv0, const std::string &file,
+std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string &file,
                       const string &code, bool isCode, bool isTest, int startLine) {
   try {
     auto d = getenv("SEQ_DEBUG");
@@ -52,9 +52,9 @@ seq::SeqModule *parse(const std::string &argv0, const std::string &file,
     // FILE *fo = fopen("tmp/out.htm", "w");
     // LOG3("{}", ast::FormatVisitor::format(ctx, tv, false, true));
 
-    seq::SeqModule *module;
-    module = new seq::SeqModule();
-    module->setFileName(abs);
+    auto module = std::make_shared<ir::IRModule>("module");
+//    module = new seq::SeqModule();
+//    module->setFileName(abs);
     auto lctx = ast::LLVMContext::getContext(abs, ctx, module);
     ast::CodegenVisitor(lctx).transform(tv.get());
     LOG3("--- Done with codegen ---");
