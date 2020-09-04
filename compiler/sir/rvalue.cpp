@@ -26,7 +26,7 @@ CallRValue::CallRValue(std::shared_ptr<Operand> func,
     : func(std::move(func)), args(std::move(args)) {}
 
 std::shared_ptr<types::Type> CallRValue::getType() {
-  return func->getType()->getRType();
+  return std::static_pointer_cast<types::FuncType>(func->getType())->getRType();
 }
 
 std::string CallRValue::textRepresentation() const {

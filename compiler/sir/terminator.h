@@ -13,6 +13,8 @@ class Operand;
 class Var;
 
 class Terminator : public AttributeHolder<Terminator> {
+public:
+  virtual ~Terminator() = default;
   std::string referenceString() const override { return "terminator"; }
 };
 

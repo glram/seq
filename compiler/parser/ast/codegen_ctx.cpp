@@ -205,7 +205,7 @@ LLVMContext::realizeType(types::ClassTypePtr t) {
       types.push_back(realizeType(m->getClass()));
     auto ret = types[0];
     types.erase(types.begin());
-    real.handle = seq::types::FuncType::get(types, ret);
+    real.handle = std::make_shared<seq::ir::types::FuncType>(name, ret, types);
   } else if (name.substr(0, 8) == "partial.") {
     auto f = t->getCallable();
     assert(f);
@@ -217,7 +217,7 @@ LLVMContext::realizeType(types::ClassTypePtr t) {
     for (int i = 0; i < p->knownTypes.size(); i++)
       if (p->knownTypes[i])
         partials[i] = realizeType(f->args[i + 1]->getClass());
-    real.handle = seq::types::PartialFuncType::get(callee, partials);
+    real.handle = std::make_shared<seq::ir::types::PartialFuncType>(name, callee, partials);
   } else {
     vector<string> names;
     vector<std::shared_ptr<seq::ir::types::Type>> types;
@@ -231,10 +231,10 @@ LLVMContext::realizeType(types::ClassTypePtr t) {
         x.push_back(t->getName());
       if (name.substr(0, 6) == "tuple.")
         name = "";
-      real.handle = std::make_shared<seq::ir::types::Type>(types, names, name);
+      real.handle = std::make_shared<seq::ir::types::RecordType>(name, types, names);
     } else {
       real.handle = std::make_shared<seq::ir::types::Reference>(
-          std::make_shared<seq::ir::types::Type>(types, names, name));
+          std::make_shared<seq::ir::types::RecordType>(name, types, names));
     }
   }
   // LOG7("{} -> {} -> {}", t->toString(), t->realizeString(t->name, false),

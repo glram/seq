@@ -45,11 +45,11 @@ shared_ptr<BasicBlock> CodegenVisitor::newBlock() {
   auto templ = ctx->getBlock();
   if (templ->getAttribute(kLoopAttribute))
     ret->setAttribute(kLoopAttribute,
-                      Ns<LoopAttribute>(templ->getAttribute(kLoopAttribute)));
+                      Ns<LoopAttribute>(*std::static_pointer_cast<LoopAttribute>(templ->getAttribute(kLoopAttribute))));
   if (templ->getAttribute(kTryCatchAttribute))
     ret->setAttribute(
         kTryCatchAttribute,
-        Ns<TryCatchAttribute>(templ->getAttribute(kTryCatchAttribute)));
+        Ns<TryCatchAttribute>(*std::static_pointer_cast<TryCatchAttribute>(templ->getAttribute(kTryCatchAttribute))));
   return ret;
 }
 
@@ -91,7 +91,7 @@ CodegenVisitor::toOperand(const CodegenResult res) {
     return res.operandResult;
   case CodegenResult::LVALUE:
     internalError("cannot convert lvalue to operand.");
-    break;
+    return nullptr;
   case CodegenResult::RVALUE: {
     auto t = Ns<ir::Var>(res.rvalueResult->getType());
     ctx->getBase()->addVar(t);
@@ -100,6 +100,10 @@ CodegenVisitor::toOperand(const CodegenResult res) {
   }
   case CodegenResult::PATTERN:
     internalError("cannot convert pattern to operand.");
+    return nullptr;
+  default:
+    internalError("cannot convert unknown to operand.");
+    return nullptr;
   }
 }
 
@@ -110,11 +114,15 @@ CodegenVisitor::toRvalue(const CodegenResult res) {
     return Ns<OperandRvalue>(res.operandResult);
   case CodegenResult::LVALUE:
     internalError("cannot convert lvalue to rvalue.");
-    break;
+    return nullptr;
   case CodegenResult::RVALUE:
     return res.rvalueResult;
   case CodegenResult::PATTERN:
     internalError("cannot convert pattern to rvalue.");
+    return nullptr;
+  default:
+    internalError("cannot convert unknown to rvalue.");
+    return nullptr;
   }
 }
 
@@ -193,6 +201,7 @@ void CodegenVisitor::visit(const TupleExpr *expr) {
   //  for (auto &&i : expr->items)
   //    items.push_back(transform(i));
   //  resultExpr = N<seq::RecordExpr>(items, vector<string>(items.size(), ""));
+  // TODO fix tuple expr
   internalError("TupleExpr codegen not supported");
 }
 
@@ -231,6 +240,7 @@ void CodegenVisitor::visit(const IfExpr *expr) {
 }
 
 void CodegenVisitor::visit(const UnaryExpr *expr) {
+  // TODO fix unary expr
   internalError("UnaryExpr not supported");
 }
 
@@ -301,10 +311,12 @@ void CodegenVisitor::visit(const PipeExpr *expr) {
 }
 
 void CodegenVisitor::visit(const TupleIndexExpr *expr) {
+  // TODO fix tuple index expr
   internalError("TupleIndexExpr codegen not supported");
 }
 
 void CodegenVisitor::visit(const CallExpr *expr) {
+  // TODO fix partial call
   auto lhs = toOperand(transform(expr->expr));
   vector<shared_ptr<Operand>> items;
   bool isPartial = false;
@@ -319,6 +331,7 @@ void CodegenVisitor::visit(const CallExpr *expr) {
 }
 
 void CodegenVisitor::visit(const StackAllocExpr *expr) {
+  // TODO fix stack alloc
   internalError("StackAllocExpr codegen not supported");
 }
 
@@ -338,10 +351,12 @@ void CodegenVisitor::visit(const DotExpr *expr) {
 // void CodegenVisitor::visit(const EllipsisExpr *expr) {}
 
 void CodegenVisitor::visit(const PtrExpr *expr) {
+  // TODO fix ptr expr
   internalError("PtrExpr codegen not supported");
 }
 
 void CodegenVisitor::visit(const YieldExpr *expr) {
+  // TODO fix yield expr
   internalError("YieldExpr codegen not supported");
 }
 
@@ -437,7 +452,7 @@ void CodegenVisitor::visit(const ReturnStmt *stmt) {
 void CodegenVisitor::visit(const YieldStmt *stmt) {
   auto dst = newBlock();
   auto yieldVal = stmt->expr ? toOperand(transform(stmt->expr)) : nullptr;
-  ctx->getBlock()->setTerminator(Ns<YieldTerminator>(dst, yieldVal, nullptr));
+  ctx->getBlock()->setTerminator(Ns<YieldTerminator>(dst, yieldVal, std::weak_ptr<ir::Var>()));
   ctx->popBlock();
   ctx->addBlock(dst);
 }
@@ -451,7 +466,7 @@ void CodegenVisitor::visit(const WhileStmt *stmt) {
   auto begin = newBlock();
   auto end = newBlock();
   begin->setAttribute(kLoopAttribute,
-                      Ns<LoopAttribute>(nullptr, cond, begin, nullptr, end));
+                      Ns<LoopAttribute>(std::weak_ptr<BasicBlock>(), cond, begin, std::weak_ptr<BasicBlock>(), end));
 
   ctx->addBlock(cond);
   ctx->getBlock()->setTerminator(
@@ -485,30 +500,54 @@ void CodegenVisitor::visit(const ForStmt *stmt) {
   ctx->getBase()->addVar(var);
   ctx->addVar(expr->value, var);
 
+  auto doneFunc = CAST(stmt->done, IdExpr);
+  auto nextFunc = CAST(stmt->done, IdExpr);
+
+  auto doneCheckVar = Ns<ir::Var>(ir::types::kBoolType);
+  ctx->getBase()->addVar(doneCheckVar);
+
+  auto gen = Ns<ir::Var>(realizeType(stmt->iter->getType()->getClass()));
+  ctx->getBase()->addVar(gen);
+
+  // setup
   ctx->addBlock(setupCheck);
+  ctx->getBlock()->add(Ns<AssignInstr>(Ns<VarLvalue>(gen),
+      toRvalue(transform(stmt->iter))));
+  ctx->getBlock()->add(Ns<AssignInstr>(Ns<VarLvalue>(doneCheckVar),
+      Ns<CallRValue>(toOperand(transform(doneFunc)),
+     std::vector<std::shared_ptr<Operand>>({ Ns<VarOperand>(gen) }))));
   ctx->getBlock()->setTerminator(Ns<CondJumpTerminator>(
-      end, setupAction, toOperand(transform(stmt->done))));
+      end, setupAction, Ns<VarOperand>(doneCheckVar)));
   ctx->popBlock();
 
   ctx->addBlock(setupAction);
-  ctx->getBlock()->add(
-      Ns<AssignInstr>(Ns<VarLvalue>(var), toRvalue(transform(stmt->iter))));
+  ctx->getBlock()->add(Ns<AssignInstr>(Ns<VarLvalue>(var),
+                                       Ns<CallRValue>(toOperand(transform(nextFunc)),
+                                                      std::vector<std::shared_ptr<Operand>>({ Ns<VarOperand>(gen) }))));
   ctx->getBlock()->setTerminator(Ns<JumpTerminator>(begin));
   ctx->popBlock();
 
+
+  // condition
   ctx->addBlock(cond);
+  ctx->getBlock()->add(Ns<AssignInstr>(Ns<VarLvalue>(doneCheckVar),
+                                       Ns<CallRValue>(toOperand(transform(doneFunc)),
+                                                      std::vector<std::shared_ptr<Operand>>({ Ns<VarOperand>(gen) }))));
   ctx->getBlock()->setTerminator(Ns<CondJumpTerminator>(
-      end, setupAction, toOperand(transform(stmt->done))));
+      end, setupAction, Ns<VarOperand>(doneCheckVar)));
   ctx->popBlock();
 
+  // first block
   ctx->addBlock(begin);
   transform(stmt->suite);
   condSetTerminator(Ns<JumpTerminator>(update));
   ctx->popBlock();
 
+  // update
   ctx->addBlock(update);
-  ctx->getBlock()->add(
-      Ns<AssignInstr>(Ns<VarLvalue>(var), toRvalue(transform(stmt->iter))));
+  ctx->getBlock()->add(Ns<AssignInstr>(Ns<VarLvalue>(var),
+                                       Ns<CallRValue>(toOperand(transform(nextFunc)),
+                                                      std::vector<std::shared_ptr<Operand>>({ Ns<VarOperand>(gen) }))));
   ctx->getBlock()->setTerminator(Ns<JumpTerminator>(cond));
   ctx->popBlock();
 
@@ -735,8 +774,7 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
       types.push_back(realizeType(real.type->args[i]->getClass()));
       names.push_back(real.ast->args[i - 1].name);
     }
-    auto funcType = Ns<ir::types::Type>(
-        realizeType(real.type->args[0]->getClass()), types, name + "Type");
+    auto funcType = realizeType(real.type);
     f->setType(funcType);
     f->setArgNames(names);
     f->setAttribute(kFuncAttribute, Ns<FuncAttribute>(real.ast->attributes));

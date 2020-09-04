@@ -7,6 +7,8 @@
 namespace seq {
 namespace ir {
 
+int BasicBlock::currentId = 0;
+
 std::string BasicBlock::referenceString() const {
   return fmt::format(FMT_STRING("bb#{}"), id);
 }

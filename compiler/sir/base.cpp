@@ -7,6 +7,11 @@
 namespace seq {
 namespace ir {
 
+const std::string kSrcInfoAttribute = "srcInfoAttribute";
+const std::string kTryCatchAttribute = "tryCatchAttribute";
+const std::string kLoopAttribute = "loopAttribute";
+const std::string kFuncAttribute = "funcAttributes";
+
 std::string StringAttribute::textRepresentation() const {
   return fmt::format(FMT_STRING("\"{}\""), value);
 }

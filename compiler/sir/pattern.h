@@ -17,6 +17,8 @@ class Operand;
 
 class Pattern : public AttributeHolder<Pattern> {
 public:
+  virtual ~Pattern() = default;
+
   std::string referenceString() const override { return "pattern"; }
 };
 

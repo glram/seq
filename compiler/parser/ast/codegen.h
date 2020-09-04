@@ -62,6 +62,8 @@ struct CodegenResult {
     case PATTERN:
       patternResult->setAttribute(key, att);
       break;
+    default:
+      break;
     }
   }
 };

@@ -7,6 +7,8 @@
 namespace seq {
 namespace ir {
 
+int TryCatch::currentId = 0;
+
 std::string TryCatch::referenceString() const {
   return fmt::format(FMT_STRING("try#{}"), id);
 }

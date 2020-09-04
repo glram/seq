@@ -14,10 +14,10 @@ namespace ir {
 class TryCatch;
 class BasicBlock;
 
-extern const auto kSrcInfoAttribute = "srcInfoAttribute";
-extern const auto kTryCatchAttribute = "tryCatchAttribute";
-extern const auto kLoopAttribute = "loopAttribute";
-extern const auto kFuncAttribute = "funcAttributes";
+extern const std::string kSrcInfoAttribute;
+extern const std::string kTryCatchAttribute;
+extern const std::string kLoopAttribute;
+extern const std::string kFuncAttribute;
 
 struct Attribute {
   virtual std::string textRepresentation() const = 0;
@@ -81,6 +81,8 @@ private:
   std::map<std::string, std::shared_ptr<Attribute>> kvStore;
 
 public:
+  virtual ~AttributeHolder() = default;
+
   virtual std::string textRepresentation() const = 0;
   virtual std::string referenceString() const = 0;
   std::string attributeString() const {
@@ -103,7 +105,7 @@ public:
   }
 
   std::shared_ptr<A> getShared() {
-    return std::static_pointer_cast<A>(shared_from_this());
+    return std::static_pointer_cast<A>(this->shared_from_this());
   }
 };
 

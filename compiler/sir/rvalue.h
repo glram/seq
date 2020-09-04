@@ -15,6 +15,8 @@ class Var;
 
 class Rvalue : public AttributeHolder<Rvalue> {
 public:
+  virtual ~Rvalue() = default;
+
   virtual std::shared_ptr<types::Type> getType() = 0;
 
   std::string referenceString() const override { return "rvalue"; };

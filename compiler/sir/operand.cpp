@@ -24,6 +24,8 @@ std::string LiteralOperand::textRepresentation() const {
     return bval ? "true" : "false";
   case LiteralType::INT:
     return std::to_string(ival);
+  case LiteralType::UINT:
+    return std::to_string(ival) + "u";
   case LiteralType::NONE:
     return "None";
   case LiteralType::SEQ:

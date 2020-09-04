@@ -565,10 +565,12 @@ struct ForStmt : public Stmt {
   /// Statement: for var in iter: suite
   ExprPtr var;
   ExprPtr iter;
-  ExprPtr done;
   StmtPtr suite;
 
-  ForStmt(ExprPtr v, ExprPtr i, ExprPtr d, StmtPtr s);
+  ExprPtr next;
+  ExprPtr done;
+
+  ForStmt(ExprPtr v, ExprPtr i, StmtPtr s);
   ForStmt(const ForStmt &s);
   std::string toString() const override;
   NODE_UTILITY(Stmt, ForStmt);

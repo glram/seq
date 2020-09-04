@@ -13,6 +13,7 @@ class Rvalue;
 
 class Instr : public AttributeHolder<Instr> {
 public:
+  virtual ~Instr() = default;
   std::string referenceString() const override { return "instr"; };
 };
 

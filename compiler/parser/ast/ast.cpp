@@ -397,10 +397,10 @@ string WhileStmt::toString() const {
   return format("(#while {} {})", *cond, *suite);
 }
 
-ForStmt::ForStmt(ExprPtr v, ExprPtr i, ExprPtr d, StmtPtr s)
-    : var(move(v)), iter(move(i)), done(move(d)), suite(move(s)) {}
+ForStmt::ForStmt(ExprPtr v, ExprPtr i, StmtPtr s)
+    : var(move(v)), iter(move(i)), suite(move(s)) {}
 ForStmt::ForStmt(const ForStmt &s)
-    : var(CL(s.var)), iter(CL(s.iter)), done(CL(s.done)), suite(CL(s.suite)) {}
+    : var(CL(s.var)), iter(CL(s.iter)), suite(CL(s.suite)), next(CL(s.next)), done(CL(s.done)) {}
 string ForStmt::toString() const {
   return format("(#for {} {} {})", *var, *iter, *suite);
 }

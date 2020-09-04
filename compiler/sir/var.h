@@ -25,6 +25,8 @@ public:
       : name(std::move(name)), type(std::move(type)), id(varNum++){};
   explicit Var(std::shared_ptr<types::Type> type) : Var("unnamed", type) {}
 
+  virtual ~Var() = default;
+
   virtual void setType(std::shared_ptr<types::Type> type) {
     this->type = std::move(type);
   }

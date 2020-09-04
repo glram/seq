@@ -13,6 +13,8 @@ class Var;
 
 class Lvalue : public AttributeHolder<Lvalue> {
 public:
+  virtual ~Lvalue() = default;
+
   virtual std::shared_ptr<types::Type> getType() = 0;
   std::string referenceString() const override { return "lvalue"; };
 };

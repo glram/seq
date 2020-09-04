@@ -14,7 +14,7 @@ Func::Func(std::string name, std::vector<std::string> argNames,
     : Var(std::move(name), type), argNames(argNames) {
 
   argVars = std::vector<std::shared_ptr<Var>>{};
-  auto argTypes = type->getArgTypes();
+  auto argTypes = std::static_pointer_cast<types::FuncType>(type)->getArgTypes();
   for (int i = 0; i < argTypes.size(); i++) {
     argVars.push_back(std::make_shared<Var>(argNames[i], argTypes[i]));
   }
@@ -26,7 +26,7 @@ void Func::setArgNames(std::vector<std::string> names) { argNames = names; }
 void Func::setType(std::shared_ptr<types::Type> type) {
   Var::setType(type);
   argVars.clear();
-  auto argTypes = type->getArgTypes();
+  auto argTypes = std::static_pointer_cast<types::FuncType>(type)->getArgTypes();
   for (int i = 0; i < argTypes.size(); i++) {
     argVars.push_back(std::make_shared<Var>(argNames[i], argTypes[i]));
   }

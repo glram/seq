@@ -91,7 +91,7 @@ TransformVisitor::getGeneratorBlock(const vector<GeneratorExpr::Body> &loops,
       vars.push_back(N<IdExpr>(s));
     prev->stmts.push_back(
         N<ForStmt>(vars.size() == 1 ? move(vars[0]) : N<TupleExpr>(move(vars)),
-                   l.gen->clone(), nullptr, move(newSuite)));
+                   l.gen->clone(), move(newSuite)));
     prev = nextPrev;
     for (auto &cond : l.conds) {
       newSuite = N<SuiteStmt>();

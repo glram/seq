@@ -196,15 +196,17 @@ void TransformVisitor::visit(const ForStmt *stmt) {
     }
   }
 
-  auto nextCall = N<CallExpr>(N<DotExpr>(iter, "next"));
-  auto doneCall = N<CallExpr>(N<DotExpr>(iter, "done"));
+  auto nextFunc = N<DotExpr>(conditionalMagic(stmt->iter, "generator", "__iter__"), "next");
+  auto doneFunc = N<DotExpr>(conditionalMagic(stmt->iter, "generator", "__iter__"), "done");
 
   ctx->addBlock();
   if (auto i = CAST(stmt->var, IdExpr)) {
     string varName = i->value;
     ctx->addVar(varName, varType);
-    resultStmt = N<ForStmt>(transform(stmt->var), transform(nextCall),
-                            transform(doneCall), transform(stmt->suite));
+    auto res = N<ForStmt>(transform(stmt->var), move(iter), transform(stmt->suite));
+    res->done = move(doneFunc);
+    res->next = move(nextFunc);
+    resultStmt = move(res);
   } else {
     string varName = getTemporaryVar("for");
     ctx->addVar(varName, varType);
@@ -214,9 +216,12 @@ void TransformVisitor::visit(const ForStmt *stmt) {
                                   false,
                                   /* force */ true));
     stmts.push_back(stmt->suite->clone());
-    resultStmt =
-        N<ForStmt>(var->clone(), transform(nextCall), transform(doneCall),
+    auto res =
+        N<ForStmt>(var->clone(), move(iter),
                    transform(N<SuiteStmt>(move(stmts))));
+    res->done = move(doneFunc);
+    res->next = move(nextFunc);
+    resultStmt = move(res);
   }
   ctx->popBlock();
 }
@@ -857,8 +862,7 @@ void TransformVisitor::visit(const AssignEqStmt *stmt) {
 // Transformation
 void TransformVisitor::visit(const YieldFromStmt *stmt) {
   auto var = getTemporaryVar("yield");
-  resultStmt = transform(N<ForStmt>(N<IdExpr>(var), stmt->expr->clone(),
-                                    nullptr, N<YieldStmt>(N<IdExpr>(var))));
+  resultStmt = transform(N<ForStmt>(N<IdExpr>(var), stmt->expr->clone(), N<YieldStmt>(N<IdExpr>(var))));
 }
 
 // Transformation
