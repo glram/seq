@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.9)
 project(Seq)
+include(ExternalProject)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_BUILD_TYPE Debug)
@@ -9,34 +10,68 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 include_directories(.)
 include_directories(compiler)
 
-find_package(LLVM REQUIRED CONFIG)
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+# set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
+
+if(NOT DEFINED SEQ_DEP)
+  message(FATAL_ERROR "You must set SEQ_DEP environment variable")
+endif()
+message(STATUS "Dependency directory: ${SEQ_DEP}")
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+find_package(LLVM REQUIRED CONFIG PATHS ${SEQ_DEP} NO_DEFAULT_PATH)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+set(ZLIB ${SEQ_DEP}/lib/libz.a)
+if (NOT EXISTS ${ZLIB})
+  message(FATAL_ERROR "Cannot find ${ZLIB}")
+endif()
+message(STATUS "Found zlib: ${ZLIB}")
+
+set(BDWGC ${SEQ_DEP}/lib/libgc.a)
+if (NOT EXISTS ${BDWGC})
+  message(FATAL_ERROR "Cannot find ${BDWGC}")
+endif()
+message(STATUS "Found bdwgc: ${BDWGC}")
+
+execute_process(COMMAND ${SEQ_DEP}/bin/ocamlc -where
+                RESULT_VARIABLE result
+                OUTPUT_VARIABLE OCAML_STDLIB_PATH
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+if (result)
+  message(FATAL_ERROR "CMake step for ocaml failed: ${result}")
+endif()
+message(STATUS "Found OCaml: ${OCAML_STDLIB_PATH}")
+
+set(MENHIRLIB ${SEQ_DEP}/share/menhir)
+if (NOT EXISTS ${MENHIRLIB}/menhirLib.cmx)
+  message(FATAL_ERROR "Cannot find ${MENHIRLIB}/menhirLib.cmx")
+endif()
+message(STATUS "Found Menhir: ${MENHIRLIB}")
+
+if (APPLE)
+  set(OMPLIB ${SEQ_DEP}/lib/libomp.dylib)
+else()
+  set(OMPLIB ${SEQ_DEP}/lib/libomp.so)
+endif()
+if (NOT EXISTS ${OMPLIB})
+  message(FATAL_ERROR "Cannot find ${OMPLIB}")
+endif()
+message(STATUS "Found OpenMP: ${OMPLIB}")
+add_library(seqomp SHARED IMPORTED)
+set_target_properties(seqomp PROPERTIES IMPORTED_LOCATION ${OMPLIB})
+
+set(CMAKE_BUILD_WITH_INSTALL_RPATH ON)
+if(APPLE)
+    set(CMAKE_INSTALL_RPATH "@loader_path;@loader_path/../lib/seq")
+else()
+    set(CMAKE_INSTALL_RPATH "$ORIGIN:$ORIGIN/../lib/seq")
+endif()
+
 # Seq runtime library
-option(SEQ_THREADED "compile runtime library for multithreading" OFF)
-option(SEQ_JITBRIDGE "support JIT interoperability" OFF)
-
-include(ExternalProject)
-ExternalProject_Add(bdwgc
-  URL https://github.com/ivmai/bdwgc/releases/download/v8.0.4/gc-8.0.4.tar.gz
-  SOURCE_DIR ${CMAKE_BINARY_DIR}/bdwgc
-  CONFIGURE_COMMAND ${CMAKE_BINARY_DIR}/bdwgc/configure CFLAGS=-fPIC --enable-threads=posix --enable-cplusplus --enable-thread-local-alloc --enable-large-config --prefix=${CMAKE_BINARY_DIR}/bdwgc/build
-  BUILD_COMMAND make LDFLAGS=-static
-  BUILD_IN_SOURCE ON
-  INSTALL_DIR ${CMAKE_BINARY_DIR}/bdwgc/build
-  INSTALL_COMMAND make install
-  # LOG_DOWNLOAD ON
-  # LOG_CONFIGURE ON
-  # LOG_BUILD ON
-  # LOG_INSTALL ON
-)
-ExternalProject_Get_Property(bdwgc install_dir)
-set(BDWGC_DIR ${install_dir})
-
 set(SEQRT_FILES runtime/lib.h
                 runtime/lib.cpp
                 runtime/exc.cpp
@@ -47,72 +82,36 @@ set(SEQRT_FILES runtime/lib.h
                 runtime/sw/ksw2_gg2_sse.cpp
                 runtime/sw/intersw.h
                 runtime/sw/intersw.cpp)
-add_library(seqrt OBJECT ${SEQRT_FILES})
-add_dependencies(seqrt bdwgc)
-target_include_directories(seqrt PRIVATE runtime ${BDWGC_DIR}/include)
-set_property(TARGET seqrt PROPERTY POSITION_INDEPENDENT_CODE 1)
-set_source_files_properties(runtime/sw/intersw.cpp PROPERTIES COMPILE_FLAGS "-march=native")
-if(SEQ_THREADED)
-  target_compile_definitions(seqrt PRIVATE THREADED=1)
+add_library(seqrt SHARED ${SEQRT_FILES})
+target_include_directories(seqrt PRIVATE ${SEQ_DEP}/include runtime)
+if (APPLE)
+  target_link_libraries(seqrt PUBLIC seqomp -static-libstdc++ -Wl,-force_load,${ZLIB} -Wl,-force_load,${BDWGC})
 else()
-  target_compile_definitions(seqrt PRIVATE THREADED=0)
+  target_link_libraries(seqrt PUBLIC seqomp -static-libstdc++ -Wl,--whole-archive ${ZLIB} ${BDWGC} -Wl,--no-whole-archive)
 endif()
-
-
-add_library(seqrt_shared SHARED $<TARGET_OBJECTS:seqrt>)
-add_dependencies(seqrt_shared bdwgc)
-target_link_libraries(seqrt_shared PUBLIC ${BDWGC_DIR}/lib/libgc.a Threads::Threads)
-if (SEQ_THREADED)
-  find_package(OpenMP REQUIRED)
-  target_link_libraries(seqrt_shared PUBLIC OpenMP::OpenMP_CXX)
-endif()
-add_library(seqrt_static STATIC $<TARGET_OBJECTS:seqrt>)
-add_dependencies(seqrt_static bdwgc)
-target_link_libraries(seqrt_static ${BDWGC_DIR}/lib/libgc.a)
+set_source_files_properties(runtime/sw/intersw.cpp PROPERTIES COMPILE_FLAGS "-march=native")
 
 # Seq parsing library
-execute_process(COMMAND ocamlc -where
-                RESULT_VARIABLE result
-                OUTPUT_VARIABLE OCAML_STDLIB_PATH
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
-if(result)
-  message(FATAL_ERROR "CMake step for ocaml failed: ${result}")
-endif()
-message(STATUS "Found OCaml: ${OCAML_STDLIB_PATH}")
 include_directories(${OCAML_STDLIB_PATH})
 link_directories(${OCAML_STDLIB_PATH})
-ExternalProject_Add(menhir
-  URL https://gitlab.inria.fr/fpottier/menhir/-/archive/20190924/menhir-20190924.tar.gz
-  SOURCE_DIR ${CMAKE_BINARY_DIR}/menhir
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND make -C src -j
-  BUILD_IN_SOURCE ON
-  INSTALL_COMMAND ""
-  # LOG_DOWNLOAD ON
-  # LOG_BUILD ON
-)
-ExternalProject_Get_Property(menhir SOURCE_DIR)
-set(MENHIR ${SOURCE_DIR}/src/_stage1/menhir.native)
-set(MENHIR_LIB ${SOURCE_DIR}/src/_stage1)
 
 ExternalProject_Add(seqparse_target
   SOURCE_DIR ${CMAKE_SOURCE_DIR}/compiler/parser/ocaml
   CONFIGURE_COMMAND cp -r ${CMAKE_SOURCE_DIR}/compiler/parser/ocaml ${CMAKE_BINARY_DIR}/seqparse
   BINARY_DIR ${CMAKE_BINARY_DIR}/seqparse
-  BUILD_COMMAND make -C ocaml MENHIR=${MENHIR} MENHIR_LIB=${MENHIR_LIB}
-  INSTALL_COMMAND ""
-  # LOG_DOWNLOAD ON
-  # LOG_BUILD ON
-)
+  BUILD_COMMAND make -C ocaml
+    OCAML=${SEQ_DEP}/bin/ocamlopt
+    OCAMLLEX=${SEQ_DEP}/bin/ocamllex
+    MENHIR=${SEQ_DEP}/bin/menhir
+    MENHIR_LIB=${MENHIRLIB}
+  INSTALL_COMMAND "")
 ExternalProject_Get_Property(seqparse_target BINARY_DIR)
 set(LIB_SEQPARSE ${BINARY_DIR}/ocaml/seqparser.o)
 set_property(SOURCE ${LIB_SEQPARSE} PROPERTY GENERATED 1)
-add_dependencies(seqparse_target menhir)
 
 # Seq compiler library
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
-
 file(GLOB SEQ_HPPFILES compiler/lang/*.h
                        compiler/types/*.h
                        compiler/sir/*.h
@@ -141,18 +140,17 @@ add_library(seq SHARED ${SEQ_HPPFILES})
 add_dependencies(seq seqparse_target)
 target_sources(seq PRIVATE ${LIB_SEQPARSE} ${SEQ_CPPFILES})
 llvm_map_components_to_libnames(LLVM_LIBS support core passes irreader x86asmparser x86info x86codegen mcjit orcjit ipo coroutines)
-target_link_libraries(seq ${LLVM_LIBS} seqrt_shared dl)
-
-if(SEQ_JITBRIDGE)
-  add_library(seqjit SHARED compiler/util/jit.cpp)
-  target_link_libraries(seqjit seq)
+if (APPLE)
+  target_link_libraries(seq ${LLVM_LIBS} dl seqrt)
+else()
+  target_link_libraries(seq -static-libstdc++ ${LLVM_LIBS} dl seqrt)
 endif()
 
 # Seq command-line tool
 add_executable(seqc runtime/main.cpp)
-target_link_libraries(seqc seq)
+target_link_libraries(seqc -static-libstdc++ seq Threads::Threads)
 
-# # Seq test
+# Seq test
 # Download and unpack googletest at configure time
 configure_file(test/CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
@@ -179,6 +177,7 @@ add_subdirectory(${CMAKE_CURRENT_BINARY_DIR}/googletest-src
                  EXCLUDE_FROM_ALL)
 
 add_executable(seqtest test/main.cpp)
+target_include_directories(seqtest PRIVATE ${SEQ_DEP}/include)
 target_link_libraries(seqtest seq gtest_main)
 target_compile_definitions(seqtest PRIVATE TEST_DIR="${CMAKE_CURRENT_SOURCE_DIR}/test")
 

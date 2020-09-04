@@ -34,7 +34,7 @@
 
 #define SEQ_VERSION_MAJOR 0
 #define SEQ_VERSION_MINOR 9
-#define SEQ_VERSION_PATCH 7
+#define SEQ_VERSION_PATCH 9
 
 #include "util/fmt/format.h"
 #include "util/fmt/ostream.h"
@@ -59,7 +59,17 @@ extern int __level__;
 #define LOG8(c, ...) DBG(8, c, ##__VA_ARGS__)
 #define LOG9(c, ...) DBG(9, c, ##__VA_ARGS__)
 #define CAST(s, T) dynamic_cast<T *>(s.get())
+
+#ifndef NDEBUG
+#define seqassert(expr, msg, ...)                                                      \
+  ((expr) ? (void)(0)                                                                  \
+          : _seqassert(#expr, __FILE__, __LINE__, fmt::format(msg, ##__VA_ARGS__)))
+#else
+#define seqassert(expr, msg, ...) ;
+#endif
 #pragma clang diagnostic pop
+void _seqassert(const char *expr_str, const char *file, int line,
+                const std::string &msg);
 
 namespace seq {
 namespace config {

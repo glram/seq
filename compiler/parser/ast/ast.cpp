@@ -120,7 +120,7 @@ string DictExpr::toString() const {
 }
 
 GeneratorExpr::Body GeneratorExpr::Body::clone() const {
-  return {vars, CL(gen), CL(conds)};
+  return {CL(vars), CL(gen), CL(conds)};
 }
 
 GeneratorExpr::GeneratorExpr(GeneratorExpr::Kind k, ExprPtr e,
@@ -139,7 +139,7 @@ string GeneratorExpr::toString() const {
     string q;
     for (auto &k : i.conds)
       q += format(" #if {}", *k);
-    s += format("#for {} {}{}", fmt::join(i.vars, " "), i.gen->toString(), q);
+    s += format("#for {} {}{}", i.vars->toString(), i.gen->toString(), q);
   }
   return wrap(format("#{}gen {}{}", prefix, *expr, s));
 }
@@ -155,7 +155,7 @@ string DictGeneratorExpr::toString() const {
     string q;
     for (auto &k : i.conds)
       q += format(" #if {}", *k);
-    s += format("#for ({}) {}{}", fmt::join(i.vars, " "), i.gen->toString(), q);
+    s += format("#for ({}) {}{}", i.vars->toString(), i.gen->toString(), q);
   }
   return wrap(format("#dict_gen {} {}{}", *key, *expr, s));
 }

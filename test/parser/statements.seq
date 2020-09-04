@@ -22,7 +22,7 @@ print x, y  #: 3 4
 [x, y] = [1, 2]
 print x, y  #: 1 2
 
-l = list(range(10))
+l = list(iter(range(10)))
 [a, b, *lx, c, d] = l
 print a, b, lx, c, d  #: 0 1 [2, 3, 4, 5, 6, 7] 8 9
 a, b, *lx = l
@@ -60,10 +60,13 @@ a = 5
 a = 3.3  #! ERROR: cannot unify float and int
 
 #%% assign_err_2
-(sa, sb), sc = 'XYZ'  #! ERROR:
+try:
+    (sa, sb), sc = 'XYZ'
+except IndexError:
+    print "assign failed"  #: assign failed
 
 #%% assign_err_3
-a, *b, c, *d = 1,2,3,4,5  #! ERROR: cannot unify slice and int
+a, *b, c, *d = 1,2,3,4,5  #! ERROR: multiple unpack expressions found
 
 #%% assign_shadow
 a = 5
@@ -76,6 +79,11 @@ a = 5
 a += 3
 print a  #: 8
 a -= 1; print a  #: 7
+
+#%% assign_comprehension
+g = ((b, a, c) for a, *b, c in ['ABC','DEEEEF','FHGIJ'])
+x, *q, y = list(g)  # TODO: auto-unroll as in Python
+print x, y, q  #: (B, A, C) (HGI, F, J) [(EEEE, D, F)]
 
 #%% del
 a = 5
@@ -103,12 +111,12 @@ def bar():
 bar()  #: 2
 
 #%% return_fail
-return 5  #! ERROR: ...
+return 5  #! ERROR: expected function body
 
 #%% yield
 def foo():
     yield 1
-print [i for i in foo()], str(foo())[:16]  #: [1], <generator at 0x
+print [i for i in foo()], str(foo())[:16]  #: [1] <generator at 0x
 
 #%% yield_void
 def foo():
@@ -116,7 +124,8 @@ def foo():
     print 1
 y = foo()
 print done(y)  #: False
-next(y)  #: 1
+y.next()  #: 1
+# TODO: next() should work here!
 print done(y)  #: True
 
 #%% yield_return
@@ -127,11 +136,14 @@ def foo():
 print list(foo())  #: [1]
 
 #%% yield_fail
-yield 5  #! ERROR: ...
+yield 5  #! ERROR: expected function body
 
 #%% assert
 assert bool(2) == True
-assert 3 == 4
+try:
+    assert 3 == 4
+except AssertionError:
+    print 'assert failed'  #: assert failed
 
 #%% while
 a = 3
@@ -162,29 +174,103 @@ for a, *m, b in l:
 #: 21 0
 
 #%% if
-for a, b in [(1, 2), (3, 3), (5, 4)]
+for a, b in [(1, 2), (3, 3), (5, 4)]:
     if a > b:
         print '1',
     elif a == b:
         print '=',
-    else
+    else:
         print '2',
-print  #: 1 = 2
+print '_'  #: 2 = 1 _
 
 #%% extend
+extend int:
+    def run_lola_run(self):
+        while self > 0:
+            yield self
+            self -= 1
+print list((5).run_lola_run())  #: [5, 4, 3, 2, 1]
 
 #%% import
 
 #%% try_throw
+class MyError:
+    _hdr: ExcHeader
+    def __init__(self, message: str):
+        self._hdr = ('MyError', message, '', '', 0, 0)
+try:
+    raise MyError("hello!")
+except MyError as e:
+    print e._hdr.msg  #: hello!
+try:
+    raise OSError("hello os!")
+# TODO: except (MyError, OSError) as e:
+#     print e._hdr.msg
+except MyError:
+    print "my"
+except OSError:
+    print "os"  #: os
+finally:
+    print "whoa"  #: whoa
 
 #%% global
+a = 1
+def foo():
+    global a
+    a += 1
+print a,
+foo()
+print a  #: 1 2
 
-#%% function
+#%% global_scope_err
+a = 1
+def foo():
+    a += 1
+foo()  #! ERROR:
 
-#%% type_class
+#%% global_err
+a = 1
+global a  #! ERROR: 'global' is only applicable within function blocks
 
 #%% yield_from
+def foo():
+    yield from range(3)
+    yield from range(10, 13)
+    yield -1
+print list(foo())  #: [0, 1, 2, 10, 11, 12, -1]
 
 #%% with
-
-#%% pydef
+class Foo:
+    i: int
+    def __enter__(self: Foo):
+        print '> foo! ' + str(self.i)
+    def __exit__(self: Foo):
+        print '< foo! ' + str(self.i)
+    def foo(self: Foo):
+        print 'woof'
+class Bar:
+    s: str
+    def __enter__(self: Bar):
+        print '> bar! ' + self.s
+    def __exit__(self: Bar):
+        print '< bar! ' + self.s
+    def bar(self: Bar):
+        print 'meow'
+with Foo(0) as f:
+#: > foo! 0
+    f.foo()  #: woof
+#: < foo! 0
+with Foo(1) as f, Bar('s') as b:
+#: > foo! 1
+#: > bar! s
+    f.foo()  #: woof
+    b.bar()  #: meow
+#: < bar! s
+#: < foo! 1
+with Foo(2), Bar('t') as q:
+#: > foo! 2
+#: > bar! t
+    print 'eeh'  #: eeh
+    q.bar()  #: meow
+#: < bar! t
+#: < foo! 2

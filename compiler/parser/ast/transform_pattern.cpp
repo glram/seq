@@ -50,43 +50,44 @@ PatternPtr TransformVisitor::transform(const Pattern *pat) {
 void TransformVisitor::visit(const StarPattern *pat) {
   resultPattern = N<StarPattern>();
   if (ctx->isTypeChecking())
-    resultPattern->setType(forceUnify(
-        pat, forceUnify(ctx->getMatchType(), ctx->addUnbound(getSrcInfo()))));
+    resultPattern->setType(
+        forceUnify(pat, forceUnify(ctx->getMatchType(),
+                                   ctx->addUnbound(getSrcInfo(), ctx->getLevel()))));
 }
 
 void TransformVisitor::visit(const IntPattern *pat) {
   resultPattern = N<IntPattern>(pat->value);
   if (ctx->isTypeChecking())
-    resultPattern->setType(forceUnify(
-        pat, forceUnify(ctx->getMatchType(), ctx->findInternal("int"))));
+    resultPattern->setType(
+        forceUnify(pat, forceUnify(ctx->getMatchType(), ctx->findInternal("int"))));
 }
 
 void TransformVisitor::visit(const BoolPattern *pat) {
   resultPattern = N<BoolPattern>(pat->value);
   if (ctx->isTypeChecking())
-    resultPattern->setType(forceUnify(
-        pat, forceUnify(ctx->getMatchType(), ctx->findInternal("bool"))));
+    resultPattern->setType(
+        forceUnify(pat, forceUnify(ctx->getMatchType(), ctx->findInternal("bool"))));
 }
 
 void TransformVisitor::visit(const StrPattern *pat) {
   resultPattern = N<StrPattern>(pat->value);
   if (ctx->isTypeChecking())
-    resultPattern->setType(forceUnify(
-        pat, forceUnify(ctx->getMatchType(), ctx->findInternal("str"))));
+    resultPattern->setType(
+        forceUnify(pat, forceUnify(ctx->getMatchType(), ctx->findInternal("str"))));
 }
 
 void TransformVisitor::visit(const SeqPattern *pat) {
   resultPattern = N<SeqPattern>(pat->value);
   if (ctx->isTypeChecking())
-    resultPattern->setType(forceUnify(
-        pat, forceUnify(ctx->getMatchType(), ctx->findInternal("seq"))));
+    resultPattern->setType(
+        forceUnify(pat, forceUnify(ctx->getMatchType(), ctx->findInternal("seq"))));
 }
 
 void TransformVisitor::visit(const RangePattern *pat) {
   resultPattern = N<RangePattern>(pat->start, pat->end);
   if (ctx->isTypeChecking())
-    resultPattern->setType(forceUnify(
-        pat, forceUnify(ctx->getMatchType(), ctx->findInternal("int"))));
+    resultPattern->setType(
+        forceUnify(pat, forceUnify(ctx->getMatchType(), ctx->findInternal("int"))));
 }
 
 void TransformVisitor::visit(const TuplePattern *pat) {
@@ -98,7 +99,7 @@ void TransformVisitor::visit(const TuplePattern *pat) {
       types.push_back(pp->getType());
     // TODO: Ensure type...
     error("not yet implemented");
-    t = make_shared<ClassType>("tuple", true, types);
+    t = make_shared<ClassType>("Tuple", true, types);
   }
   resultPattern = move(p);
   if (ctx->isTypeChecking())
@@ -109,7 +110,7 @@ void TransformVisitor::visit(const ListPattern *pat) {
   auto p = N<ListPattern>(transform(pat->patterns));
   TypePtr t = nullptr;
   if (ctx->isTypeChecking()) {
-    TypePtr ty = ctx->addUnbound(getSrcInfo());
+    TypePtr ty = ctx->addUnbound(getSrcInfo(), ctx->getLevel());
     for (auto &pp : p->patterns)
       forceUnify(ty, pp->getType());
     t = ctx->instantiateGeneric(getSrcInfo(), ctx->findInternal("list"), {ty});

@@ -157,10 +157,12 @@ void LLVMContext::execJIT(string varName, std::shared_ptr<seq::Expr> varExpr) {
 std::shared_ptr<seq::ir::types::Type>
 LLVMContext::realizeType(types::ClassTypePtr t) {
   // LOG7("[codegen] looking for ty {} / {}", t->name, t->toString(true));
-  assert(t && t->canRealize());
+  t = t->getClass();
+  seqassert(t, "type must be set and a class");
+  seqassert(t->canRealize(), "{} must be realizable", t->toString());
   auto it = getRealizations()->classRealizations.find(t->name);
   assert(it != getRealizations()->classRealizations.end());
-  auto it2 = it->second.find(t->realizeString(t->name, false));
+  auto it2 = it->second.find(t->realizeString());
   assert(it2 != it->second.end());
   auto &real = it2->second;
   if (real.handle)
@@ -183,53 +185,50 @@ LLVMContext::realizeType(types::ClassTypePtr t) {
     assert(statics.size() == 1 && types.size() == 0);
     assert(statics[0] >= 1 && statics[0] <= 2048);
     real.handle = seq::ir::types::kIntType;
-  } else if (name == "array") {
+  } else if (name == "Array") {
     assert(types.size() == 1 && statics.size() == 0);
     real.handle =
         std::make_shared<seq::ir::types::Array>(types[0]->getShared());
-  } else if (name == "ptr") {
+  } else if (name == "Ptr") {
     assert(types.size() == 1 && statics.size() == 0);
     real.handle =
         std::make_shared<seq::ir::types::Pointer>(types[0]->getShared());
-  } else if (name == "generator") {
+  } else if (name == "Generator") {
     assert(types.size() == 1 && statics.size() == 0);
     real.handle =
         std::make_shared<seq::ir::types::Generator>(types[0]->getShared());
-  } else if (name == "optional") {
+  } else if (name == "Optional") {
     assert(types.size() == 1 && statics.size() == 0);
     real.handle =
         std::make_shared<seq::ir::types::Optional>(types[0]->getShared());
-  } else if (name.substr(0, 9) == "function.") {
+  } else if (name.substr(0, 9) == "Function.") {
     types.clear();
     for (auto &m : t->args)
       types.push_back(realizeType(m->getClass()));
     auto ret = types[0];
     types.erase(types.begin());
     real.handle = std::make_shared<seq::ir::types::FuncType>(name, ret, types);
-  } else if (name.substr(0, 8) == "partial.") {
-    auto f = t->getCallable();
+  } else if (name.substr(0, 8) == "Partial.") {
+    auto f = t->getCallable()->getClass();
     assert(f);
     auto callee = realizeType(f);
-    vector<std::shared_ptr<seq::ir::types::Type>> partials(f->args.size() - 1,
-                                                           nullptr);
-    auto p = std::dynamic_pointer_cast<types::PartialType>(t);
-    assert(p);
-    for (int i = 0; i < p->knownTypes.size(); i++)
-      if (p->knownTypes[i])
-        partials[i] = realizeType(f->args[i + 1]->getClass());
+    vector<std::shared_ptr<seq::ir::types::Type>> partials(f->args.size() - 1, nullptr);
+    for (int i = 8; i < name.size(); i++)
+      if (name[i] == '1')
+        partials[i] = realizeType(f->args[i - 8 + 1]->getClass());
     real.handle = std::make_shared<seq::ir::types::PartialFuncType>(name, callee, partials);
   } else {
     vector<string> names;
     vector<std::shared_ptr<seq::ir::types::Type>> types;
     for (auto &m : real.args) {
       names.push_back(m.first);
-      types.push_back(realizeType(m.second)->getShared());
+      types.push_back(realizeType(m.second->getClass()));
     }
     if (t->isRecord()) {
       vector<string> x;
       for (auto &t : types)
         x.push_back(t->getName());
-      if (name.substr(0, 6) == "tuple.")
+      if (name.substr(0, 6) == "Tuple.")
         name = "";
       real.handle = std::make_shared<seq::ir::types::RecordType>(name, types, names);
     } else {
@@ -237,9 +236,7 @@ LLVMContext::realizeType(types::ClassTypePtr t) {
           std::make_shared<seq::ir::types::RecordType>(name, types, names));
     }
   }
-  // LOG7("{} -> {} -> {}", t->toString(), t->realizeString(t->name, false),
-  // real.handle->getName());
-  return real.handle->getShared();
+  return real.handle;
 }
 
 shared_ptr<LLVMContext>
@@ -257,7 +254,7 @@ LLVMContext::getContext(const string &file, shared_ptr<TypeContext> typeCtx,
   for (auto &ff : realizations->classRealizations)
     for (auto &f : ff.second) {
       auto &real = f.second;
-      stdlib->lctx->realizeType(real.type);
+      stdlib->lctx->realizeType(real.type->getClass());
       stdlib->lctx->addType(real.fullName, real.handle->getShared());
     }
   for (auto &ff : realizations->funcRealizations)

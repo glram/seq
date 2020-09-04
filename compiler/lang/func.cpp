@@ -4,8 +4,7 @@ using namespace seq;
 using namespace llvm;
 
 BaseFunc::BaseFunc()
-    : parentType(nullptr), module(nullptr), preambleBlock(nullptr),
-      func(nullptr) {}
+    : parentType(nullptr), module(nullptr), preambleBlock(nullptr), func(nullptr) {}
 
 bool BaseFunc::isGen() { return false; }
 
@@ -34,12 +33,10 @@ void BaseFunc::setEnclosingClass(types::Type *parentType) {
 }
 
 Func::Func()
-    : BaseFunc(), SrcObject(), external(false), name(), inTypes(),
-      outType(types::Void), outType0(types::Void), defaultArgs(),
-      scope(new Block()), argNames(), argVars(), attributes(),
-      parentFunc(nullptr), ret(nullptr), yield(nullptr), prefetch(false),
-      interAlign(false), gen(false), promise(nullptr), handle(nullptr),
-      cleanup(nullptr), suspend(nullptr) {
+    : BaseFunc(), SrcObject(), external(false), name(), inTypes(), outType(types::Void),
+      defaultArgs(), scope(new Block()), argNames(), argVars(), attributes(),
+      parentFunc(nullptr), prefetch(false), interAlign(false), gen(false),
+      promise(nullptr), handle(nullptr), cleanup(nullptr), suspend(nullptr) {
   if (!this->argNames.empty())
     assert(this->argNames.size() == this->inTypes.size());
 }
@@ -54,29 +51,12 @@ void Func::setEnclosingFunc(BaseFunc *parentFunc) {
   this->parentFunc = p;
 }
 
-void Func::sawReturn(Return *ret) {
-  if (interAlign && ret->getExpr())
-    throw exc::SeqException(
-        "functions performing inter-sequence alignment cannot return a value",
-        getSrcInfo());
-  if (this->ret)
-    return;
-
-  this->ret = ret;
-}
-
-void Func::sawYield(Yield *yield) {
+void Func::setGenerator() {
   if (interAlign)
     throw exc::SeqException(
         "functions performing inter-sequence alignment cannot be generators",
         getSrcInfo());
-  if (this->yield)
-    return;
-
-  this->yield = yield;
   gen = true;
-  // outType = types::GenType::get(outType);
-  // outType0 = types::GenType::get(outType0);
 }
 
 void Func::addAttribute(std::string attr) {
@@ -98,10 +78,7 @@ void Func::addAttribute(std::string attr) {
 
     prefetch = true;
     gen = true;
-    outType =
-        types::GenType::get(outType, types::GenType::GenTypeKind::PREFETCH);
-    outType0 =
-        types::GenType::get(outType0, types::GenType::GenTypeKind::PREFETCH);
+    outType = types::GenType::get(outType, types::GenType::GenTypeKind::PREFETCH);
   } else if (attr == "inter_align") {
     if (interAlign)
       return;
@@ -109,17 +86,14 @@ void Func::addAttribute(std::string attr) {
       throw exc::SeqException(
           "function cannot perform both prefetch and inter-sequence alignment",
           getSrcInfo());
-    if (!(outType->is(types::Void) && outType0->is(types::Void)))
+    if (!outType->is(types::Void))
       throw exc::SeqException("functions performing inter-sequence alignment "
                               "cannot return a value",
                               getSrcInfo());
     interAlign = true;
     gen = true;
     types::RecordType *yieldType = PipeExpr::getInterAlignYieldType();
-    outType =
-        types::GenType::get(yieldType, types::GenType::GenTypeKind::INTERALIGN);
-    outType0 =
-        types::GenType::get(yieldType, types::GenType::GenTypeKind::INTERALIGN);
+    outType = types::GenType::get(yieldType, types::GenType::GenTypeKind::INTERALIGN);
   }
 }
 
@@ -196,16 +170,15 @@ void Func::codegen(Module *module) {
 
   if (hasAttribute("export")) {
     if (parentType || parentFunc)
-      throw exc::SeqException("can only export top-level functions",
-                              getSrcInfo());
+      throw exc::SeqException("can only export top-level functions", getSrcInfo());
     func->setLinkage(GlobalValue::ExternalLinkage);
   } else {
     func->setLinkage(GlobalValue::PrivateLinkage);
   }
   if (hasAttribute("inline")) {
     if (hasAttribute("noinline"))
-      throw exc::SeqException(
-          "function cannot be marked 'inline' and 'noinline'", getSrcInfo());
+      throw exc::SeqException("function cannot be marked 'inline' and 'noinline'",
+                              getSrcInfo());
     func->addFnAttr(Attribute::AttrKind::AlwaysInline);
   }
   if (hasAttribute("noinline")) {
@@ -224,22 +197,21 @@ void Func::codegen(Module *module) {
   Value *id = nullptr;
   if (gen) {
     Function *idFn = Intrinsic::getDeclaration(module, Intrinsic::coro_id);
-    Value *nullPtr =
-        ConstantPointerNull::get(IntegerType::getInt8PtrTy(context));
+    Value *nullPtr = ConstantPointerNull::get(IntegerType::getInt8PtrTy(context));
 
     if (!outType->getBaseType(0)->is(types::Void)) {
-      promise = makeAlloca(outType->getBaseType(0)->getLLVMType(context),
-                           preambleBlock);
+      promise =
+          makeAlloca(outType->getBaseType(0)->getLLVMType(context), preambleBlock);
       promise->setName("promise");
       Value *promiseRaw =
           builder.CreateBitCast(promise, IntegerType::getInt8PtrTy(context));
-      id = builder.CreateCall(
-          idFn, {ConstantInt::get(IntegerType::getInt32Ty(context), 0),
-                 promiseRaw, nullPtr, nullPtr});
+      id = builder.CreateCall(idFn,
+                              {ConstantInt::get(IntegerType::getInt32Ty(context), 0),
+                               promiseRaw, nullPtr, nullPtr});
     } else {
-      id = builder.CreateCall(
-          idFn, {ConstantInt::get(IntegerType::getInt32Ty(context), 0), nullPtr,
-                 nullPtr, nullPtr});
+      id = builder.CreateCall(idFn,
+                              {ConstantInt::get(IntegerType::getInt32Ty(context), 0),
+                               nullPtr, nullPtr, nullPtr});
     }
     id->setName("id");
   }
@@ -258,8 +230,8 @@ void Func::codegen(Module *module) {
   if (gen) {
     allocBlock = BasicBlock::Create(context, "alloc", func);
     builder.SetInsertPoint(allocBlock);
-    Function *sizeFn = Intrinsic::getDeclaration(module, Intrinsic::coro_size,
-                                                 {seqIntLLVM(context)});
+    Function *sizeFn =
+        Intrinsic::getDeclaration(module, Intrinsic::coro_size, {seqIntLLVM(context)});
     Value *size = builder.CreateCall(sizeFn);
     auto *allocFunc = makeAllocFunc(module, false);
     alloc = builder.CreateCall(allocFunc, size);
@@ -273,13 +245,11 @@ void Func::codegen(Module *module) {
     builder.CreateBr(entry);
     builder.SetInsertPoint(entry);
     PHINode *phi = builder.CreatePHI(IntegerType::getInt8PtrTy(context), 2);
-    phi->addIncoming(
-        ConstantPointerNull::get(IntegerType::getInt8PtrTy(context)),
-        preambleBlock);
+    phi->addIncoming(ConstantPointerNull::get(IntegerType::getInt8PtrTy(context)),
+                     preambleBlock);
     phi->addIncoming(alloc, allocBlock);
 
-    Function *beginFn =
-        Intrinsic::getDeclaration(module, Intrinsic::coro_begin);
+    Function *beginFn = Intrinsic::getDeclaration(module, Intrinsic::coro_begin);
     handle = builder.CreateCall(beginFn, {id, phi});
     handle->setName("hdl");
 
@@ -301,8 +271,8 @@ void Func::codegen(Module *module) {
 
     builder.SetInsertPoint(suspend);
     Function *endFn = Intrinsic::getDeclaration(module, Intrinsic::coro_end);
-    builder.CreateCall(
-        endFn, {handle, ConstantInt::get(IntegerType::getInt1Ty(context), 0)});
+    builder.CreateCall(endFn,
+                       {handle, ConstantInt::get(IntegerType::getInt1Ty(context), 0)});
     builder.CreateRet(handle);
 
     exit = BasicBlock::Create(context, "final", func);
@@ -329,8 +299,7 @@ void Func::codegen(Module *module) {
       builder.CreateRetVoid();
     } else {
       // i.e. if there isn't already a return at the end
-      if (scope->stmts.empty() ||
-          !dynamic_cast<Return *>(scope->stmts.back())) {
+      if (scope->stmts.empty() || !dynamic_cast<Return *>(scope->stmts.back())) {
         builder.CreateRet(outType->defaultValue(exitBlock));
       } else {
         builder.CreateUnreachable();
@@ -340,8 +309,7 @@ void Func::codegen(Module *module) {
 
   builder.SetInsertPoint(preambleBlock);
   if (gen) {
-    Function *allocFn =
-        Intrinsic::getDeclaration(module, Intrinsic::coro_alloc);
+    Function *allocFn = Intrinsic::getDeclaration(module, Intrinsic::coro_alloc);
     Value *needAlloc = builder.CreateCall(allocFn, id);
     builder.CreateCondBr(needAlloc, allocBlock, entryActual);
 
@@ -366,8 +334,8 @@ void Func::codegenReturn(Value *val, types::Type *type, BasicBlock *&block,
       if ((val && type && !types::is(type, outType)) ||
           (!val && !outType->is(types::Void)))
         throw exc::SeqException("cannot return '" + type->getName() +
-                                "' from function returning '" +
-                                outType->getName() + "'");
+                                "' from function returning '" + outType->getName() +
+                                "'");
 
       if (val && type && type->is(types::Void))
         throw exc::SeqException("cannot return void value from function");
@@ -398,8 +366,8 @@ void Func::codegenReturn(Value *val, types::Type *type, BasicBlock *&block,
 
 // type = nullptr means final yield; empty yields used internally only in
 // prefetch transformations
-void Func::codegenYield(Value *val, types::Type *type, BasicBlock *&block,
-                        bool empty, bool dryrun) {
+void Func::codegenYield(Value *val, types::Type *type, BasicBlock *&block, bool empty,
+                        bool dryrun) {
   if (!gen)
     throw exc::SeqException("cannot yield from a non-generator");
 
@@ -424,8 +392,8 @@ void Func::codegenYield(Value *val, types::Type *type, BasicBlock *&block,
 
   Function *suspFn = Intrinsic::getDeclaration(module, Intrinsic::coro_suspend);
   Value *tok = ConstantTokenNone::get(context);
-  Value *final = ConstantInt::get(IntegerType::getInt1Ty(context),
-                                  (empty || type) ? 0 : 1);
+  Value *final =
+      ConstantInt::get(IntegerType::getInt1Ty(context), (empty || type) ? 0 : 1);
   Value *susp = builder.CreateCall(suspFn, {tok, final});
 
   /*
@@ -451,8 +419,7 @@ Value *Func::codegenYieldExpr(BasicBlock *&block, bool suspend) {
   IRBuilder<> builder(block);
   if (suspend) {
     LLVMContext &context = block->getContext();
-    Function *suspFn =
-        Intrinsic::getDeclaration(module, Intrinsic::coro_suspend);
+    Function *suspFn = Intrinsic::getDeclaration(module, Intrinsic::coro_suspend);
     Value *tok = ConstantTokenNone::get(context);
     Value *final = ConstantInt::get(IntegerType::getInt1Ty(context), 0);
     Value *susp = builder.CreateCall(suspFn, {tok, final});
@@ -461,15 +428,14 @@ Value *Func::codegenYieldExpr(BasicBlock *&block, bool suspend) {
 
     SwitchInst *inst = builder.CreateSwitch(susp, this->suspend, 2);
     inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 0), block);
-    inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 1),
-                  cleanup);
+    inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 1), cleanup);
   }
 
   builder.SetInsertPoint(block);
   return builder.CreateLoad(promise);
 }
 
-bool Func::isGen() { return yield != nullptr; }
+bool Func::isGen() { return gen && !prefetch && !interAlign; }
 
 std::vector<std::string> Func::getArgNames() { return argNames; }
 
@@ -479,9 +445,7 @@ Var *Func::getArgVar(std::string name) {
   return iter->second;
 }
 
-types::FuncType *Func::getFuncType() {
-  return types::FuncType::get(inTypes, outType);
-}
+types::FuncType *Func::getFuncType() { return types::FuncType::get(inTypes, outType); }
 
 void Func::setExternal() { external = true; }
 
@@ -494,7 +458,7 @@ void Func::setOut(types::Type *outType) {
     throw exc::SeqException(
         "functions performing inter-sequence alignment cannot return a value",
         getSrcInfo());
-  this->outType = outType0 = outType;
+  this->outType = outType;
 }
 
 void Func::setDefaults(std::vector<Expr *> defaultArgs) {
@@ -512,7 +476,8 @@ void Func::setArgNames(std::vector<std::string> argNames) {
     argVars.insert({this->argNames[i], new Var(inTypes[i])});
 }
 
-std::unordered_map<std::string, Func *> Func::builtins = {};
+std::unordered_map<std::string, Func *> Func::builtins =
+    std::unordered_map<std::string, Func *>();
 Func *Func::getBuiltin(const std::string &name) {
   auto itr = builtins.find(name);
 

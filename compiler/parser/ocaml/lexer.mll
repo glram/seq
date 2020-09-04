@@ -78,7 +78,7 @@
       scan 0;
       Buffer.contents buf
     in
-    match String.lowercase (String.sub pfx 0 1) with
+    match String.lowercase_ascii (String.sub pfx 0 1) with
     | "r" -> P.STRING (fix_literals ~is_raw:true u)
     | ("s" | "p") as p -> P.SEQ (p, fix_literals u)
     | "k" -> P.KMER (fix_literals u)
@@ -96,7 +96,8 @@ let hexdigit = ['0'-'9' 'a'-'f' 'A'-'F']
 let int = digit+
 let hexint = '0' ['x' 'X'] hexdigit+
 let fraction = '.' digit+
-let pointfloat = int? fraction | int '.'
+let danglingfloat = int '.'
+let pointfloat = int? fraction | danglingfloat
 let exponent = ['e' 'E'] ['+' '-']? digit+
 let expfloat = (int | pointfloat) exponent
 let float = pointfloat | expfloat

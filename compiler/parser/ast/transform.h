@@ -89,7 +89,8 @@ class TransformVisitor : public ASTVisitor, public SrcObject {
   ExprPtr conditionalMagic(const ExprPtr &expr, const std::string &type,
                            const std::string &magic);
   ExprPtr makeBoolExpr(const ExprPtr &e);
-  std::vector<types::Generic> parseGenerics(const std::vector<Param> &generics);
+  std::vector<types::Generic> parseGenerics(const std::vector<Param> &generics,
+                                            int level);
 
   StmtPtr addMethod(Stmt *s, const std::string &canonicalName);
   types::FuncTypePtr
@@ -98,18 +99,13 @@ class TransformVisitor : public ASTVisitor, public SrcObject {
                bool failOnMultiple = false, types::TypePtr retType = nullptr);
 
   bool wrapOptional(types::TypePtr lt, ExprPtr &rhs);
-  std::string generateVariardicStub(const std::string &name, int len);
+  std::string generateFunctionStub(int len);
+  std::string generateTupleStub(int len);
+  std::string generatePartialStub(const std::string &flag);
 
-  // std::vector<int> callCallable(types::ClassTypePtr f,
-  // std::vector<CallExpr::Arg> &args, std::vector<CallExpr::Arg>
-  // &reorderedArgs);
-  std::vector<int> callFunc(types::ClassTypePtr f,
-                            std::vector<CallExpr::Arg> &args,
+  std::vector<int> callFunc(types::TypePtr f, std::vector<CallExpr::Arg> &args,
                             std::vector<CallExpr::Arg> &reorderedArgs,
                             const std::vector<int> &availableArguments);
-  // std::vector<int> callPartial(types::PartialTypePtr f,
-  //  std::vector<CallExpr::Arg> &args,
-  //  std::vector<CallExpr::Arg> &reorderedArgs);
   bool handleStackAlloc(const CallExpr *expr);
   bool getTupleIndex(types::ClassTypePtr tuple, const ExprPtr &expr,
                      const ExprPtr &index);

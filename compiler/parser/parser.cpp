@@ -39,7 +39,8 @@ std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string 
     char abs[PATH_MAX + 1];
     realpath(file.c_str(), abs);
 
-    // fprintf(stderr, "%s\n", fmt::format("{} {} {}", abs, isCode, code).c_str());
+    // fprintf(stderr, "%s\n", fmt::format("{} {} {}", abs, isCode,
+    // code).c_str());
     auto ctx = ast::TypeContext::getContext(argv0, abs);
     ast::StmtPtr stmts = nullptr;
     if (!isCode)
@@ -59,7 +60,6 @@ std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string 
     ast::CodegenVisitor(lctx).transform(tv.get());
     LOG3("--- Done with codegen ---");
 
-    // fmt::print(fo, "-------------------------------<hr/>\n");
     return module;
   } catch (seq::exc::SeqException &e) {
     if (isTest) {
@@ -88,13 +88,12 @@ std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string 
 void execute(seq::SeqModule *module, vector<string> args, vector<string> libs,
              bool debug) {
   config::config().debug = debug;
-  // try {
-  module->execute(args, libs);
-  // }
-  // catch (exc::SeqException &e) {
-  //   compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
-  //                    e.getSrcInfo().col);
-  // }
+  try {
+    module->execute(args, libs);
+  } catch (exc::SeqException &e) {
+    compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
+                     e.getSrcInfo().col);
+  }
 }
 
 void compile(seq::SeqModule *module, const string &out, bool debug) {

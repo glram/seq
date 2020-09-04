@@ -17,7 +17,7 @@ void Block::codegen(BasicBlock *&block) {
 
 Stmt::Stmt(std::string name)
     : SrcObject(), name(std::move(name)), base(nullptr), breaks(), continues(),
-      parent(nullptr), loop(false) {}
+      parent(nullptr), loop(false), tc(nullptr) {}
 
 std::string Stmt::getName() const { return name; }
 
@@ -54,8 +54,7 @@ Stmt *Stmt::findEnclosingLoop() {
     stmt = stmt->getPrev();
   }
 
-  throw exc::SeqException("break or continue outside of loop",
-                          orig->getSrcInfo());
+  throw exc::SeqException("break or continue outside of loop", orig->getSrcInfo());
 }
 
 void Stmt::addBreakToEnclosingLoop(BranchInst *inst) {
@@ -66,9 +65,12 @@ void Stmt::addContinueToEnclosingLoop(BranchInst *inst) {
   findEnclosingLoop()->addContinue(inst);
 }
 
-void Stmt::setTryCatch(TryCatch *tc) {}
+void Stmt::setTryCatch(TryCatch *tc) { this->tc = tc; }
 
 TryCatch *Stmt::getTryCatch() {
+  if (tc)
+    return tc;
+
   Stmt *stmt = getPrev();
   Stmt *last = this;
 
@@ -124,6 +126,4 @@ void Stmt::codegen(BasicBlock *&block) {
   }
 }
 
-std::ostream &operator<<(std::ostream &os, Stmt &stmt) {
-  return os << stmt.getName();
-}
+std::ostream &operator<<(std::ostream &os, Stmt &stmt) { return os << stmt.getName(); }

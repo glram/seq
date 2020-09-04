@@ -32,9 +32,7 @@ namespace ast {
 TypeContext::TypeContext(const std::string &filename,
                          shared_ptr<RealizationContext> realizations,
                          shared_ptr<ImportContext> imports)
-    : Context<TypeItem::Item>(filename, realizations, imports), // module(""),
-      level(0), returnType(nullptr), matchType(nullptr),
-      wasReturnTypeSet(false), typecheck(true) {
+    : Context<TypeItem::Item>(filename, realizations, imports), typecheck(true) {
   stack.push_front(vector<string>());
 }
 
@@ -52,7 +50,7 @@ shared_ptr<TypeItem::Item> TypeContext::find(const std::string &name,
       if (it->second->getFunc())
         return make_shared<TypeItem::Func>(it->second, "", "");
       else if (it->second->getClass())
-        return make_shared<TypeItem::Class>(it->second, "", "");
+        return make_shared<TypeItem::Class>(it->second, false, "", "");
     }
     return nullptr;
   } else if (name[0] == '/') {
@@ -77,7 +75,7 @@ shared_ptr<TypeItem::Item> TypeContext::find(const std::string &name,
                                          fit->second[name].base);
     auto cit = getRealizations()->classRealizations.find(it->second);
     if (cit != getRealizations()->classRealizations.end())
-      return make_shared<TypeItem::Class>(cit->second[name].type,
+      return make_shared<TypeItem::Class>(cit->second[name].type, false,
                                           "", // all classes/fn are toplevel
                                           cit->second[name].base);
   }
@@ -87,7 +85,7 @@ shared_ptr<TypeItem::Item> TypeContext::find(const std::string &name,
 types::TypePtr TypeContext::findInternal(const string &name) const {
   auto stdlib = imports->getImport("")->tctx;
   auto t = stdlib->find(name, false);
-  assert(t);
+  seqassert(t, "cannot find '{}'", name);
   return t->getType();
 }
 
@@ -105,9 +103,9 @@ TypeContext::addImport(const string &name, const string &import, bool global) {
   return t;
 }
 
-shared_ptr<TypeItem::Item>
-TypeContext::addType(const string &name, types::TypePtr type, bool global) {
-  auto t = make_shared<TypeItem::Class>(type, filename, getBase(), global);
+shared_ptr<TypeItem::Item> TypeContext::addType(const string &name, types::TypePtr type,
+                                                bool generic, bool global) {
+  auto t = make_shared<TypeItem::Class>(type, generic, filename, getBase(), global);
   add(name, t);
   return t;
 }
@@ -135,26 +133,37 @@ void TypeContext::addGlobal(const string &name, types::TypePtr type) {
   g[name] = type;
 }
 
-string TypeContext::getBase() const {
-  auto s = format("{}", fmt::join(bases, "."));
-  return (s == "" ? "" : s + ".");
+string TypeContext::getBase(bool full) const {
+  if (!bases.size())
+    return "";
+  if (!full) {
+    if (auto f = bases.back().parent->getFunc())
+      return f->name;
+    assert(bases.back().parent->getClass());
+    return bases.back().parent->getClass()->name;
+  } else {
+    vector<string> s;
+    for (auto &b : bases) {
+      if (auto f = b.parent->getFunc())
+        s.push_back(f->name);
+      else
+        s.push_back(b.parent->getClass()->name);
+    }
+    return join(s, ":");
+  }
 }
 
-// string TypeContext::getModule() const { return module; }
-
-void TypeContext::increaseLevel() { level++; }
-
-void TypeContext::decreaseLevel() { level--; }
-
-shared_ptr<types::LinkType> TypeContext::addUnbound(const SrcInfo &srcInfo,
-                                                    bool setActive) {
-  auto t = make_shared<types::LinkType>(
-      types::LinkType::Unbound, realizations->getUnboundCount()++, level);
+shared_ptr<types::LinkType> TypeContext::addUnbound(const SrcInfo &srcInfo, int level,
+                                                    bool setActive, bool isStatic) {
+  auto t = make_shared<types::LinkType>(types::LinkType::Unbound,
+                                        realizations->getUnboundCount()++, level,
+                                        nullptr, isStatic);
   t->setSrcInfo(srcInfo);
-  if (setActive) {
-    LOG9("UNBOUND/{}: {} @ {} ", typecheck, t->toString(0), srcInfo);
+  if (!typecheck)
+    assert(1);
+  LOG7("[ub] new {}: {} ({}); tc={}", t->toString(0), srcInfo, setActive, typecheck);
+  if (setActive)
     activeUnbounds.insert(t);
-  }
   return t;
 }
 
@@ -170,18 +179,24 @@ types::TypePtr TypeContext::instantiate(const SrcInfo &srcInfo,
   unordered_map<int, types::TypePtr> cache;
   if (generics)
     for (auto &g : generics->explicits)
-      if (g.type)
+      if (g.type &&
+          !(g.type->getLink() && g.type->getLink()->kind == types::LinkType::Generic)) {
+        // LOG7("{} inst: {} -> {}", type->toString(), g.id, g.type->toString());
         cache[g.id] = g.type;
-  auto t = type->instantiate(level, realizations->getUnboundCount(), cache);
+      }
+  auto t = type->instantiate(getLevel(), realizations->getUnboundCount(), cache);
   for (auto &i : cache) {
     if (auto l = i.second->getLink()) {
       if (l->kind != types::LinkType::Unbound)
         continue;
       i.second->setSrcInfo(srcInfo);
-      if (activate && activeUnbounds.find(i.second) == activeUnbounds.end()) {
-        LOG9("UNBOUND/{}: {} @ {} (during inst of {})", typecheck,
-             i.second->toString(0), srcInfo, type->toString());
-        activeUnbounds.insert(i.second);
+      if (activeUnbounds.find(i.second) == activeUnbounds.end()) {
+        LOG7("[ub] #{} -> {} (during inst of {}): {} ({})", i.first,
+             i.second->toString(0), type->toString(), srcInfo, activate);
+        // if (i.second->toString() == "?262.0")
+        // assert(1);
+        if (activate)
+          activeUnbounds.insert(i.second);
       }
     }
   }
@@ -228,7 +243,7 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
     stdlib->addType(name, typ);
     stdlib->addType("." + name, typ);
   }
-  vector<string> genericTypes = {"ptr", "generator", "optional"};
+  vector<string> genericTypes = {"Ptr", "Generator", "Optional"};
   for (auto &t : genericTypes) {
     auto typ = make_shared<types::ClassType>(
         t, true, vector<types::TypePtr>(),
@@ -272,10 +287,10 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
   auto t1 = TransformVisitor(stdlib).realizeBlock(stmts.get(), true);
   tv->stmts.push_back(move(t1));
   stdlib->unsetFlag("internal");
-  stdlib->addVar("__argv__",
-                 make_shared<types::LinkType>(stdlib->instantiateGeneric(
-                     SrcInfo(), stdlib->find("array")->getType(),
-                     {stdlib->find("str")->getType()})));
+
+  stdlib->addVar("__argv__", make_shared<types::LinkType>(stdlib->instantiateGeneric(
+                                 SrcInfo(), stdlib->find("Array")->getType(),
+                                 {stdlib->find("str")->getType()})));
 
   stmts = parseFile(stdlibPath);
 

@@ -158,8 +158,7 @@ public:
               std::shared_ptr<seq::SeqJIT> jit);
   virtual ~LLVMContext();
 
-  std::shared_ptr<LLVMItem::Item> find(const std::string &name,
-                                       bool onlyLocal = false,
+  std::shared_ptr<LLVMItem::Item> find(const std::string &name, bool onlyLocal = false,
                                        bool checkStdlib = true) const;
 
   using Context<LLVMItem::Item>::add;

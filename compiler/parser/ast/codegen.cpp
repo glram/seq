@@ -398,7 +398,7 @@ void CodegenVisitor::visit(const AssignStmt *stmt) {
   auto var = i->value;
   // is it variable?
   if (stmt->rhs->isType()) {
-    ctx->addType(var, realizeType(stmt->rhs->getType()->getClass()));
+    // ctx->addType(var, realizeType(stmt->rhs->getType()->getClass()));
   } else {
     auto v = Ns<ir::Var>(var, realizeType(stmt->rhs->getType()->getClass()));
     if (ctx->isToplevel()) {
@@ -799,8 +799,7 @@ void CodegenVisitor::visitMethods(const string &name) {
   if (c)
     for (auto &m : c->methods)
       for (auto &mm : m.second) {
-        FunctionStmt *f = CAST(
-            ctx->getRealizations()->getAST(mm->canonicalName), FunctionStmt);
+        FunctionStmt *f = CAST(ctx->getRealizations()->getAST(mm->name), FunctionStmt);
         visit(f);
       }
 }
@@ -867,10 +866,11 @@ void CodegenVisitor::visit(const GuardedPattern *pat) {
 
 shared_ptr<ir::types::Type> CodegenVisitor::realizeType(types::ClassTypePtr t) {
   // DBG("looking for {} / {}", t->name, t->toString(true));
+  t = t->getClass();
   assert(t && t->canRealize());
   auto it = ctx->getRealizations()->classRealizations.find(t->name);
   assert(it != ctx->getRealizations()->classRealizations.end());
-  auto it2 = it->second.find(t->realizeString(t->name, false));
+  auto it2 = it->second.find(t->realizeString());
   assert(it2 != it->second.end());
   assert(it2->second.handle);
   return it2->second.handle->getShared();

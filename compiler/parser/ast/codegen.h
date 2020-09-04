@@ -78,8 +78,8 @@ class CodegenVisitor : public ASTVisitor, public SrcObject {
 
   std::shared_ptr<seq::ir::types::Type> realizeType(types::ClassTypePtr t);
 
-  std::shared_ptr<LLVMItem::Item>
-  processIdentifier(std::shared_ptr<LLVMContext> tctx, const std::string &id);
+  std::shared_ptr<LLVMItem::Item> processIdentifier(std::shared_ptr<LLVMContext> tctx,
+                                                    const std::string &id);
 
 public:
   CodegenVisitor(std::shared_ptr<LLVMContext> ctx);
@@ -164,8 +164,8 @@ private:
   }
   template <typename... TArgs>
   void internalError(const char *format, TArgs &&... args) {
-    throw exc::ParserException(fmt::format(
-        "INTERNAL: {}", fmt::format(format, args...), getSrcInfo()));
+    throw exc::ParserException(
+        fmt::format("INTERNAL: {}", fmt::format(format, args...), getSrcInfo()));
   }
   template <typename A, typename B, typename... Ts> auto Nas(Ts &&... args) {
     return std::static_pointer_cast<B>(

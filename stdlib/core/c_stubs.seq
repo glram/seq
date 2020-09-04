@@ -1,5 +1,4 @@
 # Seq runtime functions
-cimport seq_print(str)
 cimport seq_alloc(int) -> cobj
 cimport seq_alloc_atomic(int) -> cobj
 cimport seq_realloc(cobj, int) -> cobj
@@ -25,6 +24,7 @@ cimport seq_rlock_new() -> cobj
 cimport seq_rlock_acquire(cobj, bool, float) -> bool
 cimport seq_rlock_release(cobj)
 cimport seq_is_macos() -> bool
+cimport seq_i32_to_float(i32) -> float
 
 # <string.h>
 cimport strtoll(cobj, ptr[cobj], i32) -> int

@@ -266,7 +266,7 @@ struct GeneratorExpr : public Expr {
   /// where loops are: for vars... in gen (if conds...)?
   enum Kind { Generator, ListGenerator, SetGenerator };
   struct Body {
-    std::vector<std::string> vars;
+    ExprPtr vars;
     ExprPtr gen;
     std::vector<ExprPtr> conds;
     Body clone() const;

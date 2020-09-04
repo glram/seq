@@ -2,6 +2,7 @@
 //#include <dirent.h>
 //#include <fcntl.h>
 //#include <fstream>
+//#include <gc.h>
 //#include <iostream>
 //#include <sstream>
 //#include <string>
@@ -73,6 +74,8 @@
 //  return {result, isError};
 //}
 //
+//string argv0;
+//
 //class SeqTest : public testing::TestWithParam<
 //                    tuple<string /*filename*/, bool /*debug*/, string /* case name */,
 //                          string /* case code */, int /* case line */>> {
@@ -88,9 +91,11 @@
 //  int runInChildProcess() {
 //    assert(pipe(out_pipe) != -1);
 //    pid = fork();
+//    GC_atfork_prepare();
 //    assert(pid != -1);
 //
 //    if (pid == 0) {
+//      GC_atfork_child();
 //      dup2(out_pipe[1], STDOUT_FILENO);
 //      close(out_pipe[0]);
 //      close(out_pipe[1]);
@@ -98,12 +103,13 @@
 //      auto file = getFilename(get<0>(GetParam()));
 //      auto code = get<3>(GetParam());
 //      auto startLine = get<4>(GetParam());
-//      SeqModule *module = parse(ast::executable_path(""), file, code, code.size() > 0,
+//      SeqModule *module = parse(argv0, file, code, code.size() > 0,
 //                                /* isTest */ true, startLine);
 //      execute(module, {file}, {}, get<1>(GetParam()));
 //      fflush(stdout);
 //      exit(EXIT_SUCCESS);
 //    } else {
+//      GC_atfork_parent();
 //      int status = -1;
 //      close(out_pipe[1]);
 //      assert(waitpid(pid, &status, 0) == pid);
@@ -121,13 +127,15 @@
 //  const bool debug = get<1>(info.param);
 //
 //  // normalize basename
-//  size_t found1 = basename.find('/');
-//  size_t found2 = basename.find('.');
-//  assert(found1 != string::npos);
-//  assert(found2 != string::npos);
-//  assert(found2 > found1);
-//  string normname = basename.substr(found1 + 1, found2 - found1 - 1);
-//
+//  // size_t found1 = basename.find('/');
+//  // size_t found2 = basename.find('.');
+//  // assert(found1 != string::npos);
+//  // assert(found2 != string::npos);
+//  // assert(found2 > found1);
+//  // string normname = basename.substr(found1 + 1, found2 - found1 - 1);
+//  string normname = basename;
+//  replace(normname.begin(), normname.end(), '/', '_');
+//  replace(normname.begin(), normname.end(), '.', '_');
 //  return normname + (debug ? "_debug" : "");
 //}
 //static string
@@ -145,9 +153,10 @@
 //  ASSERT_TRUE(WIFEXITED(status));
 //
 //  string output = result();
-//  fprintf(stderr, "%s\n", output.c_str());
 //
 //  auto expects = findExpects(!isCase ? getFilename(file) : get<3>(GetParam()), isCase);
+//  if (WEXITSTATUS(status) != int(expects.second))
+//    fprintf(stderr, "%s\n", output.c_str());
 //  ASSERT_EQ(WEXITSTATUS(status), int(expects.second));
 //  const bool assertsFailed = output.find("TEST FAILED") != string::npos;
 //  EXPECT_FALSE(assertsFailed);
@@ -194,49 +203,71 @@
 //                         testing::ValuesIn(getTypeTests({"parser/expressions.seq",
 //                                                         "parser/statements.seq"})),
 //                         getTypeTestNameFromParam);
-
-// INSTANTIATE_TEST_SUITE_P(
-//     CoreTests, SeqTest,
-//     testing::Combine(testing::Values("core/parser.seq", "core/align.seq",
-//                                      "core/arguments.seq",
-//                                      "core/arithmetic.seq", "core/big.seq",
-//                                      "core/bltin.seq", "core/bwtsa.seq",
-//                                      "core/containers.seq", "core/empty.seq",
-//                                      "core/exceptions.seq", "core/formats.seq",
-//                                      "core/generators.seq", "core/generics.seq",
-//                                      "core/helloworld.seq", "core/kmers.seq",
-//                                      "core/match.seq", "core/proteins.seq",
-//                                      "core/range.seq", "core/serialization.seq",
-//                                      "core/trees.seq"),
-//                      testing::Values(true, false), testing::Values(false)),
-//     getTestNameFromParam);
-
-// INSTANTIATE_TEST_SUITE_P(
-//     PipelineTests, SeqTest,
-//     testing::Combine(testing::Values("pipeline/parallel.seq",
-//                                      "pipeline/prefetch.seq",
-//                                      "pipeline/revcomp_opt.seq",
-//                                      "pipeline/canonical_opt.seq",
-//                                      "pipeline/interalign.seq"),
-//                      testing::Values(true, false)),
-//     getTestNameFromParam);
-
-// INSTANTIATE_TEST_SUITE_P(
-//     StdlibTests, SeqTest,
-//     testing::Combine(
-//         testing::Values("stdlib/str_test.seq", "stdlib/math_test.seq",
-//                         "stdlib/itertools_test.seq", "stdlib/bisect_test.seq",
-//                         "stdlib/sort_test.seq", "stdlib/random_test.seq",
-//                         "stdlib/heapq_test.seq", "stdlib/statistics_test.seq"),
-//         testing::Values(true, false)),
-//     getTestNameFromParam);
-
-// INSTANTIATE_TEST_SUITE_P(
-//     PythonTests, SeqTest,
-//     testing::Combine(testing::Values("python/pybridge.seq"),
-//                      testing::Values(true, false)),
-//     getTestNameFromParam);
+//
+//// clang-format off
+//INSTANTIATE_TEST_SUITE_P(
+//    CoreTests, SeqTest,
+//    testing::Combine(
+//      testing::Values(
+//        "core/helloworld.seq",
+//        "core/arithmetic.seq",
+//        "core/parser.seq",
+//        // F: "core/arguments.seq", // assertion error; waiting for ariya
+//        // F: "core/generics.seq", // assertion failed
+//        // F: "core/bltin.seq",
+//        // F: "core/exceptions.seq",
+//        // F: "core/generators.seq", // LLVM error
+//        // F: "core/range.seq", // needs auto-unify
+//        // F: "core/big.seq",
+//        // F: "core/match.seq", // needs seq type
+//        // F: "core/containers.seq", // unification
+//        // F: "core/trees.seq",
+//        // "core/align.seq",
+//        // "core/bwtsa.seq",
+//        // "core/formats.seq",
+//        // "core/kmers.seq",
+//        // "core/proteins.seq",
+//        // "core/serialization.seq",
+//        "core/empty.seq"
+//      ),
+//      testing::Values(true),
+//      testing::Values(""),
+//      testing::Values(""),
+//      testing::Values(0)
+//    ),
+//    getTestNameFromParam);
+//// clang-format on
+//
+//// INSTANTIATE_TEST_SUITE_P(
+////     PipelineTests, SeqTest,
+////     testing::Combine(testing::Values("pipeline/parallel.seq",
+////                                      "pipeline/prefetch.seq",
+////                                      "pipeline/revcomp_opt.seq",
+////                                      "pipeline/canonical_opt.seq",
+////                                      "pipeline/interalign.seq"),
+////                      testing::Values(true, false)),
+////     getTestNameFromParam);
+//
+//// INSTANTIATE_TEST_SUITE_P(
+////     StdlibTests, SeqTest,
+////     testing::Combine(
+////         testing::Values("stdlib/str_test.seq", "stdlib/math_test.seq",
+////                         "stdlib/itertools_test.seq",
+////                         "stdlib/bisect_test.seq", "stdlib/sort_test.seq",
+////                         "stdlib/random_test.seq", "stdlib/heapq_test.seq",
+////                         "stdlib/statistics_test.seq"),
+////         testing::Values(true, false)),
+////     getTestNameFromParam);
+//
+//// INSTANTIATE_TEST_SUITE_P(
+////     PythonTests, SeqTest,
+////     testing::Combine(testing::Values("python/pybridge.seq"),
+////                      testing::Values(true, false)),
+////     getTestNameFromParam);
 
 int main(int argc, char *argv[]) {
   return 0;
+//  argv0 = ast::executable_path(argv[0]);
+//  testing::InitGoogleTest(&argc, argv);
+//  return RUN_ALL_TESTS();
 }

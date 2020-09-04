@@ -16,6 +16,14 @@ using namespace llvm::orc;
 #include "llvm/CodeGen/CommandFlags.def"
 #endif
 
+void _seqassert(const char *expr_str, const char *file, int line,
+                const std::string &msg) {
+  std::cerr << "Assert failed:\t" << msg << "\n"
+            << "Expression:\t" << expr_str << "\n"
+            << "Source:\t\t" << file << ":" << line << "\n";
+  abort();
+}
+
 config::Config::Config() : context(), debug(false), profile(false) {}
 
 config::Config &seq::config::config() {

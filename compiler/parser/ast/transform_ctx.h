@@ -90,16 +90,16 @@ public:
 
 class Class : public Item {
   types::TypePtr type;
-  // bool isStatic;
+  bool generic;
 
 public:
-  Class(types::TypePtr type, const std::string &module,
+  Class(types::TypePtr type, bool generic, const std::string &module,
         const std::string &base, /*bool isStatic = false,*/
         bool global = false)
-      : Item(module, base, global), type(type) /*,isStatic(isStatic)*/ {}
+      : Item(module, base, global), type(type), generic(generic) {}
   const Class *getClass() const override { return this; }
   types::TypePtr getType() const override { return type; }
-  // bool getStatic() const { return isStatic; }
+  bool isGeneric() const { return generic; }
 };
 
 class Func : public Item {
@@ -115,28 +115,27 @@ public:
 } // namespace TypeItem
 
 class TypeContext : public Context<TypeItem::Item> {
-  /** Naming **/
+public:
+  /// Used for fixing generic function definitions
+  bool typecheck;
 
   /// Current module-specific name prefix (stack of enclosing class/function
   /// scopes). Module toplevel has no base.
-  std::vector<std::string> bases;
+  struct Base {
+    types::TypePtr parent;
+    ExprPtr parentAst;
+    bool referencesParent;
+    types::TypePtr returnType;
+    Base(types::TypePtr p, bool r = false)
+        : parent(p), parentAst(nullptr), referencesParent(r), returnType(nullptr) {}
+  };
+  std::vector<Base> bases;
+  /// Function parsing helpers: maintain current return type
+  types::TypePtr matchType;
 
-  /** Type-checking **/
-  /// Current type-checking level
-  int level;
   /// Set of active unbound variables.
   /// If type checking is successful, all of them should be resolved.
   std::set<types::TypePtr> activeUnbounds;
-
-  /** Function utilities **/
-  /// Function parsing helpers: maintain current return type
-  types::TypePtr returnType, matchType;
-  std::vector<types::ClassTypePtr> baseTypes;
-  /// Indicates if a return was seen (to account for procedures)
-  bool wasReturnTypeSet;
-
-  /// Used for fixing generic function definitions
-  bool typecheck;
 
 public:
   TypeContext(const std::string &filename,
@@ -149,52 +148,30 @@ public:
   types::TypePtr findInternal(const std::string &name) const;
 
   using Context<TypeItem::Item>::add;
-  std::shared_ptr<TypeItem::Item>
-  addVar(const std::string &name, types::TypePtr type, bool global = false);
-  std::shared_ptr<TypeItem::Item> addImport(const std::string &name,
-                                            const std::string &import,
-                                            bool global = false);
-  std::shared_ptr<TypeItem::Item>
-  addType(const std::string &name, types::TypePtr type, bool global = false);
-  std::shared_ptr<TypeItem::Item>
-  addFunc(const std::string &name, types::TypePtr type, bool global = false);
+  std::shared_ptr<TypeItem::Item> addVar(const std::string &name, types::TypePtr type, bool global = false);
+
+  std::shared_ptr<TypeItem::Item> addImport(const std::string &name, const std::string &import, bool global = false);
+  std::shared_ptr<TypeItem::Item> addType(const std::string &name, types::TypePtr type,
+                                          bool generic = false, bool global = false);
+  std::shared_ptr<TypeItem::Item> addFunc(const std::string &name, types::TypePtr type,
+                                          bool global = false);
   std::shared_ptr<TypeItem::Item> addStatic(const std::string &name, int value,
                                             types::TypePtr type = nullptr,
                                             bool global = false);
   void addGlobal(const std::string &name, types::TypePtr type);
-  // void addRealization(types::TypePtr type);
   void dump(int pad = 0) override;
 
 public:
-  std::string getBase() const;
-  // std::string getModule() const;
-  void increaseLevel();
-  void decreaseLevel();
-  int getLevel() const { return level; }
-  types::TypePtr getReturnType() const { return returnType; }
-  void setReturnType(types::TypePtr t = nullptr) {
-    wasReturnTypeSet = true;
-    if (t)
-      returnType = t;
-  }
+  std::string getBase(bool full = false) const;
+  int getLevel() const { return bases.size(); }
   types::TypePtr getMatchType() const { return matchType; }
   void setMatchType(types::TypePtr t) { matchType = t; }
-  types::ClassTypePtr getBaseType() const {
-    return baseTypes.size() ? baseTypes.back() : nullptr;
-  }
-  void addBaseType(types::ClassTypePtr t) { baseTypes.push_back(t); }
-  void popBaseType() { baseTypes.pop_back(); }
-  bool wasReturnSet() const { return wasReturnTypeSet; }
-  void setWasReturnSet(bool state) { wasReturnTypeSet = state; }
-  void pushBase(const std::string &s) { bases.push_back(s); }
-  void popBase() { bases.pop_back(); }
   bool isTypeChecking() const { return typecheck; }
-  void setTypeCheck(bool s) { typecheck = s; }
-  std::set<types::TypePtr> &getActiveUnbounds() { return activeUnbounds; }
 
 public:
-  std::shared_ptr<types::LinkType> addUnbound(const SrcInfo &srcInfo,
-                                              bool setActive = true);
+  std::shared_ptr<types::LinkType> addUnbound(const SrcInfo &srcInfo, int level,
+                                              bool setActive = true,
+                                              bool isStatic = false);
   /// Calls `type->instantiate`, but populates the instantiation table
   /// with "parent" type.
   /// Example: for list[T].foo, list[int].foo will populate type of foo so that

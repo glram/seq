@@ -221,7 +221,7 @@ private:
 typedef std::shared_ptr<ClassType> ClassTypePtr;
 struct ClassType : public Type {
   std::vector<Generic> explicits;
-  ClassTypePtr parent;
+  TypePtr parent;
 
 public:
   /// Global unique name for each type (generated from the getSrcPos())
@@ -237,7 +237,7 @@ public:
   ClassType(const std::string &name, bool isRecord = false,
             const std::vector<TypePtr> &args = std::vector<TypePtr>(),
             const std::vector<Generic> &explicits = std::vector<Generic>(),
-            ClassTypePtr parent = nullptr);
+            TypePtr parent = nullptr);
 
 public:
   virtual int unify(TypePtr typ, Unification &us) override;
@@ -249,13 +249,11 @@ public:
   bool hasUnbound() const override;
   bool canRealize() const override;
   std::string toString(bool reduced = false) const override;
-  std::string realizeString(const std::string &n, bool deep = true,
-                            int firstArg = 0) const;
   std::string realizeString() const override;
   ClassTypePtr getClass() override {
     return std::static_pointer_cast<ClassType>(shared_from_this());
   }
-  ClassTypePtr getCallable();
+  TypePtr getCallable();
   bool isRecord() const { return record; }
 };
 
@@ -263,34 +261,34 @@ public:
  * FuncType describes a (generic) function type that can be realized.
  */
 typedef std::shared_ptr<FuncType> FuncTypePtr;
-struct FuncType : public ClassType {
-  std::string canonicalName;
+struct FuncType : public Type {
+  std::vector<Generic> explicits;
+  TypePtr parent, codegenParent;
+  ClassTypePtr funcClass;
+
+  std::string name;
+  std::vector<TypePtr> args;
 
 public:
-  FuncType(ClassTypePtr c, const std::string &canonicalName = "");
-  FuncType(const std::vector<TypePtr> &args = std::vector<TypePtr>(),
+  FuncType(const std::string &name, ClassTypePtr funcClass,
+           const std::vector<TypePtr> &args = std::vector<TypePtr>(),
            const std::vector<Generic> &explicits = std::vector<Generic>(),
-           ClassTypePtr parent = nullptr, const std::string &canonicalName = "");
+           TypePtr parent = nullptr, TypePtr codegenParent = nullptr);
 
 public:
+  virtual int unify(TypePtr typ, Unification &us) override;
+  bool hasUnbound() const override;
+  bool canRealize() const override;
   std::string realizeString() const override;
   FuncTypePtr getFunc() override {
     return std::static_pointer_cast<FuncType>(shared_from_this());
   }
+  ClassTypePtr getClass() override;
   TypePtr generalize(int level) override;
   TypePtr instantiate(int level, int &unboundCount,
                       std::unordered_map<int, TypePtr> &cache) override;
+  std::string toString(bool reduced = false) const override;
 };
-
-struct PartialType : public ClassType {
-  std::vector<char> knownTypes;
-  PartialType(ClassTypePtr c, const std::vector<char> &k);
-  TypePtr generalize(int level) override;
-  TypePtr instantiate(int level, int &unboundCount,
-                      std::unordered_map<int, TypePtr> &cache) override;
-  virtual int unify(TypePtr typ, Unification &us) override;
-};
-typedef std::shared_ptr<PartialType> PartialTypePtr;
 
 } // namespace types
 } // namespace ast

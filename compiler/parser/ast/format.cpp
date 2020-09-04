@@ -157,8 +157,8 @@ void FormatVisitor::visit(const GeneratorExpr *expr) {
     string cond;
     for (auto &k : i.conds)
       cond += fmt::format(" if {}", transform(k));
-    s += fmt::format("for {} in {}{}", fmt::join(i.vars, ", "),
-                     i.gen->toString(), cond);
+
+    s += fmt::format("for {} in {}{}", i.vars->toString(), i.gen->toString(), cond);
   }
   if (expr->kind == GeneratorExpr::ListGenerator)
     result = renderExpr(expr, "[{} {}]", transform(expr->expr), s);
@@ -175,8 +175,7 @@ void FormatVisitor::visit(const DictGeneratorExpr *expr) {
     for (auto &k : i.conds)
       cond += fmt::format(" if {}", transform(k));
 
-    s += fmt::format("for {} in {}{}", fmt::join(i.vars, ", "),
-                     i.gen->toString(), cond);
+    s += fmt::format("for {} in {}{}", i.vars->toString(), i.gen->toString(), cond);
   }
   result = renderExpr(expr, "{{{}: {} {}}}", transform(expr->key),
                       transform(expr->expr), s);
@@ -480,11 +479,10 @@ void FormatVisitor::visit(const ClassStmt *stmt) {
   }
   bool added = 0;
   for (auto &m : c->methods) {
-    auto s = FormatVisitor(ctx, renderHTML)
-                 .transform(ctx->getRealizations()
-                                ->getAST(m.second.front()->canonicalName)
-                                .get(),
-                            indent);
+    auto s =
+        FormatVisitor(ctx, renderHTML)
+            .transform(ctx->getRealizations()->getAST(m.second.front()->name).get(),
+                       indent);
     if (s.size()) {
       if (result.size()) {
         if (result.substr(result.size() - newline().size()) != newline())
