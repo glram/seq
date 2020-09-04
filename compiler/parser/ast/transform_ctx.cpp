@@ -89,15 +89,15 @@ types::TypePtr TypeContext::findInternal(const string &name) const {
   return t->getType();
 }
 
-shared_ptr<TypeItem::Item>
-TypeContext::addVar(const string &name, types::TypePtr type, bool global) {
+shared_ptr<TypeItem::Item> TypeContext::addVar(const string &name, types::TypePtr type,
+                                               bool global) {
   auto t = make_shared<TypeItem::Var>(type, filename, getBase(), global);
   add(name, t);
   return t;
 }
 
-shared_ptr<TypeItem::Item>
-TypeContext::addImport(const string &name, const string &import, bool global) {
+shared_ptr<TypeItem::Item> TypeContext::addImport(const string &name,
+                                                  const string &import, bool global) {
   auto t = make_shared<TypeItem::Import>(import, filename, getBase(), global);
   add(name, t);
   return t;
@@ -110,18 +110,16 @@ shared_ptr<TypeItem::Item> TypeContext::addType(const string &name, types::TypeP
   return t;
 }
 
-shared_ptr<TypeItem::Item>
-TypeContext::addFunc(const string &name, types::TypePtr type, bool global) {
+shared_ptr<TypeItem::Item> TypeContext::addFunc(const string &name, types::TypePtr type,
+                                                bool global) {
   auto t = make_shared<TypeItem::Func>(type, filename, getBase(), global);
   add(name, t);
   return t;
 }
 
 shared_ptr<TypeItem::Item> TypeContext::addStatic(const string &name, int value,
-                                                  types::TypePtr type,
-                                                  bool global) {
-  auto t =
-      make_shared<TypeItem::Static>(value, type, filename, getBase(), global);
+                                                  types::TypePtr type, bool global) {
+  auto t = make_shared<TypeItem::Static>(value, type, filename, getBase(), global);
   add(name, t);
   return t;
 }
@@ -167,15 +165,12 @@ shared_ptr<types::LinkType> TypeContext::addUnbound(const SrcInfo &srcInfo, int 
   return t;
 }
 
-types::TypePtr TypeContext::instantiate(const SrcInfo &srcInfo,
-                                        types::TypePtr type) {
+types::TypePtr TypeContext::instantiate(const SrcInfo &srcInfo, types::TypePtr type) {
   return instantiate(srcInfo, type, nullptr);
 }
 
-types::TypePtr TypeContext::instantiate(const SrcInfo &srcInfo,
-                                        types::TypePtr type,
-                                        types::ClassTypePtr generics,
-                                        bool activate) {
+types::TypePtr TypeContext::instantiate(const SrcInfo &srcInfo, types::TypePtr type,
+                                        types::ClassTypePtr generics, bool activate) {
   unordered_map<int, types::TypePtr> cache;
   if (generics)
     for (auto &g : generics->explicits)
@@ -203,9 +198,9 @@ types::TypePtr TypeContext::instantiate(const SrcInfo &srcInfo,
   return t;
 }
 
-types::TypePtr
-TypeContext::instantiateGeneric(const SrcInfo &srcInfo, types::TypePtr root,
-                                const vector<types::TypePtr> &generics) {
+types::TypePtr TypeContext::instantiateGeneric(const SrcInfo &srcInfo,
+                                               types::TypePtr root,
+                                               const vector<types::TypePtr> &generics) {
   auto c = root->getClass();
   assert(c);
   auto g = make_shared<types::ClassType>(""); // dummy generic type
@@ -264,8 +259,7 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
         vector<types::Generic>{
             {"N",
              make_shared<types::LinkType>(types::LinkType::Generic,
-                                          realizations->unboundCount, 0,
-                                          nullptr, true),
+                                          realizations->unboundCount, 0, nullptr, true),
              realizations->unboundCount}});
     realizations->moduleNames[t] = 1;
     stdlib->addType(t, typ);
@@ -275,15 +269,13 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
 
   stdlib->setFlag("internal");
   assert(stdlibPath.substr(stdlibPath.size() - 12) == "__init__.seq");
-  auto internal =
-      stdlibPath.substr(0, stdlibPath.size() - 12) + "__internal__.seq";
+  auto internal = stdlibPath.substr(0, stdlibPath.size() - 12) + "__internal__.seq";
   stdlib->filename = internal;
   auto stmts = parseFile(internal);
   stdlib->filename = stdlibPath;
 
   imports->setBody("", make_unique<SuiteStmt>());
-  SuiteStmt *tv =
-      static_cast<SuiteStmt *>(imports->getImport("")->statements.get());
+  SuiteStmt *tv = static_cast<SuiteStmt *>(imports->getImport("")->statements.get());
   auto t1 = TransformVisitor(stdlib).realizeBlock(stmts.get(), true);
   tv->stmts.push_back(move(t1));
   stdlib->unsetFlag("internal");
@@ -299,14 +291,12 @@ shared_ptr<TypeContext> TypeContext::getContext(const string &argv0,
   auto ctx = make_shared<TypeContext>(file, realizations, imports);
   imports->addImport(file, file, ctx);
 
-  LOG7(
-      "----------------------------------------------------------------------");
+  LOG7("----------------------------------------------------------------------");
   return ctx;
 }
 
 void TypeContext::dump(int pad) {
-  auto ordered =
-      std::map<string, decltype(map)::mapped_type>(map.begin(), map.end());
+  auto ordered = std::map<string, decltype(map)::mapped_type>(map.begin(), map.end());
   LOG("base: {}", getBase());
   for (auto &i : ordered) {
     std::string s;

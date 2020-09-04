@@ -45,8 +45,8 @@ private:
 
 public:
   LiteralOperand()
-      : literalType(LiteralType::NONE), ival(0), uival(0), fval(0.0), bval(false), sval(),
-        isSeq(false) {}
+      : literalType(LiteralType::NONE), ival(0), uival(0), fval(0.0), bval(false),
+        sval(), isSeq(false) {}
   explicit LiteralOperand(seq_int_t ival)
       : literalType(LiteralType::INT), ival(ival), uival(0), fval(0.0), bval(false),
         sval(), isSeq(false) {}
@@ -57,11 +57,11 @@ public:
       : literalType(LiteralType::FLOAT), ival(0), uival(0), fval(fval), bval(false),
         sval(), isSeq(false) {}
   explicit LiteralOperand(bool bval)
-      : literalType(LiteralType::BOOL), ival(0), uival(0), fval(0.0), bval(bval), sval(),
-        isSeq(false) {}
+      : literalType(LiteralType::BOOL), ival(0), uival(0), fval(0.0), bval(bval),
+        sval(), isSeq(false) {}
   explicit LiteralOperand(std::string sval, bool seq = false)
-      : literalType(seq ? LiteralType::SEQ : LiteralType::STR), ival(0),
-        uival(0), fval(0.0), bval(false), sval(std::move(sval)), isSeq(seq) {}
+      : literalType(seq ? LiteralType::SEQ : LiteralType::STR), ival(0), uival(0),
+        fval(0.0), bval(false), sval(std::move(sval)), isSeq(seq) {}
 
   std::shared_ptr<types::Type> getType() override {
     switch (literalType) {

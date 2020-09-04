@@ -30,7 +30,8 @@ void generateDocstr(const std::string &file) {
 }
 
 std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string &file,
-                      const string &code, bool isCode, bool isTest, int startLine) {
+                                    const string &code, bool isCode, bool isTest,
+                                    int startLine) {
   try {
     auto d = getenv("SEQ_DEBUG");
     if (d)
@@ -54,8 +55,8 @@ std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string 
     // LOG3("{}", ast::FormatVisitor::format(ctx, tv, false, true));
 
     auto module = std::make_shared<ir::IRModule>("module");
-//    module = new seq::SeqModule();
-//    module->setFileName(abs);
+    //    module = new seq::SeqModule();
+    //    module->setFileName(abs);
     auto lctx = ast::LLVMContext::getContext(abs, ctx, module);
     ast::CodegenVisitor(lctx).transform(tv.get());
     LOG3("--- Done with codegen ---");

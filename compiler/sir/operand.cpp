@@ -8,9 +8,7 @@ namespace ir {
 
 VarOperand::VarOperand(std::weak_ptr<Var> var) : var(var) {}
 
-std::shared_ptr<types::Type> VarOperand::getType() {
-  return var.lock()->getType();
-}
+std::shared_ptr<types::Type> VarOperand::getType() { return var.lock()->getType(); }
 
 std::string VarOperand::textRepresentation() const {
   return var.lock()->referenceString();

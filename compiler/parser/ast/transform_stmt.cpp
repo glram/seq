@@ -63,13 +63,9 @@ void TransformVisitor::visit(const SuiteStmt *stmt) {
   resultStmt = N<SuiteStmt>(move(r));
 }
 
-void TransformVisitor::visit(const PassStmt *stmt) {
-  resultStmt = N<PassStmt>();
-}
+void TransformVisitor::visit(const PassStmt *stmt) { resultStmt = N<PassStmt>(); }
 
-void TransformVisitor::visit(const BreakStmt *stmt) {
-  resultStmt = N<BreakStmt>();
-}
+void TransformVisitor::visit(const BreakStmt *stmt) { resultStmt = N<BreakStmt>(); }
 
 void TransformVisitor::visit(const ContinueStmt *stmt) {
   resultStmt = N<ContinueStmt>();
@@ -206,8 +202,10 @@ void TransformVisitor::visit(const ForStmt *stmt) {
     }
   }
 
-  auto nextFunc = N<DotExpr>(conditionalMagic(stmt->iter, "generator", "__iter__"), "next");
-  auto doneFunc = N<DotExpr>(conditionalMagic(stmt->iter, "generator", "__iter__"), "done");
+  auto nextFunc =
+      N<DotExpr>(conditionalMagic(stmt->iter, "generator", "__iter__"), "next");
+  auto doneFunc =
+      N<DotExpr>(conditionalMagic(stmt->iter, "generator", "__iter__"), "done");
 
   ctx->addBlock();
   if (auto i = CAST(stmt->var, IdExpr)) {
@@ -222,13 +220,11 @@ void TransformVisitor::visit(const ForStmt *stmt) {
     ctx->addVar(varName, varType);
     auto var = N<IdExpr>(varName);
     vector<StmtPtr> stmts;
-    stmts.push_back(N<AssignStmt>(stmt->var->clone(), var->clone(), nullptr,
-                                  false,
+    stmts.push_back(N<AssignStmt>(stmt->var->clone(), var->clone(), nullptr, false,
                                   /* force */ true));
     stmts.push_back(stmt->suite->clone());
     auto res =
-        N<ForStmt>(var->clone(), move(iter),
-                   transform(N<SuiteStmt>(move(stmts))));
+        N<ForStmt>(var->clone(), move(iter), transform(N<SuiteStmt>(move(stmts))));
     res->done = move(doneFunc);
     res->next = move(nextFunc);
     resultStmt = move(res);
@@ -326,8 +322,8 @@ void TransformVisitor::visit(const ExtendStmt *stmt) {
 
   for (int i = 0; i < generics.size(); i++) {
     if (ctx->isTypeChecking() && c->explicits[i].type) {
-      auto t = dynamic_pointer_cast<LinkType>(
-          ctx->find(generics[i])->getType()->follow());
+      auto t =
+          dynamic_pointer_cast<LinkType>(ctx->find(generics[i])->getType()->follow());
       assert(t && t->kind == LinkType::Unbound);
       t->kind = LinkType::Generic;
     }
@@ -352,15 +348,14 @@ void TransformVisitor::visit(const ImportStmt *stmt) {
   if (file.size() && file[0] == '/')
     file = file.substr(1);
   else
-    file =
-        ctx->getImports()->getImportFile(stmt->from.first, ctx->getFilename());
+    file = ctx->getImports()->getImportFile(stmt->from.first, ctx->getFilename());
   if (file.empty())
     error("cannot locate import '{}'", stmt->from.first);
 
   auto import = ctx->getImports()->getImport(file);
   if (!import) {
-    auto ictx = make_shared<TypeContext>(file, ctx->getRealizations(),
-                                         ctx->getImports());
+    auto ictx =
+        make_shared<TypeContext>(file, ctx->getRealizations(), ctx->getImports());
     ctx->getImports()->addImport(file, file, ictx);
 
     auto s = parseFile(file);
@@ -379,8 +374,8 @@ void TransformVisitor::visit(const ImportStmt *stmt) {
   };
 
   if (!stmt->what.size()) {
-    ctx->addImport(
-        stmt->from.second == "" ? stmt->from.first : stmt->from.second, file);
+    ctx->addImport(stmt->from.second == "" ? stmt->from.first : stmt->from.second,
+                   file);
   } else if (stmt->what.size() == 1 && stmt->what[0].first == "*") {
     if (stmt->what[0].second != "")
       error("cannot rename star-import");
@@ -399,8 +394,7 @@ void TransformVisitor::visit(const ImportStmt *stmt) {
     }
   }
 
-  resultStmt =
-      N<ImportStmt>(make_pair("/" + file, stmt->from.second), stmt->what);
+  resultStmt = N<ImportStmt>(make_pair("/" + file, stmt->from.second), stmt->what);
 }
 
 // Transformation
@@ -429,8 +423,8 @@ void TransformVisitor::visit(const ExternImportStmt *stmt) {
     }
     args.clear();
     for (int i = 0; i < stmt->args.size(); i++)
-      args.push_back(N<IdExpr>(stmt->args[i].name != "" ? stmt->args[i].name
-                                                        : format("$a{}", i)));
+      args.push_back(
+          N<IdExpr>(stmt->args[i].name != "" ? stmt->args[i].name : format("$a{}", i)));
     // return f(args)
     auto call = N<CallExpr>(N<IdExpr>("f"), move(args));
     if (!isVoid)
@@ -443,10 +437,10 @@ void TransformVisitor::visit(const ExternImportStmt *stmt) {
       params.push_back(
           {stmt->args[i].name != "" ? stmt->args[i].name : format("$a{}", i),
            stmt->args[i].type->clone()});
-    resultStmt = transform(N<FunctionStmt>(
-        stmt->name.second != "" ? stmt->name.second : stmt->name.first,
-        stmt->ret->clone(), vector<Param>(), move(params),
-        N<SuiteStmt>(move(stmts)), vector<string>()));
+    resultStmt = transform(
+        N<FunctionStmt>(stmt->name.second != "" ? stmt->name.second : stmt->name.first,
+                        stmt->ret->clone(), vector<Param>(), move(params),
+                        N<SuiteStmt>(move(stmts)), vector<string>()));
   } else if (stmt->lang == "c") {
     auto canonicalName = ctx->getRealizations()->generateCanonicalName(
         stmt->getSrcInfo(), format("{}.{}", ctx->getBase(), stmt->name.first));
@@ -472,12 +466,11 @@ void TransformVisitor::visit(const ExternImportStmt *stmt) {
     if (!ctx->getLevel() || ctx->bases.back().parent->getFunc())
       ctx->addFunc(stmt->name.second != "" ? stmt->name.second : stmt->name.first, t);
     ctx->addGlobal(canonicalName, t);
-    ctx->getRealizations()->funcASTs[canonicalName] = make_pair(
-        t, N<FunctionStmt>(stmt->name.first, nullptr, vector<Param>(),
-                           move(args), nullptr, vector<string>{"$external"}));
-    resultStmt =
-        N<FunctionStmt>(stmt->name.first, nullptr, vector<Param>(),
-                        vector<Param>(), nullptr, vector<string>{"$external"});
+    ctx->getRealizations()->funcASTs[canonicalName] =
+        make_pair(t, N<FunctionStmt>(stmt->name.first, nullptr, vector<Param>(),
+                                     move(args), nullptr, vector<string>{"$external"}));
+    resultStmt = N<FunctionStmt>(stmt->name.first, nullptr, vector<Param>(),
+                                 vector<Param>(), nullptr, vector<string>{"$external"});
   } else if (stmt->lang == "py") {
     vector<StmtPtr> stmts;
     string from = "";
@@ -486,10 +479,10 @@ void TransformVisitor::visit(const ExternImportStmt *stmt) {
     else
       error("invalid pyimport query");
     auto call = N<CallExpr>( // _py_import(LIB)[WHAT].call (x.__to_py__)
-        N<DotExpr>(N<IndexExpr>(N<CallExpr>(N<IdExpr>("_py_import"),
-                                            N<StringExpr>(from)),
-                                N<StringExpr>(stmt->name.first)),
-                   "call"),
+        N<DotExpr>(
+            N<IndexExpr>(N<CallExpr>(N<IdExpr>("_py_import"), N<StringExpr>(from)),
+                         N<StringExpr>(stmt->name.first)),
+            "call"),
         N<CallExpr>(N<DotExpr>(N<IdExpr>("x"), "__to_py__")));
     bool isVoid = true;
     if (stmt->ret) {
@@ -499,16 +492,16 @@ void TransformVisitor::visit(const ExternImportStmt *stmt) {
         isVoid = false;
     }
     if (!isVoid) // return TYP.__from_py__(call)
-      stmts.push_back(N<ReturnStmt>(N<CallExpr>(
-          N<DotExpr>(stmt->ret->clone(), "__from_py__"), move(call))));
+      stmts.push_back(N<ReturnStmt>(
+          N<CallExpr>(N<DotExpr>(stmt->ret->clone(), "__from_py__"), move(call))));
     else
       stmts.push_back(N<ExprStmt>(move(call)));
     vector<Param> params;
     params.push_back({"x", nullptr, nullptr});
-    resultStmt = transform(N<FunctionStmt>(
-        stmt->name.second != "" ? stmt->name.second : stmt->name.first,
-        stmt->ret->clone(), vector<Param>(), move(params),
-        N<SuiteStmt>(move(stmts)), vector<string>{"pyhandle"}));
+    resultStmt = transform(
+        N<FunctionStmt>(stmt->name.second != "" ? stmt->name.second : stmt->name.first,
+                        stmt->ret->clone(), vector<Param>(), move(params),
+                        N<SuiteStmt>(move(stmts)), vector<string>{"pyhandle"}));
   } else {
     error("language '{}' not supported", stmt->lang);
   }
@@ -731,42 +724,34 @@ void TransformVisitor::visit(const ClassStmt *stmt) {
     if (!stmt->isRecord) {
       fns.push_back(makeInternalFn("__new__", codeType->clone()));
       fns.push_back(makeInternalFn("__init__", N<IdExpr>("void"), move(args)));
-      fns.push_back(
-          makeInternalFn("__bool__", N<IdExpr>("bool"), Param{"self"}));
-      fns.push_back(makeInternalFn("__pickle__", N<IdExpr>("void"),
-                                   Param{"self"},
+      fns.push_back(makeInternalFn("__bool__", N<IdExpr>("bool"), Param{"self"}));
+      fns.push_back(makeInternalFn("__pickle__", N<IdExpr>("void"), Param{"self"},
                                    Param{"dest", N<IdExpr>("cobj")}));
       fns.push_back(makeInternalFn("__unpickle__", codeType->clone(),
                                    Param{"src", N<IdExpr>("cobj")}));
-      fns.push_back(
-          makeInternalFn("__raw__", N<IdExpr>("cobj"), Param{"self"}));
+      fns.push_back(makeInternalFn("__raw__", N<IdExpr>("cobj"), Param{"self"}));
     } else {
       fns.push_back(makeInternalFn("__new__", codeType->clone(), move(args)));
       fns.push_back(makeInternalFn("__str__", N<IdExpr>("str"), Param{"self"}));
       fns.push_back(makeInternalFn("__len__", N<IdExpr>("int"), Param{"self"}));
-      fns.push_back(
-          makeInternalFn("__hash__", N<IdExpr>("int"), Param{"self"}));
+      fns.push_back(makeInternalFn("__hash__", N<IdExpr>("int"), Param{"self"}));
       fns.push_back(makeInternalFn(
           "__iter__", N<IndexExpr>(N<IdExpr>("Generator"), N<IdExpr>("int")),
           Param{"self"}));
-      fns.push_back(makeInternalFn("__pickle__", N<IdExpr>("void"),
-                                   Param{"self"},
+      fns.push_back(makeInternalFn("__pickle__", N<IdExpr>("void"), Param{"self"},
                                    Param{"dest", N<IdExpr>("cobj")}));
       fns.push_back(makeInternalFn("__unpickle__", codeType->clone(),
                                    Param{"src", N<IdExpr>("cobj")}));
-      fns.push_back(makeInternalFn(
-          "__getitem__", empty ? N<IdExpr>("void") : mainType->clone(),
-          Param{"self"}, Param{"index", N<IdExpr>("int")}));
+      fns.push_back(makeInternalFn("__getitem__",
+                                   empty ? N<IdExpr>("void") : mainType->clone(),
+                                   Param{"self"}, Param{"index", N<IdExpr>("int")}));
       if (!empty)
-        fns.push_back(makeInternalFn("__contains__", N<IdExpr>("bool"),
-                                     Param{"self"},
+        fns.push_back(makeInternalFn("__contains__", N<IdExpr>("bool"), Param{"self"},
                                      Param{"what", mainType->clone()}));
-      fns.push_back(
-          makeInternalFn("__to_py__", N<IdExpr>("pyobj"), Param{"self"}));
+      fns.push_back(makeInternalFn("__to_py__", N<IdExpr>("pyobj"), Param{"self"}));
       fns.push_back(makeInternalFn("__from_py__", codeType->clone(),
                                    Param{"src", N<IdExpr>("pyobj")}));
-      for (auto &m :
-           {"__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"})
+      for (auto &m : {"__eq__", "__ne__", "__lt__", "__gt__", "__le__", "__ge__"})
         fns.push_back(makeInternalFn(m, N<IdExpr>("bool"), Param{"self"},
                                      Param{"what", codeType->clone()}));
     }
@@ -805,14 +790,15 @@ void TransformVisitor::visit(const ClassStmt *stmt) {
 void TransformVisitor::visit(const AssignEqStmt *stmt) {
   resultStmt = transform(N<AssignStmt>(
       stmt->lhs->clone(),
-      N<BinaryExpr>(stmt->lhs->clone(), stmt->op, stmt->rhs->clone(), true),
-      nullptr, true));
+      N<BinaryExpr>(stmt->lhs->clone(), stmt->op, stmt->rhs->clone(), true), nullptr,
+      true));
 }
 
 // Transformation
 void TransformVisitor::visit(const YieldFromStmt *stmt) {
   auto var = getTemporaryVar("yield");
-  resultStmt = transform(N<ForStmt>(N<IdExpr>(var), stmt->expr->clone(), N<YieldStmt>(N<IdExpr>(var))));
+  resultStmt = transform(
+      N<ForStmt>(N<IdExpr>(var), stmt->expr->clone(), N<YieldStmt>(N<IdExpr>(var))));
 }
 
 // Transformation
@@ -825,15 +811,14 @@ void TransformVisitor::visit(const WithStmt *stmt) {
     internals.push_back(N<AssignStmt>(N<IdExpr>(var), stmt->items[i]->clone()));
     internals.push_back(
         N<ExprStmt>(N<CallExpr>(N<DotExpr>(N<IdExpr>(var), "__enter__"))));
-    internals.push_back(N<TryStmt>(
-        content.size() ? N<SuiteStmt>(move(content)) : stmt->suite->clone(),
-        vector<TryStmt::Catch>{},
-        N<SuiteStmt>(
-            N<ExprStmt>(N<CallExpr>(N<DotExpr>(N<IdExpr>(var), "__exit__"))))));
+    internals.push_back(
+        N<TryStmt>(content.size() ? N<SuiteStmt>(move(content)) : stmt->suite->clone(),
+                   vector<TryStmt::Catch>{},
+                   N<SuiteStmt>(N<ExprStmt>(
+                       N<CallExpr>(N<DotExpr>(N<IdExpr>(var), "__exit__"))))));
     content = move(internals);
   }
-  resultStmt =
-      transform(N<IfStmt>(N<BoolExpr>(true), N<SuiteStmt>(move(content))));
+  resultStmt = transform(N<IfStmt>(N<BoolExpr>(true), N<SuiteStmt>(move(content))));
 }
 
 // Transformation
@@ -842,13 +827,13 @@ void TransformVisitor::visit(const PyDefStmt *stmt) {
   vector<string> args;
   for (auto &a : stmt->args)
     args.push_back(a.name);
-  string code = format("def {}({}):\n{}\n", stmt->name, fmt::join(args, ", "),
-                       stmt->code);
-  resultStmt = transform(N<SuiteStmt>(
-      N<ExprStmt>(N<CallExpr>(N<IdExpr>("_py_exec"), N<StringExpr>(code))),
-      // from __main__ pyimport foo () -> ret
-      N<ExternImportStmt>(make_pair(stmt->name, ""), N<IdExpr>("__main__"),
-                          stmt->ret->clone(), vector<Param>(), "py")));
+  string code =
+      format("def {}({}):\n{}\n", stmt->name, fmt::join(args, ", "), stmt->code);
+  resultStmt = transform(
+      N<SuiteStmt>(N<ExprStmt>(N<CallExpr>(N<IdExpr>("_py_exec"), N<StringExpr>(code))),
+                   // from __main__ pyimport foo () -> ret
+                   N<ExternImportStmt>(make_pair(stmt->name, ""), N<IdExpr>("__main__"),
+                                       stmt->ret->clone(), vector<Param>(), "py")));
 }
 
 } // namespace ast

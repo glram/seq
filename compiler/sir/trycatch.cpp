@@ -33,13 +33,13 @@ std::string TryCatch::textRepresentation() const {
 
   auto finally = finallyBlock.lock();
   if (finally)
-    fmt::format_to(buf, FMT_STRING(" finally {}; {}"),
-                   finally->referenceString(), attributeString());
+    fmt::format_to(buf, FMT_STRING(" finally {}; {}"), finally->referenceString(),
+                   attributeString());
 
   return std::string(buf.data(), buf.size());
 }
-void TryCatch::addCatch(std::shared_ptr<types::Type> catchType,
-                        std::string name, std::weak_ptr<BasicBlock> handler) {
+void TryCatch::addCatch(std::shared_ptr<types::Type> catchType, std::string name,
+                        std::weak_ptr<BasicBlock> handler) {
   catchTypes.push_back(catchType);
   catchBlocks.push_back(handler);
   catchVars.push_back(std::make_shared<Var>(name, catchType));

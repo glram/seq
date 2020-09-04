@@ -14,9 +14,9 @@ std::string JumpTerminator::textRepresentation() const {
 }
 
 std::string CondJumpTerminator::textRepresentation() const {
-  return fmt::format(FMT_STRING("condjump ({}) {} {}; {}"),
-                     cond->textRepresentation(), tDst.lock()->referenceString(),
-                     fDst.lock()->referenceString(), attributeString());
+  return fmt::format(FMT_STRING("condjump ({}) {} {}; {}"), cond->textRepresentation(),
+                     tDst.lock()->referenceString(), fDst.lock()->referenceString(),
+                     attributeString());
 }
 
 std::string ReturnTerminator::textRepresentation() const {
@@ -38,8 +38,7 @@ std::string YieldTerminator::textRepresentation() const {
     fmt::format_to(buf, FMT_STRING(" {}"), res->textRepresentation());
   }
   if (inVar.lock()) {
-    fmt::format_to(buf, FMT_STRING(" -> {}"),
-                   inVar.lock()->textRepresentation());
+    fmt::format_to(buf, FMT_STRING(" -> {}"), inVar.lock()->textRepresentation());
   }
 
   fmt::format_to(buf, FMT_STRING("{}; {}"), dst.lock()->referenceString(),
@@ -49,8 +48,8 @@ std::string YieldTerminator::textRepresentation() const {
 }
 
 std::string ThrowTerminator::textRepresentation() const {
-  return fmt::format(FMT_STRING("throw ({}); {}"),
-                     operand->textRepresentation(), attributeString());
+  return fmt::format(FMT_STRING("throw ({}); {}"), operand->textRepresentation(),
+                     attributeString());
 }
 
 } // namespace ir

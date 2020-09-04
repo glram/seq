@@ -10,8 +10,7 @@ namespace ir {
 WildcardPattern::WildcardPattern(std::shared_ptr<types::Type> type)
     : var(std::make_shared<Var>(type)) {}
 
-WildcardPattern::WildcardPattern()
-    : var(std::make_shared<Var>(types::kAnyType)) {}
+WildcardPattern::WildcardPattern() : var(std::make_shared<Var>(types::kAnyType)) {}
 
 std::string WildcardPattern::textRepresentation() const { return "_"; }
 

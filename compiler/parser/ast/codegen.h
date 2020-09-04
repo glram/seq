@@ -33,17 +33,17 @@ struct CodegenResult {
   std::shared_ptr<seq::ir::Pattern> patternResult;
 
   CodegenResult()
-      : tag(NONE), operandResult(nullptr), rvalueResult(nullptr),
-        lvalueResult(nullptr), patternResult(nullptr){};
+      : tag(NONE), operandResult(nullptr), rvalueResult(nullptr), lvalueResult(nullptr),
+        patternResult(nullptr){};
   explicit CodegenResult(std::shared_ptr<seq::ir::Operand> op)
-      : tag(OP), operandResult(op), rvalueResult(nullptr),
-        lvalueResult(nullptr), patternResult(nullptr){};
+      : tag(OP), operandResult(op), rvalueResult(nullptr), lvalueResult(nullptr),
+        patternResult(nullptr){};
   explicit CodegenResult(std::shared_ptr<seq::ir::Rvalue> rval)
-      : tag(RVALUE), operandResult(nullptr), rvalueResult(rval),
-        lvalueResult(nullptr), patternResult(nullptr){};
+      : tag(RVALUE), operandResult(nullptr), rvalueResult(rval), lvalueResult(nullptr),
+        patternResult(nullptr){};
   explicit CodegenResult(std::shared_ptr<seq::ir::Lvalue> lval)
-      : tag(LVALUE), operandResult(nullptr), rvalueResult(nullptr),
-        lvalueResult(lval), patternResult(nullptr){};
+      : tag(LVALUE), operandResult(nullptr), rvalueResult(nullptr), lvalueResult(lval),
+        patternResult(nullptr){};
   explicit CodegenResult(std::shared_ptr<seq::ir::Pattern> pattern)
       : tag(PATTERN), operandResult(nullptr), rvalueResult(nullptr),
         lvalueResult(nullptr), patternResult(pattern){};
@@ -168,8 +168,7 @@ private:
         fmt::format("INTERNAL: {}", fmt::format(format, args...), getSrcInfo()));
   }
   template <typename A, typename B, typename... Ts> auto Nas(Ts &&... args) {
-    return std::static_pointer_cast<B>(
-        std::make_shared<A>(std::forward<Ts>(args)...));
+    return std::static_pointer_cast<B>(std::make_shared<A>(std::forward<Ts>(args)...));
   }
 
   template <typename A, typename... Ts> auto Ns(Ts &&... args) {

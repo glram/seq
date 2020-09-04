@@ -33,12 +33,8 @@ public:
     child->parent = getShared();
   }
 
-  std::vector<std::shared_ptr<types::Type>> getCatchTypes() {
-    return catchTypes;
-  }
-  std::vector<std::weak_ptr<BasicBlock>> getCatchBlocks() {
-    return catchBlocks;
-  }
+  std::vector<std::shared_ptr<types::Type>> getCatchTypes() { return catchTypes; }
+  std::vector<std::weak_ptr<BasicBlock>> getCatchBlocks() { return catchBlocks; }
   void addCatch(std::shared_ptr<types::Type> catchType, std::string name,
                 std::weak_ptr<BasicBlock> handler);
 

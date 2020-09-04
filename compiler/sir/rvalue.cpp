@@ -44,9 +44,7 @@ std::string CallRValue::textRepresentation() const {
 OperandRvalue::OperandRvalue(std::shared_ptr<Operand> operand)
     : operand(std::move(operand)) {}
 
-std::shared_ptr<types::Type> OperandRvalue::getType() {
-  return operand->getType();
-}
+std::shared_ptr<types::Type> OperandRvalue::getType() { return operand->getType(); }
 
 std::string OperandRvalue::textRepresentation() const {
   return operand->textRepresentation();
@@ -62,8 +60,7 @@ PipelineRvalue::PipelineRvalue(std::vector<std::shared_ptr<Operand>> stages,
     : stages(stages), parallel(std::move(parallel)) {}
 
 std::shared_ptr<types::Type> PipelineRvalue::getType() {
-  return !stages.empty() ? stages[stages.size() - 1]->getType()
-                         : types::kVoidType;
+  return !stages.empty() ? stages[stages.size() - 1]->getType() : types::kVoidType;
 }
 
 std::string PipelineRvalue::textRepresentation() const {

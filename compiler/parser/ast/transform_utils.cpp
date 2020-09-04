@@ -44,8 +44,7 @@ void TransformVisitor::prepend(StmtPtr s) {
     prependStmts->push_back(move(t));
 }
 
-ExprPtr TransformVisitor::conditionalMagic(const ExprPtr &expr,
-                                           const string &type,
+ExprPtr TransformVisitor::conditionalMagic(const ExprPtr &expr, const string &type,
                                            const string &magic) {
   auto e = transform(expr);
   if (!ctx->isTypeChecking())
@@ -55,8 +54,7 @@ ExprPtr TransformVisitor::conditionalMagic(const ExprPtr &expr,
   if (auto c = e->getType()->getClass()) {
     if (chop(c->name) == type)
       return e;
-    return transform(
-        Nx<CallExpr>(e.get(), Nx<DotExpr>(e.get(), move(e), magic)));
+    return transform(Nx<CallExpr>(e.get(), Nx<DotExpr>(e.get(), move(e), magic)));
   } else {
     error(e, "cannot find magic '{}' in {}", magic, e->getType()->toString());
   }
@@ -68,17 +66,15 @@ ExprPtr TransformVisitor::makeBoolExpr(const ExprPtr &e) {
 }
 
 shared_ptr<TypeItem::Item>
-TransformVisitor::processIdentifier(shared_ptr<TypeContext> tctx,
-                                    const string &id) {
+TransformVisitor::processIdentifier(shared_ptr<TypeContext> tctx, const string &id) {
   auto val = tctx->find(id);
   if (!val)
     return nullptr;
   return val;
 }
 
-StmtPtr
-TransformVisitor::getGeneratorBlock(const vector<GeneratorExpr::Body> &loops,
-                                    SuiteStmt *&prev) {
+StmtPtr TransformVisitor::getGeneratorBlock(const vector<GeneratorExpr::Body> &loops,
+                                            SuiteStmt *&prev) {
   StmtPtr suite = N<SuiteStmt>(), newSuite = nullptr;
   prev = (SuiteStmt *)suite.get();
   SuiteStmt *nextPrev = nullptr;
@@ -126,22 +122,22 @@ void TransformVisitor::fixExprName(ExprPtr &e, const string &newName) {
   }
 }
 
-StmtPtr TransformVisitor::makeInternalFn(const string &name, ExprPtr &&ret,
-                                         Param &&arg, Param &&arg2) {
+StmtPtr TransformVisitor::makeInternalFn(const string &name, ExprPtr &&ret, Param &&arg,
+                                         Param &&arg2) {
   vector<Param> p;
   if (arg.name.size())
     p.push_back(move(arg));
   if (arg2.name.size())
     p.push_back(move(arg2));
-  auto t = make_unique<FunctionStmt>(name, move(ret), vector<Param>{}, move(p),
-                                     nullptr, vector<string>{"internal"});
+  auto t = make_unique<FunctionStmt>(name, move(ret), vector<Param>{}, move(p), nullptr,
+                                     vector<string>{"internal"});
   t->setSrcInfo(ctx->getRealizations()->getGeneratedPos());
   return t;
 }
 StmtPtr TransformVisitor::makeInternalFn(const string &name, ExprPtr &&ret,
                                          vector<Param> &&p) {
-  auto t = make_unique<FunctionStmt>(name, move(ret), vector<Param>{}, move(p),
-                                     nullptr, vector<string>{"internal"});
+  auto t = make_unique<FunctionStmt>(name, move(ret), vector<Param>{}, move(p), nullptr,
+                                     vector<string>{"internal"});
   t->setSrcInfo(ctx->getRealizations()->getGeneratedPos());
   return t;
 }
@@ -291,10 +287,9 @@ string TransformVisitor::generatePartialStub(const string &flag) {
   return typeName;
 }
 
-FuncTypePtr
-TransformVisitor::findBestCall(ClassTypePtr c, const string &member,
-                               const vector<pair<string, TypePtr>> &args,
-                               bool failOnMultiple, TypePtr retType) {
+FuncTypePtr TransformVisitor::findBestCall(ClassTypePtr c, const string &member,
+                                           const vector<pair<string, TypePtr>> &args,
+                                           bool failOnMultiple, TypePtr retType) {
   auto m = ctx->getRealizations()->findMethod(c->name, member);
   if (!m)
     return nullptr;
@@ -375,13 +370,11 @@ vector<int> TransformVisitor::callFunc(types::TypePtr f, vector<CallExpr::Arg> &
       error("named argument {} repeated multiple times", args[i].name);
   }
 
-  if (namedArgs.size() == 0 &&
-      reorderedArgs.size() == availableArguments.size() + 1 &&
+  if (namedArgs.size() == 0 && reorderedArgs.size() == availableArguments.size() + 1 &&
       CAST(reorderedArgs.back().value, EllipsisExpr)) {
     isPartial = true;
     reorderedArgs.pop_back();
-  } else if (reorderedArgs.size() + namedArgs.size() >
-             availableArguments.size()) {
+  } else if (reorderedArgs.size() + namedArgs.size() > availableArguments.size()) {
     error("too many arguments for {} (expected {}, got {})", f->toString(),
           availableArguments.size(), reorderedArgs.size() + namedArgs.size());
   }
@@ -397,8 +390,7 @@ vector<int> TransformVisitor::callFunc(types::TypePtr f, vector<CallExpr::Arg> &
     error("unexpected name '{}' (function pointers have argument "
           "names elided)",
           namedArgs.begin()->first);
-  for (int i = 0, ra = reorderedArgs.size(); i < availableArguments.size();
-       i++) {
+  for (int i = 0, ra = reorderedArgs.size(); i < availableArguments.size(); i++) {
     if (i >= ra) {
       assert(ast);
       auto it = namedArgs.find(ast->args[availableArguments[i]].name);
@@ -430,8 +422,8 @@ bool TransformVisitor::handleStackAlloc(const CallExpr *expr) {
       if (id->value == "__array__") {
         if (expr->args.size() != 1)
           error("__array__ requires only size argument");
-        resultExpr = transform(N<StackAllocExpr>(ix->index->clone(),
-                                                 expr->args[0].value->clone()));
+        resultExpr = transform(
+            N<StackAllocExpr>(ix->index->clone(), expr->args[0].value->clone()));
         return true;
       }
     }
@@ -458,9 +450,8 @@ StmtPtr TransformVisitor::addAssignment(const Expr *lhs, const Expr *rhs,
     args.push_back(l->index->clone());
     args.push_back(rhs->clone());
     return transform(Nx<ExprStmt>(
-        lhs,
-        Nx<CallExpr>(lhs, Nx<DotExpr>(lhs, l->expr->clone(), "__setitem__"),
-                     move(args))));
+        lhs, Nx<CallExpr>(lhs, Nx<DotExpr>(lhs, l->expr->clone(), "__setitem__"),
+                          move(args))));
   } else if (auto l = dynamic_cast<const DotExpr *>(lhs)) {
     return transform(
         Nx<AssignMemberStmt>(lhs, l->expr->clone(), l->member, rhs->clone()));
@@ -534,21 +525,19 @@ void TransformVisitor::processAssignment(const Expr *lhs, const Expr *rhs,
       unpack = u;
       break;
     }
-    processAssignment(
-        lefts[st],
-        Nx<IndexExpr>(rhs, rhs->clone(), Nx<IntExpr>(rhs, st)).release(), stmts,
-        force);
+    processAssignment(lefts[st],
+                      Nx<IndexExpr>(rhs, rhs->clone(), Nx<IntExpr>(rhs, st)).release(),
+                      stmts, force);
   }
   if (unpack) {
     processAssignment(
         unpack->what.get(),
-        Nx<IndexExpr>(
-            rhs, rhs->clone(),
-            Nx<SliceExpr>(rhs, Nx<IntExpr>(rhs, st),
-                          lefts.size() == st + 1
-                              ? nullptr
-                              : Nx<IntExpr>(rhs, -lefts.size() + st + 1),
-                          nullptr))
+        Nx<IndexExpr>(rhs, rhs->clone(),
+                      Nx<SliceExpr>(rhs, Nx<IntExpr>(rhs, st),
+                                    lefts.size() == st + 1
+                                        ? nullptr
+                                        : Nx<IntExpr>(rhs, -lefts.size() + st + 1),
+                                    nullptr))
             .release(),
         stmts, force);
     st += 1;
@@ -591,8 +580,7 @@ StmtPtr TransformVisitor::addMethod(Stmt *s, const string &canonicalName) {
     auto fv = val->getType()->getFunc();
     LOG9("[add_method] {} ... {}", name, val->getType()->toString());
     assert(fv);
-    ctx->getRealizations()->classes[canonicalName].methods[f->name].push_back(
-        fv);
+    ctx->getRealizations()->classes[canonicalName].methods[f->name].push_back(fv);
     return fs;
   } else {
     error(s, "expected a function (only functions are allowed within type "
@@ -606,8 +594,7 @@ int TransformVisitor::realizeStatic(StaticTypePtr st) {
   return st->getValue();
 }
 
-RealizationContext::FuncRealization
-TransformVisitor::realizeFunc(FuncTypePtr t) {
+RealizationContext::FuncRealization TransformVisitor::realizeFunc(FuncTypePtr t) {
   assert(t->canRealize());
   try {
     auto name = t->name;
@@ -657,8 +644,7 @@ TransformVisitor::realizeFunc(FuncTypePtr t) {
     if (!isInternal)
       for (int i = 1; i < t->args.size(); i++) {
         assert(t->args[i] && !t->args[i]->hasUnbound());
-        ctx->addVar(ast.second->args[i - 1].name,
-                    make_shared<LinkType>(t->args[i]));
+        ctx->addVar(ast.second->args[i - 1].name, make_shared<LinkType>(t->args[i]));
       }
 
     // Need to populate funcRealization in advance to make recursive functions

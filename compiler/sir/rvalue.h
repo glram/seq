@@ -44,8 +44,7 @@ private:
 
 public:
   explicit CallRValue(std::shared_ptr<Operand> func);
-  CallRValue(std::shared_ptr<Operand> func,
-             std::vector<std::shared_ptr<Operand>> args);
+  CallRValue(std::shared_ptr<Operand> func, std::vector<std::shared_ptr<Operand>> args);
   std::shared_ptr<types::Type> getType() override;
 
   std::shared_ptr<Operand> getFunc() { return func; }
@@ -73,8 +72,7 @@ private:
   std::shared_ptr<Operand> operand;
 
 public:
-  MatchRvalue(std::shared_ptr<Pattern> pattern,
-              std::shared_ptr<Operand> operand)
+  MatchRvalue(std::shared_ptr<Pattern> pattern, std::shared_ptr<Operand> operand)
       : pattern(std::move(pattern)), operand(std::move(operand)) {}
   std::shared_ptr<types::Type> getType() override { return types::kBoolType; }
 

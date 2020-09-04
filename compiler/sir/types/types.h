@@ -20,8 +20,7 @@ private:
   std::string name;
 
 public:
-  Type(std::string name)
-      : name(std::move(name)) {}
+  Type(std::string name) : name(std::move(name)) {}
   virtual ~Type() = default;
 
   std::string getName() const { return name; }
@@ -30,20 +29,24 @@ public:
   virtual std::string textRepresentation() const override { return name; }
 };
 
-class RecordType : public Type {
+class MemberedType : public Type {
 private:
   std::vector<std::string> memberNames;
   std::vector<std::shared_ptr<Type>> memberTypes;
+  bool reference;
 
 public:
-  RecordType(std::string name, std::vector<std::shared_ptr<Type>> mTypes,
-         std::vector<std::string> mNames)
-      : Type(name), memberNames(std::move(mNames)), memberTypes(std::move(mTypes)) {}
+  MemberedType(std::string name, std::vector<std::shared_ptr<Type>> mTypes,
+               std::vector<std::string> mNames, bool ref = false)
+      : Type(name), memberNames(std::move(mNames)), memberTypes(std::move(mTypes)),
+        reference(ref) {}
 
   std::vector<std::string> getMemberNames() { return memberNames; }
 
   std::vector<std::shared_ptr<Type>> getMemberTypes() { return memberTypes; }
   std::shared_ptr<Type> getMemberType(std::string n);
+
+  bool isReference() const { return reference; }
 
   std::string textRepresentation() const override;
 };
@@ -54,7 +57,8 @@ private:
   std::vector<std::shared_ptr<Type>> argTypes;
 
 public:
-  FuncType(std::string name, std::shared_ptr<Type> rType, std::vector<std::shared_ptr<Type>> argTypes)
+  FuncType(std::string name, std::shared_ptr<Type> rType,
+           std::vector<std::shared_ptr<Type>> argTypes)
       : Type(name), rType(rType), argTypes(argTypes) {}
 
   std::shared_ptr<Type> getRType() { return rType; }
@@ -69,8 +73,9 @@ private:
   std::vector<std::shared_ptr<Type>> callTypes;
 
 public:
-  PartialFuncType(std::string name, std::shared_ptr<Type> callee, std::vector<std::shared_ptr<Type>> callTypes)
-  : Type(name), callee(std::move(callee)), callTypes(std::move(callTypes)) {}
+  PartialFuncType(std::string name, std::shared_ptr<Type> callee,
+                  std::vector<std::shared_ptr<Type>> callTypes)
+      : Type(name), callee(std::move(callee)), callTypes(std::move(callTypes)) {}
 
   std::shared_ptr<Type> getCallee() { return callee; }
   std::vector<std::shared_ptr<Type>> getCallTypes() { return callTypes; };
@@ -104,16 +109,6 @@ private:
 
 public:
   explicit Pointer(std::shared_ptr<Type> base);
-
-  std::shared_ptr<Type> getBase() { return base; }
-};
-
-class Reference : public Type {
-private:
-  std::shared_ptr<Type> base;
-
-public:
-  explicit Reference(std::shared_ptr<Type> base);
 
   std::shared_ptr<Type> getBase() { return base; }
 };

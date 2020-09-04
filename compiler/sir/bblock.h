@@ -24,14 +24,10 @@ private:
 public:
   BasicBlock() : id(currentId++) {}
 
-  void add(std::shared_ptr<Instr> instruction) {
-    instructions.push_back(instruction);
-  }
+  void add(std::shared_ptr<Instr> instruction) { instructions.push_back(instruction); }
   std::vector<std::shared_ptr<Instr>> getInstructions() { return instructions; }
 
-  void setTerminator(std::shared_ptr<Terminator> t) {
-    terminator = std::move(t);
-  }
+  void setTerminator(std::shared_ptr<Terminator> t) { terminator = std::move(t); }
   std::shared_ptr<Terminator> getTerminator() { return terminator; }
 
   int getId() const { return id; }

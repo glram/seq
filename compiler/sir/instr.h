@@ -23,8 +23,7 @@ private:
   std::shared_ptr<Rvalue> right;
 
 public:
-  explicit AssignInstr(std::shared_ptr<Lvalue> left,
-                       std::shared_ptr<Rvalue> right)
+  explicit AssignInstr(std::shared_ptr<Lvalue> left, std::shared_ptr<Rvalue> right)
       : left(std::move(left)), right(std::move(right)) {}
 
   std::shared_ptr<Rvalue> getRhs() const { return right; }
@@ -37,8 +36,7 @@ class RvalueInstr : public Instr {
   std::shared_ptr<Rvalue> rvalue;
 
 public:
-  explicit RvalueInstr(std::shared_ptr<Rvalue> rvalue)
-      : rvalue(std::move(rvalue)) {}
+  explicit RvalueInstr(std::shared_ptr<Rvalue> rvalue) : rvalue(std::move(rvalue)) {}
 
   std::shared_ptr<Rvalue> getRvalue() const { return rvalue; }
 

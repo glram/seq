@@ -2,9 +2,9 @@
 #include <string>
 #include <vector>
 
-#include "types.h"
 #include "parser/ast/ast.h"
 #include "parser/ast/transform.h"
+#include "types.h"
 
 using std::dynamic_pointer_cast;
 using std::make_shared;

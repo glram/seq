@@ -23,8 +23,7 @@ private:
   std::weak_ptr<BasicBlock> dst;
 
 public:
-  explicit JumpTerminator(std::weak_ptr<BasicBlock> dst)
-      : dst(std::move(dst)){};
+  explicit JumpTerminator(std::weak_ptr<BasicBlock> dst) : dst(std::move(dst)){};
 
   std::weak_ptr<BasicBlock> getDst() { return dst; }
 
@@ -38,8 +37,7 @@ private:
   std::shared_ptr<Operand> cond;
 
 public:
-  CondJumpTerminator(std::weak_ptr<BasicBlock> tDst,
-                     std::weak_ptr<BasicBlock> fDst,
+  CondJumpTerminator(std::weak_ptr<BasicBlock> tDst, std::weak_ptr<BasicBlock> fDst,
                      std::shared_ptr<Operand> cond)
       : tDst(std::move(tDst)), fDst(std::move(fDst)), cond(std::move(cond)){};
 
@@ -68,8 +66,8 @@ private:
   std::weak_ptr<Var> inVar;
 
 public:
-  YieldTerminator(std::weak_ptr<BasicBlock> dst,
-                  std::shared_ptr<Operand> result, std::weak_ptr<Var> inVar)
+  YieldTerminator(std::weak_ptr<BasicBlock> dst, std::shared_ptr<Operand> result,
+                  std::weak_ptr<Var> inVar)
       : dst(std::move(dst)), res(std::move(result)), inVar(std::move(inVar)) {}
 
   std::weak_ptr<BasicBlock> getDst() { return dst; }

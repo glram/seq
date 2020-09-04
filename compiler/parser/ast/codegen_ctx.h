@@ -108,8 +108,8 @@ class Class : public Item {
   std::shared_ptr<seq::ir::types::Type> type;
 
 public:
-  Class(std::shared_ptr<seq::ir::types::Type> t,
-        std::shared_ptr<seq::ir::Func> base, bool global = false)
+  Class(std::shared_ptr<seq::ir::types::Type> t, std::shared_ptr<seq::ir::Func> base,
+        bool global = false)
       : Item(std::move(base), global), type(std::move(t)) {}
 
   std::shared_ptr<seq::ir::types::Type> getType() const { return type; }
@@ -117,26 +117,21 @@ public:
 
   virtual std::shared_ptr<seq::ir::Lvalue> getLvalue() const { assert(false); }
   virtual std::shared_ptr<seq::ir::Rvalue> getRvalue() const { assert(false); }
-  virtual std::shared_ptr<seq::ir::Operand> getOperand() const {
-    assert(false);
-  }
+  virtual std::shared_ptr<seq::ir::Operand> getOperand() const { assert(false); }
 };
 
 class Import : public Item {
   std::string file;
 
 public:
-  Import(std::string file, std::shared_ptr<seq::ir::Func> base,
-         bool global = false)
+  Import(std::string file, std::shared_ptr<seq::ir::Func> base, bool global = false)
       : Item(std::move(base), global), file(std::move(file)) {}
   const Import *getImport() const override { return this; }
   std::string getFile() const { return file; }
 
   virtual std::shared_ptr<seq::ir::Lvalue> getLvalue() const { assert(false); }
   virtual std::shared_ptr<seq::ir::Rvalue> getRvalue() const { assert(false); }
-  virtual std::shared_ptr<seq::ir::Operand> getOperand() const {
-    assert(false);
-  }
+  virtual std::shared_ptr<seq::ir::Operand> getOperand() const { assert(false); }
 };
 } // namespace LLVMItem
 
@@ -175,8 +170,7 @@ public:
   void popBlock() override;
 
   void initJIT();
-  void execJIT(std::string varName = "",
-               std::shared_ptr<seq::Expr> varExpr = nullptr);
+  void execJIT(std::string varName = "", std::shared_ptr<seq::Expr> varExpr = nullptr);
 
   std::shared_ptr<seq::ir::types::Type> realizeType(types::ClassTypePtr t);
   // void dump(int pad = 0) override;
