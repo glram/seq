@@ -805,6 +805,10 @@ void TransformVisitor::visit(const WhileStmt *stmt) {
 
 void TransformVisitor::visit(const ForStmt *stmt) {
   ExprPtr iter = N<CallExpr>(N<DotExpr>(clone(stmt->iter), "__iter__"));
+
+  // TODO
+  // ExprPtr nextFunc = N<DotExpr>()
+
   ctx->addBlock();
   if (auto i = CAST(stmt->var, IdExpr)) {
     string varName = i->value;

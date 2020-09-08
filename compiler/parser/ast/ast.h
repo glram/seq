@@ -590,6 +590,9 @@ struct ForStmt : public Stmt {
   ExprPtr iter;
   StmtPtr suite;
 
+  ExprPtr done;
+  ExprPtr next;
+
   ForStmt(ExprPtr v, ExprPtr i, StmtPtr s);
   ForStmt(const ForStmt &s);
   std::string toString() const override;

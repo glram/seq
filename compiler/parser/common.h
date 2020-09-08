@@ -6,8 +6,6 @@
 #include <utility>
 #include <vector>
 
-#include "lang/seq.h"
-
 namespace seq {
 
 namespace exc {

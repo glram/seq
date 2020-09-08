@@ -164,7 +164,20 @@ set(SEQ_HPPFILES  compiler/lang/expr.h
                   compiler/util/fmt/ranges.h
                   compiler/util/jit.h
                   compiler/util/llvm.h
-                  compiler/util/tapir.h)
+                  compiler/util/tapir.h
+                  compiler/sir/types/types.h
+                  compiler/sir/base.h
+                  compiler/sir/bblock.h
+                  compiler/sir/func.h
+                  compiler/sir/instr.h
+                  compiler/sir/lvalue.h
+                  compiler/sir/module.h
+                  compiler/sir/operand.h
+                  compiler/sir/pattern.h
+                  compiler/sir/rvalue.h
+                  compiler/sir/terminator.h
+                  compiler/sir/trycatch.h
+                  compiler/sir/var.h)
 set(SEQ_CPPFILES  compiler/lang/expr.cpp
                   compiler/lang/func.cpp
                   compiler/lang/lang.cpp
@@ -203,7 +216,20 @@ set(SEQ_CPPFILES  compiler/lang/expr.cpp
                   compiler/types/types.cpp
                   compiler/types/void.cpp
                   compiler/util/fmt/format.cpp
-                  compiler/util/jit.cpp)
+                  compiler/util/jit.cpp
+                  compiler/sir/types/types.cpp
+                  compiler/sir/base.cpp
+                  compiler/sir/bblock.cpp
+                  compiler/sir/func.cpp
+                  compiler/sir/instr.cpp
+                  compiler/sir/lvalue.cpp
+                  compiler/sir/module.cpp
+                  compiler/sir/operand.cpp
+                  compiler/sir/pattern.cpp
+                  compiler/sir/rvalue.cpp
+                  compiler/sir/terminator.cpp
+                  compiler/sir/trycatch.cpp
+                  compiler/sir/var.cpp)
 add_library(seq SHARED ${SEQ_HPPFILES})
 add_dependencies(seq seqparse_target)
 target_sources(seq PRIVATE ${LIB_SEQPARSE} ${SEQ_CPPFILES})
