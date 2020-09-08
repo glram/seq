@@ -164,7 +164,6 @@ std::shared_ptr<seq::ir::types::Type> LLVMContext::realizeType(types::ClassTypeP
 
   // LOG7("[codegen] generating ty {}", real.fullName);
 
-  // TODO - reuse types with same name
   vector<std::shared_ptr<seq::ir::types::Type>> types;
   vector<int> statics;
   for (auto &m : t->explicits)

@@ -746,7 +746,7 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
   auto name = ctx->getRealizations()->getCanonicalName(stmt->getSrcInfo());
   for (auto &real : ctx->getRealizations()->getFuncRealizations(name)) {
     // TODO - change realization to use smart pointers
-    auto f = std::static_pointer_cast<ir::Func>(real.handle->getShared());
+    auto f = real.handle;
     assert(f);
     if (in(real.ast->attributes, "internal"))
       continue;
@@ -764,9 +764,9 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
       types.push_back(realizeType(real.type->args[i]->getClass()));
       names.push_back(real.ast->args[i - 1].name);
     }
-    auto funcType = realizeType(real.type);
-    f->setType(funcType);
+    auto funcType = realizeType(real.type->getClass());
     f->setArgNames(names);
+    f->setType(funcType);
     f->setAttribute(kFuncAttribute, Ns<FuncAttribute>(real.ast->attributes));
     for (auto a : real.ast->attributes) {
       if (a == "atomic")
@@ -855,7 +855,6 @@ void CodegenVisitor::visit(const GuardedPattern *pat) {
 }
 
 shared_ptr<ir::types::Type> CodegenVisitor::realizeType(types::ClassTypePtr t) {
-  // DBG("looking for {} / {}", t->name, t->toString(true));
   t = t->getClass();
   assert(t && t->canRealize());
   auto it = ctx->getRealizations()->classRealizations.find(t->name);
@@ -863,7 +862,7 @@ shared_ptr<ir::types::Type> CodegenVisitor::realizeType(types::ClassTypePtr t) {
   auto it2 = it->second.find(t->realizeString());
   assert(it2 != it->second.end());
   assert(it2->second.handle);
-  return it2->second.handle->getShared();
+  return it2->second.handle;
 }
 
 } // namespace ast
