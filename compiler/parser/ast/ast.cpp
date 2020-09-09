@@ -30,11 +30,11 @@ BoolExpr::BoolExpr(const BoolExpr &e) : Expr(e), value(e.value) {}
 string BoolExpr::toString() const { return wrap(format("#bool {}", int(value))); }
 
 IntExpr::IntExpr(int v)
-    : Expr(), value(std::to_string(v)), suffix(""), intValue(v), sign(false) {}
+    : Expr(), value(std::to_string(v)), suffix(""), intValue(v), sign(true) {}
 IntExpr::IntExpr(const IntExpr &e)
     : Expr(e), value(e.value), suffix(e.suffix), intValue(e.intValue), sign(e.sign) {}
 IntExpr::IntExpr(const string &v, const string &s)
-    : Expr(), value(v), suffix(s), intValue(0), sign(false) {}
+    : Expr(), value(v), suffix(s), intValue(0), sign(true) {}
 string IntExpr::toString() const {
   return wrap(format("#int {}{}", value, suffix == "" ? "" : format(" {}", suffix)));
 }
@@ -377,7 +377,8 @@ string WhileStmt::toString() const { return format("(#while {} {})", *cond, *sui
 ForStmt::ForStmt(ExprPtr v, ExprPtr i, StmtPtr s)
     : var(move(v)), iter(move(i)), suite(move(s)) {}
 ForStmt::ForStmt(const ForStmt &s)
-    : var(ast::clone(s.var)), iter(ast::clone(s.iter)), suite(ast::clone(s.suite)) {}
+    : var(ast::clone(s.var)), iter(ast::clone(s.iter)), suite(ast::clone(s.suite)),
+      done(ast::clone(s.done)), next(ast::clone(s.next)) {}
 string ForStmt::toString() const {
   return format("(#for {} {} {})", *var, *iter, *suite);
 }

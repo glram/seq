@@ -137,7 +137,9 @@ public:
     map[name].push_back(var);
     stack.back().push_back(name); // add to the latest "level"
   }
-  void addBlock() { stack.push_front(std::vector<std::string>()); }
+  void addLevel() { stack.push_front(std::vector<std::string>()); }
+  virtual void addBlock() { addLevel(); }
+
   void removeFromMap(const std::string &name) {
     auto i = map.find(name);
     assert(!(i == map.end() || !i->second.size()));
@@ -145,11 +147,14 @@ public:
     if (!i->second.size())
       map.erase(name);
   }
-  void popBlock() {
+
+  void removeLevel() {
     for (auto &name : stack.front())
       removeFromMap(name);
     stack.pop_front();
   }
+  virtual void popBlock() { removeLevel(); }
+
   void remove(const std::string &name) {
     removeFromMap(name);
     for (auto &s : stack) {

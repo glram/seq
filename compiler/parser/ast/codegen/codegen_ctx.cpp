@@ -23,9 +23,13 @@ using std::vector;
 namespace seq {
 namespace ast {
 
-CodegenContext::CodegenContext(std::shared_ptr<Cache> cache, std::shared_ptr<seq::ir::BasicBlock> block,
-    std::shared_ptr<seq::ir::Func> base, std::shared_ptr<seq::SeqJIT> jit)
-    : Context<CodegenItem>(""), cache(std::move(cache)), jit(std::move(jit)) {
+CodegenContext::CodegenContext(std::shared_ptr<Cache> cache,
+                               std::shared_ptr<seq::ir::BasicBlock> block,
+                               std::shared_ptr<seq::ir::IRModule> module,
+                               std::shared_ptr<seq::ir::Func> base,
+                               std::shared_ptr<seq::SeqJIT> jit)
+    : Context<CodegenItem>(""), cache(std::move(cache)), jit(std::move(jit)),
+      module(std::move(module)) {
   stack.push_front(vector<string>());
   topBaseIndex = topBlockIndex = 0;
   if (block)
@@ -40,38 +44,51 @@ shared_ptr<CodegenItem> CodegenContext::find(const string &name, bool onlyLocal,
   return nullptr;
 }
 
-void CodegenContext::addVar(const string &name, std::shared_ptr<seq::ir::Var> v, bool global) {
+void CodegenContext::addVar(const string &name, std::shared_ptr<seq::ir::Var> v,
+                            bool global) {
   auto i =
       make_shared<CodegenItem>(CodegenItem::Var, getBase(), global || isToplevel());
   i->var = std::move(v);
   add(name, i);
 }
 
-void CodegenContext::addType(const string &name, std::shared_ptr<seq::ir::types::Type> t, bool global) {
+void CodegenContext::addType(const string &name,
+                             std::shared_ptr<seq::ir::types::Type> t, bool global) {
   auto i =
       make_shared<CodegenItem>(CodegenItem::Type, getBase(), global || isToplevel());
   i->type = std::move(t);
   add(name, i);
 }
 
-void CodegenContext::addFunc(const string &name, std::shared_ptr<seq::ir::Func> f, bool global) {
+void CodegenContext::addFunc(const string &name, std::shared_ptr<seq::ir::Func> f,
+                             bool global) {
   auto i =
       make_shared<CodegenItem>(CodegenItem::Func, getBase(), global || isToplevel());
   i->func = std::move(f);
   add(name, i);
 }
 
-void CodegenContext::addBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock, std::shared_ptr<seq::ir::Func> newBase) {
-  Context<CodegenItem>::addBlock();
+void CodegenContext::addBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock,
+                              std::shared_ptr<seq::ir::Func> newBase) {
   if (newBlock)
     topBlockIndex = blocks.size();
   blocks.push_back(newBlock);
-  if (newBase)
+  if (newBase) {
     topBaseIndex = bases.size();
+    Context<CodegenItem>::addLevel();
+  }
   bases.push_back(newBase);
 }
 
+void CodegenContext::replaceBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock) {
+  blocks.pop_back();
+  blocks.push_back(newBlock);
+}
+
 void CodegenContext::popBlock() {
+  // If we remove a function, we need to pop off all the variables
+  if (bases.back())
+    Context<CodegenItem>::removeLevel();
   bases.pop_back();
   topBaseIndex = bases.size() - 1;
   while (topBaseIndex && !bases[topBaseIndex])
@@ -80,10 +97,9 @@ void CodegenContext::popBlock() {
   topBlockIndex = blocks.size() - 1;
   while (topBlockIndex && !blocks[topBlockIndex])
     topBlockIndex--;
-  Context<CodegenItem>::popBlock();
 }
 
-//void CodegenContext::initJIT() {
+// void CodegenContext::initJIT() {
 //  jit = new seq::SeqJIT();
 //  auto fn = new seq::Func();
 //  fn->setName(".jit_0");
@@ -94,7 +110,7 @@ void CodegenContext::popBlock() {
 //  execJIT();
 //}
 //
-//void CodegenContext::execJIT(string varName, seq::Expr *varExpr) {
+// void CodegenContext::execJIT(string varName, seq::Expr *varExpr) {
 //   static int counter = 0;
 //
 //   assert(jit != nullptr);
@@ -122,7 +138,8 @@ void CodegenContext::popBlock() {
 //   assert(topBaseIndex == topBlockIndex && topBlockIndex == 0);
 //}
 
-std::shared_ptr<seq::ir::types::Type> CodegenContext::realizeType(types::ClassTypePtr t) {
+std::shared_ptr<seq::ir::types::Type>
+CodegenContext::realizeType(types::ClassTypePtr t) {
   t = t->getClass();
   seqassert(t, "type must be set and a class");
   seqassert(t->canRealize(), "{} must be realizable", t->toString());

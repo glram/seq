@@ -86,12 +86,12 @@ public:
   virtual std::string referenceString() const = 0;
   std::string attributeString() const {
     fmt::memory_buffer buf;
-    buf.push_back('{');
+    buf.push_back('[');
     for (auto &it : kvStore) {
       fmt::format_to(buf, FMT_STRING("{}: {}, "), it.first,
                      it.second->textRepresentation());
     }
-    buf.push_back('}');
+    buf.push_back(']');
     return std::string(buf.data(), buf.size());
   }
 
@@ -100,7 +100,8 @@ public:
   }
 
   std::shared_ptr<Attribute> getAttribute(const std::string &key) {
-    return kvStore[key];
+    auto it = kvStore.find(key);
+    return it == kvStore.end() ? nullptr : it->second;
   }
 
   std::shared_ptr<A> getShared() {

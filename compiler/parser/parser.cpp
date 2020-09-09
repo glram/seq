@@ -14,6 +14,8 @@
 #include "parser/parser.h"
 #include "util/fmt/format.h"
 
+#include "sir/module.h"
+
 using std::make_shared;
 using std::string;
 using std::vector;
@@ -78,7 +80,9 @@ seq::SeqModule *parse(const std::string &argv0, const std::string &file,
                  duration_cast<milliseconds>(high_resolution_clock::now() - t).count() /
                      1000.0);
     }
-    return module;
+    LOG("{}", module->textRepresentation());
+    exit(EXIT_FAILURE);
+    return nullptr;
   } catch (seq::exc::SeqException &e) {
     if (isTest) {
       LOG("ERROR: {}", e.what());

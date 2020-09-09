@@ -41,7 +41,7 @@ std::string YieldTerminator::textRepresentation() const {
     fmt::format_to(buf, FMT_STRING(" -> {}"), inVar.lock()->textRepresentation());
   }
 
-  fmt::format_to(buf, FMT_STRING("{}; {}"), dst.lock()->referenceString(),
+  fmt::format_to(buf, FMT_STRING(" {}; {}"), dst.lock()->referenceString(),
                  attributeString());
 
   return std::string(buf.data(), buf.size());
@@ -50,6 +50,11 @@ std::string YieldTerminator::textRepresentation() const {
 std::string ThrowTerminator::textRepresentation() const {
   return fmt::format(FMT_STRING("throw ({}); {}"), operand->textRepresentation(),
                      attributeString());
+}
+
+std::string AssertTerminator::textRepresentation() const {
+  return fmt::format(FMT_STRING("assert ({}) {}; {}"), operand->textRepresentation(),
+                     dst.lock()->referenceString(), attributeString());
 }
 
 } // namespace ir

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "parser/common.h"
+#include "util/fmt/format.h"
 
 namespace seq {
 namespace ast {

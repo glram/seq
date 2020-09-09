@@ -98,5 +98,20 @@ public:
   std::string textRepresentation() const override;
 };
 
+class StackAllocRvalue : public Rvalue {
+private:
+  std::shared_ptr<types::Array> tval;
+  std::shared_ptr<Operand> count;
+
+public:
+  StackAllocRvalue(std::shared_ptr<types::Array> tval, std::shared_ptr<Operand> count)
+      : tval(std::move(tval)), count(std::move(count)) {}
+
+  std::shared_ptr<types::Type> getType() override { return tval; }
+  std::shared_ptr<Operand> getCount() { return count; }
+
+  std::string textRepresentation() const override;
+};
+
 } // namespace ir
 } // namespace seq

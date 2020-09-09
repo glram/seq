@@ -11,9 +11,8 @@ namespace ir {
 IRModule::IRModule(std::string name)
     : name(std::move(name)),
       baseFunc(std::make_shared<Func>("base", std::vector<std::string>(),
-                                      types::kNoArgVoidFuncType)) {
-  baseFunc->addBlock(std::make_shared<BasicBlock>());
-}
+                                      types::kNoArgVoidFuncType)),
+      argVar(std::make_shared<Var>(name + "-argv", types::kIntType)) {}
 
 void IRModule::addGlobal(std::shared_ptr<Var> var) {
   var->setModule(getShared());
@@ -23,6 +22,8 @@ void IRModule::addGlobal(std::shared_ptr<Var> var) {
 std::string IRModule::textRepresentation() const {
   fmt::memory_buffer buf;
   fmt::format_to(buf, FMT_STRING("module {}{{\n"), name);
+  fmt::format_to(buf, "{}\n", baseFunc->textRepresentation());
+
   for (const auto &global : globals) {
     fmt::format_to(buf, FMT_STRING("{}\n"), global->textRepresentation());
   }

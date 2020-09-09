@@ -31,9 +31,9 @@ std::shared_ptr<types::Type> CallRValue::getType() {
 
 std::string CallRValue::textRepresentation() const {
   fmt::memory_buffer buf;
-  fmt::format_to(buf, FMT_STRING("{}("), func->referenceString());
+  fmt::format_to(buf, FMT_STRING("{}("), func->textRepresentation());
   for (auto it = args.begin(); it != args.end(); it++) {
-    fmt::format_to(buf, FMT_STRING("{}"), (*it)->referenceString());
+    fmt::format_to(buf, FMT_STRING("{}"), (*it)->textRepresentation());
     if (it + 1 != args.end())
       fmt::format_to(buf, FMT_STRING(", "));
   }
@@ -72,6 +72,11 @@ std::string PipelineRvalue::textRepresentation() const {
     }
   }
   return std::string(buf.data(), buf.size());
+}
+
+std::string StackAllocRvalue::textRepresentation() const {
+  return fmt::format(FMT_STRING("new({}, {})"), tval->textRepresentation(),
+                     count->textRepresentation());
 }
 
 } // namespace ir

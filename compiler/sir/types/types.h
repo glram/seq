@@ -145,6 +145,7 @@ extern const std::shared_ptr<Type> kUIntType;
 extern const std::shared_ptr<Type> kAnyType;
 extern const std::shared_ptr<Type> kVoidType;
 extern const std::shared_ptr<Type> kByteType;
+extern const std::shared_ptr<Type> kTypeType;
 
 extern const std::shared_ptr<Type> kNoArgVoidFuncType;
 } // namespace types

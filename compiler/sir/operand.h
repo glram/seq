@@ -23,8 +23,23 @@ private:
   std::weak_ptr<Var> var;
 
 public:
-  explicit VarOperand(std::weak_ptr<Var> var);
+  explicit VarOperand(std::weak_ptr<Var> var) : var(std::move(var)) {}
   std::shared_ptr<types::Type> getType() override;
+
+  std::weak_ptr<Var> getVar() { return var; }
+
+  std::string textRepresentation() const override;
+};
+
+class VarPointerOperand : public Operand {
+private:
+  std::weak_ptr<Var> var;
+  std::shared_ptr<types::Type> type;
+
+public:
+  explicit VarPointerOperand(std::shared_ptr<types::Type> type, std::weak_ptr<Var> var)
+      : type(std::move(type)), var(std::move(var)) {}
+  std::shared_ptr<types::Type> getType() override { return type; }
 
   std::weak_ptr<Var> getVar() { return var; }
 

@@ -17,6 +17,7 @@ private:
   std::vector<std::shared_ptr<Var>> globals;
   std::string name;
   std::shared_ptr<Func> baseFunc;
+  std::shared_ptr<Var> argVar;
 
 public:
   explicit IRModule(std::string name);
@@ -27,6 +28,8 @@ public:
   std::shared_ptr<Func> getBase() const { return baseFunc; }
 
   std::string getName() const { return name; }
+
+  std::shared_ptr<Var> getArgVar() { return argVar; };
 
   std::string referenceString() const override { return "module"; };
   std::string textRepresentation() const override;

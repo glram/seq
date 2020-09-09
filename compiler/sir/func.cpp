@@ -40,12 +40,17 @@ std::shared_ptr<Var> Func::getArgVar(const std::string &name) {
 
 std::string Func::textRepresentation() const {
   fmt::memory_buffer buf;
-  fmt::format_to(buf, FMT_STRING("def {}("), referenceString());
+  fmt::format_to(buf, FMT_STRING("def {}(\n"), referenceString());
   for (int i = 0; i < argNames.size(); i++) {
-    fmt::format_to(buf, FMT_STRING("{}: {}\n"), argNames[i],
-                   argVars[i]->textRepresentation());
+    fmt::format_to(buf, FMT_STRING("{}\n"), argVars[i]->textRepresentation());
   }
-  fmt::format_to(buf, FMT_STRING("[{{"));
+  fmt::format_to(
+      buf, FMT_STRING(") -> {} [\n"),
+      std::static_pointer_cast<types::FuncType>(type)->getRType()->referenceString());
+  for (const auto &var : vars) {
+    fmt::format_to(buf, FMT_STRING("{}\n"), var->textRepresentation());
+  }
+  fmt::format_to(buf, FMT_STRING("]{{\n"));
   for (const auto &block : blocks) {
     fmt::format_to(buf, FMT_STRING("{}\n"), block->textRepresentation());
   }

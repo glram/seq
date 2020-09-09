@@ -12,10 +12,10 @@
 #include "parser/ast/context.h"
 #include "parser/common.h"
 
-#include "sir/func.h"
-#include "sir/var.h"
 #include "sir/bblock.h"
+#include "sir/func.h"
 #include "sir/module.h"
+#include "sir/var.h"
 
 #include "sir/types/types.h"
 
@@ -43,7 +43,9 @@ public:
   bool isFunc() const { return kind == Func; }
   bool isType() const { return kind == Type; }
   std::shared_ptr<seq::ir::Func> getFunc() const { return isFunc() ? func : nullptr; }
-  std::shared_ptr<seq::ir::types::Type> getType() const  { return isType() ? type : nullptr; }
+  std::shared_ptr<seq::ir::types::Type> getType() const {
+    return isType() ? type : nullptr;
+  }
   std::shared_ptr<seq::ir::Var> getVar() const { return isVar() ? var : nullptr; }
   bool hasAttr(const std::string &s) const {
     return attributes.find(s) != attributes.end();
@@ -53,40 +55,56 @@ public:
 class CodegenContext : public Context<CodegenItem> {
   std::vector<std::shared_ptr<seq::ir::Func>> bases;
   std::vector<std::shared_ptr<seq::ir::BasicBlock>> blocks;
+  std::shared_ptr<seq::ir::IRModule> module;
   int topBlockIndex, topBaseIndex;
 
 public:
   std::shared_ptr<Cache> cache;
   std::shared_ptr<seq::SeqJIT> jit;
   std::unordered_map<std::string, std::shared_ptr<seq::ir::types::Type>> types;
-  std::unordered_map<std::string, std::pair<std::shared_ptr<seq::ir::Func>, bool>> functions;
+  std::unordered_map<std::string, std::pair<std::shared_ptr<seq::ir::Func>, bool>>
+      functions;
 
 public:
-  CodegenContext(std::shared_ptr<Cache> cache, std::shared_ptr<seq::ir::BasicBlock> block,
+  CodegenContext(std::shared_ptr<Cache> cache,
+                 std::shared_ptr<seq::ir::BasicBlock> block,
+                 std::shared_ptr<seq::ir::IRModule> module,
                  std::shared_ptr<seq::ir::Func> base, std::shared_ptr<seq::SeqJIT> jit);
 
   std::shared_ptr<CodegenItem> find(const std::string &name, bool onlyLocal = false,
                                     bool checkStdlib = true) const;
 
   using Context<CodegenItem>::add;
-  void addVar(const std::string &name, std::shared_ptr<seq::ir::Var> v, bool global = false);
-  void addType(const std::string &name, std::shared_ptr<seq::ir::types::Type> t, bool global = false);
-  void addFunc(const std::string &name, std::shared_ptr<seq::ir::Func> f, bool global = false);
+  void addVar(const std::string &name, std::shared_ptr<seq::ir::Var> v,
+              bool global = false);
+  void addType(const std::string &name, std::shared_ptr<seq::ir::types::Type> t,
+               bool global = false);
+  void addFunc(const std::string &name, std::shared_ptr<seq::ir::Func> f,
+               bool global = false);
   void addImport(const std::string &name, const std::string &import,
                  bool global = false);
-  void addBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock = nullptr, std::shared_ptr<seq::ir::Func> newBase = nullptr);
-  void popBlock();
+  void addBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock = nullptr,
+                std::shared_ptr<seq::ir::Func> newBase = nullptr);
+  void popBlock() override;
 
-//  TODO
-//  void initJIT();
-//  void execJIT(std::string varName = "", seq::Expr varExpr = nullptr);
+  void replaceBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock);
+
+  // In Seq IR, vars are all defined at the function level. This override prevents
+  // the context from getting rid of variables at the function level.
+  void addBlock() override {}
+
+  //  TODO
+  //  void initJIT();
+  //  void execJIT(std::string varName = "", seq::Expr varExpr = nullptr);
 
   std::shared_ptr<seq::ir::types::Type> realizeType(types::ClassTypePtr t);
 
 public:
   std::shared_ptr<seq::ir::Func> getBase() const { return bases[topBaseIndex]; }
-  std::shared_ptr<seq::ir::BasicBlock> getBlock() const { return blocks[topBlockIndex]; }
-  std::shared_ptr<seq::ir::IRModule> getModule() const { return bases[0]->getModule().lock(); }
+  std::shared_ptr<seq::ir::BasicBlock> getBlock() const {
+    return blocks[topBlockIndex];
+  }
+  std::shared_ptr<seq::ir::IRModule> getModule() const { return module; }
   bool isToplevel() const { return bases.size() == 1; }
   std::shared_ptr<seq::SeqJIT> getJIT() { return jit; }
   std::shared_ptr<seq::ir::types::Type> getType(const std::string &name) const {

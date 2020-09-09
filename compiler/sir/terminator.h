@@ -90,5 +90,20 @@ public:
   std::string textRepresentation() const override;
 };
 
+class AssertTerminator : public Terminator {
+private:
+  std::shared_ptr<Operand> operand;
+  std::weak_ptr<BasicBlock> dst;
+
+public:
+  explicit AssertTerminator(std::shared_ptr<Operand> operand,
+                            std::weak_ptr<BasicBlock> dst)
+      : operand(std::move(operand)), dst(std::move(dst)){};
+
+  std::shared_ptr<Operand> getOperand() { return operand; }
+
+  std::string textRepresentation() const override;
+};
+
 } // namespace ir
 } // namespace seq

@@ -16,7 +16,7 @@ const std::shared_ptr<Type> kUIntType = std::make_shared<Type>("uint");
 const std::shared_ptr<Type> kAnyType = std::make_shared<Type>("any");
 const std::shared_ptr<Type> kVoidType = std::make_shared<Type>("void");
 const std::shared_ptr<Type> kByteType = std::make_shared<Type>("byte");
-
+const std::shared_ptr<Type> kTypeType = std::make_shared<Type>("type");
 const std::shared_ptr<Type> kNoArgVoidFuncType = std::make_shared<FuncType>(
     "void->void", kVoidType, std::vector<std::shared_ptr<Type>>());
 
@@ -76,8 +76,9 @@ Generator::Generator(std::shared_ptr<Type> base)
       base(std::move(base)) {}
 
 IntNType::IntNType(unsigned int len, bool sign)
-: Type(fmt::format(FMT_STRING("{}Int{}"), sign? "" : "U", len)),
-      len(len), sign(sign) {}
+    : Type(fmt::format(FMT_STRING("{}Int{}"), sign ? "" : "U", len)), len(len),
+      sign(sign) {}
+
 } // namespace types
 } // namespace ir
 } // namespace seq

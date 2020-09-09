@@ -6,6 +6,9 @@
 #include <utility>
 #include <vector>
 
+#include "util/common.h"
+#include "util/fmt/format.h"
+
 namespace seq {
 
 namespace exc {

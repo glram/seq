@@ -25,6 +25,7 @@ private:
   std::weak_ptr<Func> enclosing;
 
   bool external;
+  bool generator;
 
 public:
   Func(std::string name, std::vector<std::string> argNames,
@@ -42,13 +43,13 @@ public:
   std::vector<std::shared_ptr<BasicBlock>> getBlocks() { return blocks; }
   void addBlock(std::shared_ptr<BasicBlock> block) { blocks.push_back(block); }
 
-  std::weak_ptr<IRModule> getModule() { return module; }
-  void setModule(std::weak_ptr<IRModule> m) { module = m; }
-
   void setEnclosingFunc(std::weak_ptr<Func> f) { enclosing = f; }
 
   void setExternal() { external = true; }
   bool isExternal() const { return external; }
+
+  void setGenerator() { generator = true; }
+  bool isGenerator() const { return generator; }
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;

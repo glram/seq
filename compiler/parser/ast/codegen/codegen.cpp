@@ -9,7 +9,11 @@
 #include <unordered_set>
 #include <vector>
 
-#include "lang/seq.h"
+#include "sir/base.h"
+#include "sir/instr.h"
+#include "sir/terminator.h"
+#include "sir/trycatch.h"
+
 #include "parser/ast/ast.h"
 #include "parser/ast/codegen/codegen.h"
 #include "parser/ast/codegen/codegen_ctx.h"
@@ -28,6 +32,9 @@ using std::unique_ptr;
 using std::unordered_map;
 using std::unordered_set;
 using std::vector;
+using std::weak_ptr;
+
+using namespace seq::ir;
 
 namespace seq {
 namespace ast {
@@ -44,59 +51,113 @@ void CodegenVisitor::defaultVisit(const Pattern *n) {
   seqassert(false, "invalid node {}", *n);
 }
 
-CodegenVisitor::CodegenVisitor(std::shared_ptr<CodegenContext> ctx)
-    : ctx(ctx), resultExpr(nullptr), resultStmt(nullptr), resultPattern(nullptr) {}
+shared_ptr<BasicBlock> CodegenVisitor::newBlock() {
+  auto ret = make_shared<BasicBlock>();
 
-seq::Expr *CodegenVisitor::transform(const ExprPtr &expr) {
-  if (!expr)
+  ctx->getBase()->addBlock(ret);
+
+  auto templ = ctx->getBlock();
+  if (templ->getAttribute(kLoopAttribute))
+    ret->setAttribute(kLoopAttribute, make_shared<LoopAttribute>(
+                                          *std::static_pointer_cast<LoopAttribute>(
+                                              templ->getAttribute(kLoopAttribute))));
+  if (templ->getAttribute(kTryCatchAttribute))
+    ret->setAttribute(
+        kTryCatchAttribute,
+        make_shared<TryCatchAttribute>(*std::static_pointer_cast<TryCatchAttribute>(
+            templ->getAttribute(kTryCatchAttribute))));
+  return ret;
+}
+
+void CodegenVisitor::condSetTerminator(shared_ptr<Terminator> term) {
+  if (!ctx->getBlock()->getTerminator())
+    ctx->getBlock()->setTerminator(std::move(term));
+}
+
+shared_ptr<seq::ir::Operand> CodegenVisitor::toOperand(const CodegenResult res) {
+  switch (res.tag) {
+  case CodegenResult::OP:
+    return res.operandResult;
+  case CodegenResult::LVALUE:
+    seqassert(false, "cannot convert lvalue to operand.");
     return nullptr;
+  case CodegenResult::RVALUE: {
+    auto t = make_shared<ir::Var>(res.rvalueResult->getType());
+    ctx->getBase()->addVar(t);
+    ctx->getBlock()->add(
+        make_shared<AssignInstr>(make_shared<VarLvalue>(t), res.rvalueResult));
+    return make_shared<VarOperand>(t);
+  }
+  case CodegenResult::PATTERN:
+    seqassert(false, "cannot convert pattern to operand.");
+    return nullptr;
+  case CodegenResult::TYPE:
+    seqassert(false, "cannot convert pattern to operand.");
+    return nullptr;
+  default:
+    seqassert(false, "cannot convert unknown to operand.");
+    return nullptr;
+  }
+}
+
+shared_ptr<seq::ir::Rvalue> CodegenVisitor::toRvalue(const CodegenResult res) {
+  switch (res.tag) {
+  case CodegenResult::OP:
+    return make_shared<OperandRvalue>(res.operandResult);
+  case CodegenResult::LVALUE:
+    seqassert(false, "cannot convert lvalue to rvalue.");
+    return nullptr;
+  case CodegenResult::RVALUE:
+    return res.rvalueResult;
+  case CodegenResult::PATTERN:
+    seqassert(false, "cannot convert pattern to rvalue.");
+    return nullptr;
+  case CodegenResult::TYPE:
+    seqassert(false, "cannot convert pattern to rvalue.");
+    return nullptr;
+  default:
+    seqassert(false, "cannot convert unknown to rvalue.");
+    return nullptr;
+  }
+}
+
+CodegenVisitor::CodegenVisitor(shared_ptr<CodegenContext> ctx) : ctx(std::move(ctx)) {}
+
+CodegenResult CodegenVisitor::transform(const ExprPtr &expr) {
+  if (!expr)
+    return CodegenResult();
   CodegenVisitor v(ctx);
   v.setSrcInfo(expr->getSrcInfo());
   expr->accept(v);
-  if (v.resultExpr) {
-    v.resultExpr->setSrcInfo(expr->getSrcInfo());
-    if (ctx->tryCatch)
-      v.resultExpr->setTryCatch(ctx->tryCatch);
-    auto t = expr->getType()->getClass();
-    assert(t);
-    v.resultExpr->setType(realizeType(t));
-  }
-  return v.resultExpr;
+  v.result.addAttribute(kSrcInfoAttribute,
+                        make_shared<SrcInfoAttribute>(v.getSrcInfo()));
+  return v.result;
 }
 
-seq::Stmt *CodegenVisitor::transform(const StmtPtr &stmt) {
+CodegenResult CodegenVisitor::transform(const StmtPtr &stmt) {
   CodegenVisitor v(ctx);
   stmt->accept(v);
   v.setSrcInfo(stmt->getSrcInfo());
-  if (v.resultStmt) {
-    v.resultStmt->setSrcInfo(stmt->getSrcInfo());
-    v.resultStmt->setBase(ctx->getBase());
-    ctx->getBlock()->add(v.resultStmt);
-  }
-  return v.resultStmt;
+  v.result.addAttribute(kSrcInfoAttribute,
+                        make_shared<SrcInfoAttribute>(v.getSrcInfo()));
+  return v.result;
 }
 
-seq::Pattern *CodegenVisitor::transform(const PatternPtr &ptr) {
+CodegenResult CodegenVisitor::transform(const PatternPtr &ptr) {
   CodegenVisitor v(ctx);
   v.setSrcInfo(ptr->getSrcInfo());
   ptr->accept(v);
-  if (v.resultPattern) {
-    v.resultPattern->setSrcInfo(ptr->getSrcInfo());
-    if (ctx->tryCatch)
-      v.resultPattern->setTryCatch(ctx->tryCatch);
-    auto t = ptr->getType()->getClass();
-    assert(t);
-    v.resultPattern->setType(realizeType(t));
-  }
-  return v.resultPattern;
+  v.result.addAttribute(kSrcInfoAttribute,
+                        std::make_shared<SrcInfoAttribute>(v.getSrcInfo()));
+  return v.result;
 }
 
-seq::SeqModule *CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmts) {
-  auto module = new seq::SeqModule();
-  module->setFileName("");
-  auto block = module->getBlock();
+shared_ptr<seq::ir::IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache,
+                                                    StmtPtr stmts) {
+  auto module = make_shared<IRModule>("module");
+  auto block = module->getBase()->getBlocks()[0];
   auto ctx =
-      make_shared<CodegenContext>(cache, block, (seq::BaseFunc *)module, nullptr);
+      make_shared<CodegenContext>(cache, block, module, module->getBase(), nullptr);
 
   // Now add all realization stubs
   for (auto &ff : cache->realizations)
@@ -108,28 +169,32 @@ seq::SeqModule *CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmts) {
     for (auto &f : ff.second)
       if (auto t = f.second->getFunc()) {
         auto ast = (FunctionStmt *)(cache->asts[ff.first].get());
+        auto names = split(ast->name, '.');
+        auto name = names.back();
         if (in(ast->attributes, "internal")) {
-          vector<seq::types::Type *> types;
+          vector<shared_ptr<ir::types::Type>> types;
           auto p = t->codegenParent ? t->codegenParent : t->parent;
           seqassert(p && p->getClass(), "parent must be set ({})",
                     p ? p->toString() : "-");
-          seq::types::Type *typ = ctx->realizeType(p->getClass());
+          shared_ptr<ir::types::Type> typ = ctx->realizeType(p->getClass());
           int startI = 1;
           if (ast->args.size() && ast->args[0].name == "self")
             startI = 2;
           for (int i = startI; i < t->args.size(); i++)
             types.push_back(ctx->realizeType(t->args[i]->getClass()));
-
-          auto names = split(ast->name, '.');
-          auto name = names.back();
           if (isdigit(name[0])) // TODO: get rid of this hack
             name = names[names.size() - 2];
           LOG7("[codegen] generating internal fn {} -> {}", ast->name, name);
-          ctx->functions[f.first] = {typ->findMagic(name, types), true};
+          auto fn = make_shared<ir::Func>(names.back(), std::vector<std::string>(),
+                                          ir::types::kNoArgVoidFuncType);
+          // ctx->functions[f.first] = {typ->findMagic(name, types), true};
+          ctx->functions[f.first] = {fn, true};
+          ctx->getModule()->addGlobal(fn);
         } else {
-          auto fn = new seq::Func();
-          fn->setName(f.first);
+          auto fn = make_shared<ir::Func>(name, std::vector<std::string>(),
+                                          ir::types::kNoArgVoidFuncType);
           ctx->functions[f.first] = {fn, false};
+          ctx->getModule()->addGlobal(fn);
         }
         ctx->addFunc(f.first, ctx->functions[f.first].first);
       }
@@ -138,22 +203,22 @@ seq::SeqModule *CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmts) {
 }
 
 void CodegenVisitor::visit(const BoolExpr *expr) {
-  resultExpr = new seq::BoolExpr(expr->value);
+  result = CodegenResult(make_shared<LiteralOperand>(expr->value));
 }
 
 void CodegenVisitor::visit(const IntExpr *expr) {
-  if (expr->sign)
-    resultExpr = new seq::IntExpr(uint64_t(expr->intValue));
+  if (!expr->sign)
+    result = CodegenResult(make_shared<LiteralOperand>(uint64_t(expr->intValue)));
   else
-    resultExpr = new seq::IntExpr(expr->intValue);
+    result = CodegenResult(make_shared<LiteralOperand>(expr->intValue));
 }
 
 void CodegenVisitor::visit(const FloatExpr *expr) {
-  resultExpr = new seq::FloatExpr(expr->value);
+  result = CodegenResult(make_shared<LiteralOperand>(expr->value));
 }
 
 void CodegenVisitor::visit(const StringExpr *expr) {
-  resultExpr = new seq::StrExpr(expr->value);
+  result = CodegenResult(make_shared<LiteralOperand>(expr->value));
 }
 
 void CodegenVisitor::visit(const IdExpr *expr) {
@@ -163,61 +228,83 @@ void CodegenVisitor::visit(const IdExpr *expr) {
   // if (var->isGlobal() && var->getBase() == ctx->getBase() &&
   //     ctx->hasFlag("atomic"))
   //   dynamic_cast<seq::VarExpr *>(i->getExpr())->setAtomic();
+  //
+
+  // TODO verify
   if (auto v = val->getVar())
-    resultExpr = new seq::VarExpr(v);
+    result = CodegenResult(make_shared<VarOperand>(v));
   else if (auto f = val->getFunc())
-    resultExpr = new seq::FuncExpr(f);
+    result = CodegenResult(make_shared<VarOperand>(f));
   else
-    resultExpr = new seq::TypeExpr(val->getType());
+    result = CodegenResult(val->getType());
 }
 
 void CodegenVisitor::visit(const IfExpr *expr) {
-  resultExpr = new seq::CondExpr(transform(expr->cond), transform(expr->eif),
-                                 transform(expr->eelse));
+  auto var = make_shared<ir::Var>(realizeType(expr->getType()->getClass()));
+  ctx->getBase()->addVar(var);
+
+  auto condResultOp = toOperand(transform(expr->cond));
+
+  auto nextBlock = newBlock();
+  auto tBlock = newBlock();
+  auto fBlock = newBlock();
+
+  ctx->getBlock()->setTerminator(
+      make_shared<CondJumpTerminator>(tBlock, fBlock, condResultOp));
+
+  ctx->addBlock(tBlock);
+  auto tResultOp = toOperand(transform(expr->eif));
+  tBlock->add(make_shared<AssignInstr>(make_shared<VarLvalue>(var),
+                                       make_shared<OperandRvalue>(tResultOp)));
+  tBlock->setTerminator(make_shared<JumpTerminator>(nextBlock));
+  ctx->popBlock();
+
+  ctx->addBlock(fBlock);
+  auto fResultOp = toOperand(transform(expr->eelse));
+  fBlock->add(make_shared<AssignInstr>(make_shared<VarLvalue>(var),
+                                       make_shared<OperandRvalue>(fResultOp)));
+  fBlock->setTerminator(make_shared<JumpTerminator>(nextBlock));
+  ctx->popBlock();
+
+  ctx->replaceBlock(nextBlock);
+
+  result = CodegenResult(make_shared<VarOperand>(var));
 }
 
 void CodegenVisitor::visit(const PipeExpr *expr) {
-  vector<seq::Expr *> exprs;
-  vector<seq::types::Type *> inTypes;
-  for (int i = 0; i < expr->items.size(); i++) {
-    exprs.push_back(transform(expr->items[i].expr));
-    inTypes.push_back(realizeType(expr->inTypes[i]->getClass()));
+  vector<shared_ptr<Operand>> ops;
+  vector<bool> parallel;
+  for (const auto &item : expr->items) {
+    ops.push_back(toOperand(transform(item.expr)));
+    parallel.push_back(item.op == "||>");
   }
-  auto p = new seq::PipeExpr(exprs);
-  p->setIntermediateTypes(inTypes);
-  for (int i = 0; i < expr->items.size(); i++)
-    if (expr->items[i].op == "||>")
-      p->setParallel(i);
-  resultExpr = p;
+  result = CodegenResult(make_shared<PipelineRvalue>(ops, parallel));
 }
 
 void CodegenVisitor::visit(const CallExpr *expr) {
-  auto lhs = transform(expr->expr);
-  vector<seq::Expr *> items;
-  vector<string> names;
+  // TODO fix partial call
+  auto lhs = toOperand(transform(expr->expr));
+  vector<shared_ptr<Operand>> items;
   bool isPartial = false;
   for (auto &&i : expr->args) {
-    if (CAST(i.value, EllipsisExpr)) {
-      items.push_back(nullptr);
-      isPartial = true;
-    } else {
-      items.push_back(transform(i.value));
-    }
-    names.push_back("");
+    items.push_back(toOperand(transform(i.value)));
+    isPartial |= !items.back();
   }
   if (isPartial)
-    resultExpr = new seq::PartialCallExpr(lhs, items, names);
+    seqassert(false, "Partial call codegen not supported");
   else
-    resultExpr = new seq::CallExpr(lhs, items, names);
+    result = CodegenResult(make_shared<CallRValue>(lhs, items));
 }
 
 void CodegenVisitor::visit(const StackAllocExpr *expr) {
-  auto c = expr->typeExpr->getType()->getClass();
-  assert(c);
-  resultExpr = new seq::ArrayExpr(realizeType(c), transform(expr->expr), true);
+  auto arrayType = std::static_pointer_cast<ir::types::Array>(
+      realizeType(expr->getType()->getClass()));
+  result = CodegenResult(
+      std::make_shared<StackAllocRvalue>(arrayType, toOperand(transform(expr->expr))));
 }
 void CodegenVisitor::visit(const DotExpr *expr) {
-  resultExpr = new seq::GetElemExpr(transform(expr->expr), expr->member);
+  result = CodegenResult(
+      make_shared<MemberRvalue>(toOperand(transform(expr->expr)), expr->member));
 }
 
 void CodegenVisitor::visit(const PtrExpr *expr) {
@@ -225,28 +312,46 @@ void CodegenVisitor::visit(const PtrExpr *expr) {
   assert(e);
   auto v = ctx->find(e->value, true)->getVar();
   assert(v);
-  resultExpr = new seq::VarPtrExpr(v);
+  result = CodegenResult(
+      make_shared<VarPointerOperand>(realizeType(expr->getType()->getClass()), v));
 }
 
 void CodegenVisitor::visit(const YieldExpr *expr) {
-  resultExpr = new seq::YieldExpr(ctx->getBase());
+  // TODO fix yield expr
+  seqassert(false, "YieldExpr codegen not supported");
 }
 
 void CodegenVisitor::visit(const SuiteStmt *stmt) {
-  for (auto &s : stmt->stmts)
+  for (auto &s : stmt->stmts) {
     transform(s);
+  }
 }
 
 void CodegenVisitor::visit(const PassStmt *stmt) {}
 
-void CodegenVisitor::visit(const BreakStmt *stmt) { resultStmt = new seq::Break(); }
+void CodegenVisitor::visit(const BreakStmt *stmt) {
+  auto loop = std::static_pointer_cast<LoopAttribute>(
+      ctx->getBlock()->getAttribute(kLoopAttribute));
+  auto dst = loop->end.lock();
+  if (!dst)
+    seqassert(false, "No loop end");
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(dst));
+}
 
 void CodegenVisitor::visit(const ContinueStmt *stmt) {
-  resultStmt = new seq::Continue();
+  auto loop = std::static_pointer_cast<LoopAttribute>(
+      ctx->getBlock()->getAttribute(kLoopAttribute));
+  auto dst = loop->cond.lock();
+  if (!dst)
+    dst = loop->begin.lock();
+  if (!dst)
+    seqassert(false, "No loop body");
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(dst));
 }
 
 void CodegenVisitor::visit(const ExprStmt *stmt) {
-  resultStmt = new seq::ExprStmt(transform(stmt->expr));
+  auto rval = toRvalue(transform(stmt->expr));
+  ctx->getBlock()->add(make_shared<RvalueInstr>(rval));
 }
 
 void CodegenVisitor::visit(const AssignStmt *stmt) {
@@ -254,24 +359,31 @@ void CodegenVisitor::visit(const AssignStmt *stmt) {
   auto i = CAST(stmt->lhs, IdExpr);
   assert(i);
   auto var = i->value;
+
   if (!stmt->rhs) {
     assert(var == ".__argv__");
     ctx->addVar(var, ctx->getModule()->getArgVar());
   } else if (stmt->rhs->isType()) {
     // ctx->addType(var, realizeType(stmt->rhs->getType()->getClass()));
   } else {
-    auto varStmt = new seq::VarStmt(transform(stmt->rhs), nullptr);
+    auto v = make_shared<ir::Var>(var, realizeType(stmt->rhs->getType()->getClass()));
     if (var[0] == '.')
-      varStmt->getVar()->setGlobal();
-    varStmt->getVar()->setType(realizeType(stmt->rhs->getType()->getClass()));
-    ctx->addVar(var, varStmt->getVar());
-    resultStmt = varStmt;
+      ctx->getModule()->addGlobal(v);
+    else
+      ctx->getBase()->addVar(v);
+    ctx->addVar(var, v);
+    auto rval = toRvalue(transform(stmt->rhs));
+    ctx->getBlock()->add(make_shared<AssignInstr>(make_shared<VarLvalue>(v), rval));
   }
 }
 
 void CodegenVisitor::visit(const AssignMemberStmt *stmt) {
-  resultStmt =
-      new seq::AssignMember(transform(stmt->lhs), stmt->member, transform(stmt->rhs));
+  auto i = CAST(stmt->lhs, IdExpr);
+  auto name = i->value;
+  auto var = ctx->find(name, false);
+  auto rhs = toRvalue(transform(stmt->rhs));
+  ctx->getBlock()->add(
+      make_shared<AssignInstr>(make_shared<VarMemberLvalue>(var->getVar(), name), rhs));
 }
 
 void CodegenVisitor::visit(const UpdateStmt *stmt) {
@@ -280,7 +392,9 @@ void CodegenVisitor::visit(const UpdateStmt *stmt) {
   auto var = i->value;
   auto val = ctx->find(var, true);
   assert(val && val->getVar());
-  resultStmt = new seq::Assign(val->getVar(), transform(stmt->rhs));
+  auto rhs = toRvalue(transform(stmt->rhs));
+  ctx->getBlock()->add(
+      make_shared<AssignInstr>(make_shared<VarLvalue>(val->getVar()), rhs));
 }
 
 void CodegenVisitor::visit(const DelStmt *stmt) {
@@ -289,115 +403,242 @@ void CodegenVisitor::visit(const DelStmt *stmt) {
   auto v = ctx->find(expr->value, true)->getVar();
   assert(v);
   ctx->remove(expr->value);
-  resultStmt = new seq::Del(v);
 }
 
 void CodegenVisitor::visit(const ReturnStmt *stmt) {
-  if (!stmt->expr) {
-    resultStmt = new seq::Return(nullptr);
-  } else {
-    auto ret = new seq::Return(transform(stmt->expr));
-    resultStmt = ret;
-  }
+  auto retVal = stmt->expr ? toOperand(transform(stmt->expr)) : nullptr;
+  ctx->getBlock()->setTerminator(make_shared<ReturnTerminator>(retVal));
 }
 
 void CodegenVisitor::visit(const YieldStmt *stmt) {
-  auto ret = new seq::Yield(stmt->expr ? transform(stmt->expr) : nullptr);
   ctx->getBase()->setGenerator();
-  resultStmt = ret;
+
+  auto dst = newBlock();
+  auto yieldVal = stmt->expr ? toOperand(transform(stmt->expr)) : nullptr;
+  ctx->getBlock()->setTerminator(
+      make_shared<YieldTerminator>(dst, yieldVal, weak_ptr<ir::Var>()));
+  ctx->replaceBlock(dst);
 }
 
 void CodegenVisitor::visit(const AssertStmt *stmt) {
-  resultStmt = new seq::Assert(transform(stmt->expr));
+  auto dst = newBlock();
+  auto op = toOperand(transform(stmt->expr));
+  ctx->getBlock()->setTerminator(make_shared<AssertTerminator>(op, dst));
+  ctx->replaceBlock(dst);
 }
 
 void CodegenVisitor::visit(const WhileStmt *stmt) {
-  auto r = new seq::While(transform(stmt->cond));
-  ctx->addBlock(r->getBlock());
-  transform(stmt->suite);
+  auto cond = newBlock();
+  auto begin = newBlock();
+  auto end = newBlock();
+  begin->setAttribute(kLoopAttribute,
+                      make_shared<LoopAttribute>(weak_ptr<BasicBlock>(), cond, begin,
+                                                 weak_ptr<BasicBlock>(), end));
+
+  ctx->addBlock(cond);
+  auto condOp = toOperand(transform(stmt->cond));
+  ctx->getBlock()->setTerminator(make_shared<CondJumpTerminator>(begin, end, condOp));
   ctx->popBlock();
-  resultStmt = r;
+
+  ctx->addBlock(begin);
+  transform(stmt->suite);
+  condSetTerminator(make_shared<JumpTerminator>(cond));
+  ctx->popBlock();
+
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(cond));
+
+  ctx->replaceBlock(end);
 }
 
 void CodegenVisitor::visit(const ForStmt *stmt) {
-  auto r = new seq::For(transform(stmt->iter));
-  string forVar;
-  ctx->addBlock(r->getBlock());
-  auto expr = CAST(stmt->var, IdExpr);
-  assert(expr);
-  ctx->addVar(expr->value, r->getVar());
-  r->getVar()->setType(realizeType(expr->getType()->getClass()));
-  transform(stmt->suite);
+  auto setup = newBlock();
+  auto cond = newBlock();
+  auto begin = newBlock();
+  auto end = newBlock();
+  begin->setAttribute(
+      kLoopAttribute,
+      make_shared<LoopAttribute>(setup, cond, begin, weak_ptr<BasicBlock>(), end));
+
+  auto doneVar = make_shared<ir::Var>(ir::types::kBoolType);
+  ctx->getBase()->addVar(doneVar);
+
+  auto varId = CAST(stmt->var, IdExpr);
+  auto resVar =
+      make_shared<ir::Var>(varId->value, realizeType(varId->getType()->getClass()));
+  ctx->addVar(varId->value, resVar);
+  ctx->getBase()->addVar(resVar);
+
+  ctx->addBlock(setup);
+  auto doneSetupRval = toRvalue(transform(stmt->done));
+  ctx->getBlock()->add(
+      make_shared<AssignInstr>(make_shared<VarLvalue>(doneVar), doneSetupRval));
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(cond));
   ctx->popBlock();
-  resultStmt = r;
+
+  ctx->addBlock(cond);
+  ctx->getBlock()->setTerminator(
+      make_shared<CondJumpTerminator>(end, begin, make_shared<VarOperand>(doneVar)));
+  ctx->popBlock();
+
+  ctx->addBlock(begin);
+  auto nextRval = toRvalue(transform(stmt->next));
+  ctx->getBlock()->add(
+      make_shared<AssignInstr>(make_shared<VarLvalue>(resVar), nextRval));
+  transform(stmt->suite);
+  auto doneRval = toRvalue(transform(stmt->done));
+  ctx->getBlock()->add(
+      make_shared<AssignInstr>(make_shared<VarLvalue>(doneVar), doneRval));
+  condSetTerminator(make_shared<JumpTerminator>(cond));
+  ctx->popBlock();
+
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(setup));
+
+  ctx->replaceBlock(end);
 }
 
 void CodegenVisitor::visit(const IfStmt *stmt) {
-  auto r = new seq::If();
+  auto firstCond = newBlock();
+  auto end = newBlock();
+  auto check = firstCond;
+
+  bool elseEncountered = false;
+
   for (auto &i : stmt->ifs) {
-    ctx->addBlock(i.cond ? r->addCond(transform(i.cond)) : r->addElse());
-    transform(i.suite);
+    if (i.cond) {
+      auto newCheck = newBlock();
+      auto body = newBlock();
+
+      ctx->addBlock(check);
+      auto cond = toOperand(transform(i.cond));
+      check->setTerminator(make_shared<CondJumpTerminator>(body, newCheck, cond));
+      ctx->popBlock();
+
+      ctx->addBlock(body);
+      transform(i.suite);
+      condSetTerminator(make_shared<JumpTerminator>(end));
+      ctx->popBlock();
+
+      check = newCheck;
+    } else {
+      elseEncountered = true;
+
+      auto body = check;
+      ctx->addBlock(body);
+      transform(i.suite);
+      condSetTerminator(make_shared<JumpTerminator>(end));
+      ctx->popBlock();
+    }
+  }
+
+  if (!elseEncountered) {
+    ctx->addBlock(check);
+    ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(end));
     ctx->popBlock();
   }
-  resultStmt = r;
+
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(firstCond));
+  ctx->replaceBlock(end);
 }
 
 void CodegenVisitor::visit(const MatchStmt *stmt) {
-  auto m = new seq::Match();
-  m->setValue(transform(stmt->what));
+  auto firstCond = newBlock();
+  auto end = newBlock();
+  auto check = firstCond;
+
   for (auto ci = 0; ci < stmt->cases.size(); ci++) {
     string varName;
-    seq::Var *var = nullptr;
-    seq::Pattern *pat;
+    shared_ptr<ir::Var> var;
+    shared_ptr<ir::Pattern> pat;
+
+    auto newCheck = newBlock();
+    auto body = newBlock();
+
+    ctx->addBlock(check);
     if (auto p = CAST(stmt->patterns[ci], BoundPattern)) {
-      ctx->addBlock();
-      auto boundPat = new seq::BoundPattern(transform(p->pattern));
+      ctx->addBlock(check);
+      auto boundPat =
+          make_shared<ir::BoundPattern>(transform(p->pattern).patternResult);
       var = boundPat->getVar();
       varName = p->var;
-      pat = boundPat;
-      ctx->popBlock();
+      pat = std::static_pointer_cast<ir::Pattern>(boundPat);
     } else {
-      ctx->addBlock();
-      pat = transform(stmt->patterns[ci]);
-      ctx->popBlock();
+      pat = transform(stmt->patterns[ci]).patternResult;
     }
-    ctx->addBlock(m->addCase(pat));
-    transform(stmt->cases[ci]);
+
+    auto t = make_shared<ir::Var>(ir::types::kBoolType);
+    ctx->getBase()->addVar(t);
+    auto matchOp = toOperand(transform(stmt->what));
+    ctx->getBlock()->add(make_shared<AssignInstr>(
+        make_shared<VarLvalue>(t), make_shared<MatchRvalue>(pat, matchOp)));
+    check->setTerminator(
+        make_shared<CondJumpTerminator>(body, newCheck, make_shared<VarOperand>(t)));
+    ctx->popBlock();
+
     if (var)
       ctx->addVar(varName, var);
+
+    ctx->addBlock(body);
+    transform(stmt->cases[ci]);
+    condSetTerminator(make_shared<JumpTerminator>(end));
     ctx->popBlock();
+
+    check = newCheck;
   }
-  resultStmt = m;
+
+  ctx->addBlock(check);
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(end));
+  ctx->popBlock();
+
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(firstCond));
+
+  ctx->replaceBlock(end);
 }
 
 void CodegenVisitor::visit(const TryStmt *stmt) {
-  auto r = new seq::TryCatch();
-  auto oldTryCatch = ctx->tryCatch;
-  ctx->tryCatch = r;
-  ctx->addBlock(r->getBlock());
+  auto parentTc = ctx->getBlock()->getAttribute(kTryCatchAttribute)
+                      ? std::static_pointer_cast<TryCatchAttribute>(
+                            ctx->getBlock()->getAttribute(kTryCatchAttribute))
+                            ->handler
+                      : nullptr;
+  auto newTc = make_shared<ir::TryCatch>();
+  if (parentTc)
+    parentTc->addChild(newTc);
+
+  auto end = newBlock();
+  auto body = newBlock();
+  body->setAttribute(kTryCatchAttribute, make_shared<TryCatchAttribute>(newTc));
+
+  ctx->addBlock(body);
   transform(stmt->suite);
+  condSetTerminator(make_shared<JumpTerminator>(end));
   ctx->popBlock();
-  ctx->tryCatch = oldTryCatch;
+
   int varIdx = 0;
   for (auto &c : stmt->catches) {
     /// TODO: get rid of typeinfo here?
-    ctx->addBlock(
-        r->addCatch(c.exc ? realizeType(c.exc->getType()->getClass()) : nullptr));
-    if (!c.var.empty())
-      ctx->addVar(c.var, r->getVar(varIdx++));
+    auto cBlock = newBlock();
+    ctx->addBlock(cBlock);
     transform(c.suite);
+    condSetTerminator(make_shared<JumpTerminator>(end));
     ctx->popBlock();
+
+    newTc->addCatch(c.exc->getType() ? realizeType(c.exc->getType()->getClass())
+                                     : nullptr,
+                    c.var, newBlock());
+    ctx->addVar(c.var, newTc->getVar(varIdx));
   }
   if (stmt->finally) {
-    ctx->addBlock(r->getFinally());
+    auto fBlock = newBlock();
+    ctx->addBlock(fBlock);
     transform(stmt->finally);
     ctx->popBlock();
+    newTc->setFinallyBlock(fBlock);
   }
-  resultStmt = r;
 }
 
 void CodegenVisitor::visit(const ThrowStmt *stmt) {
-  resultStmt = new seq::Throw(transform(stmt->expr));
+  auto op = toOperand(transform(stmt->expr));
+  ctx->getBlock()->setTerminator(make_shared<ThrowTerminator>(op));
 }
 
 void CodegenVisitor::visit(const FunctionStmt *stmt) {
@@ -406,11 +647,8 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
     if (fp.second)
       continue;
 
-    auto oldTryCatch = ctx->tryCatch;
-    ctx->tryCatch = nullptr;
-
     fp.second = true;
-    auto f = (seq::Func *)fp.first;
+    auto f = fp.first;
     assert(f);
     auto ast = (FunctionStmt *)(ctx->cache->realizationAsts[real.first].get());
     assert(ast);
@@ -418,23 +656,22 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
       continue;
     LOG7("[codegen] generating fn {}", real.first);
     f->setName(real.first);
-    f->setSrcInfo(getSrcInfo());
+    f->setAttribute(kSrcInfoAttribute, make_shared<SrcInfoAttribute>(getSrcInfo()));
     if (!ctx->isToplevel())
       f->setEnclosingFunc(ctx->getBase());
-    ctx->addBlock(f->getBlock(), f);
+    ctx->addBlock(f->getBlocks()[0], f);
     vector<string> names;
-    vector<seq::types::Type *> types;
+    vector<std::shared_ptr<ir::types::Type>> types;
 
     auto t = real.second->getFunc();
     for (int i = 1; i < t->args.size(); i++) {
       types.push_back(realizeType(t->args[i]->getClass()));
       names.push_back(ast->args[i - 1].name);
     }
-    f->setIns(types);
     f->setArgNames(names);
-    f->setOut(realizeType(t->args[0]->getClass()));
+    f->setType(realizeType(t->getClass()));
+    f->setAttribute(kFuncAttribute, make_shared<FuncAttribute>(ast->attributes));
     for (auto a : ast->attributes) {
-      f->addAttribute(a);
       if (a == "atomic")
         ctx->setFlag("atomic");
     }
@@ -447,8 +684,8 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
         ctx->addVar(arg, f->getArgVar(arg));
       transform(ast->suite);
     }
+    condSetTerminator(make_shared<ReturnTerminator>(nullptr));
     ctx->popBlock();
-    ctx->tryCatch = oldTryCatch;
   }
 }
 
@@ -467,64 +704,62 @@ void CodegenVisitor::visit(const ClassStmt *stmt) {
 }
 
 void CodegenVisitor::visit(const StarPattern *pat) {
-  resultPattern = new seq::StarPattern();
+  result = CodegenResult(make_shared<ir::StarPattern>());
 }
 
 void CodegenVisitor::visit(const IntPattern *pat) {
-  resultPattern = new seq::IntPattern(pat->value);
+  result = CodegenResult(make_shared<ir::IntPattern>(pat->value));
 }
 
 void CodegenVisitor::visit(const BoolPattern *pat) {
-  resultPattern = new seq::BoolPattern(pat->value);
+  result = CodegenResult(make_shared<ir::BoolPattern>(pat->value));
 }
 
 void CodegenVisitor::visit(const StrPattern *pat) {
-  resultPattern = new seq::StrPattern(pat->value);
+  result = CodegenResult(make_shared<ir::StrPattern>(pat->value));
 }
 
 void CodegenVisitor::visit(const SeqPattern *pat) {
-  resultPattern = new seq::SeqPattern(pat->value);
+  result = CodegenResult(make_shared<ir::SeqPattern>(pat->value));
 }
 
 void CodegenVisitor::visit(const RangePattern *pat) {
-  resultPattern = new seq::RangePattern(pat->start, pat->end);
+  result = CodegenResult(make_shared<ir::RangePattern>(pat->start, pat->end));
 }
 
 void CodegenVisitor::visit(const TuplePattern *pat) {
-  vector<seq::Pattern *> pp;
+  vector<shared_ptr<ir::Pattern>> pp;
   for (auto &p : pat->patterns)
-    pp.push_back(transform(p));
-  resultPattern = new seq::RecordPattern(move(pp));
+    pp.push_back(transform(p).patternResult);
+  result = CodegenResult(make_shared<ir::RecordPattern>(move(pp)));
 }
 
 void CodegenVisitor::visit(const ListPattern *pat) {
-  vector<seq::Pattern *> pp;
+  vector<shared_ptr<ir::Pattern>> pp;
   for (auto &p : pat->patterns)
-    pp.push_back(transform(p));
-  resultPattern = new seq::ArrayPattern(move(pp));
+    pp.push_back(transform(p).patternResult);
+  result = CodegenResult(make_shared<ir::ArrayPattern>(move(pp)));
 }
 
 void CodegenVisitor::visit(const OrPattern *pat) {
-  vector<seq::Pattern *> pp;
+  vector<shared_ptr<ir::Pattern>> pp;
   for (auto &p : pat->patterns)
-    pp.push_back(transform(p));
-  resultPattern = new seq::OrPattern(move(pp));
+    pp.push_back(transform(p).patternResult);
+  result = CodegenResult(make_shared<ir::OrPattern>(move(pp)));
 }
 
 void CodegenVisitor::visit(const WildcardPattern *pat) {
-  auto p = new seq::Wildcard();
-  if (pat->var.size())
-    ctx->addVar(pat->var, p->getVar());
-  p->getVar()->setType(realizeType(pat->getType()->getClass()));
-  resultPattern = p;
+  auto p = make_shared<ir::WildcardPattern>();
+  ctx->addVar(pat->var, p->getVar());
+  result = CodegenResult(p);
 }
 
 void CodegenVisitor::visit(const GuardedPattern *pat) {
-  resultPattern =
-      new seq::GuardedPattern(transform(pat->pattern), transform(pat->cond));
+  result = CodegenResult(make_shared<ir::GuardedPattern>(
+      transform(pat->pattern).patternResult, toOperand(transform(pat->cond))));
 }
 
-seq::types::Type *CodegenVisitor::realizeType(types::ClassTypePtr t) {
+std::shared_ptr<ir::types::Type> CodegenVisitor::realizeType(types::ClassTypePtr t) {
   auto i = ctx->types.find(t->getClass()->realizeString());
   assert(i != ctx->types.end());
   return i->second;

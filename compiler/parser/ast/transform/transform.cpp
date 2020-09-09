@@ -194,7 +194,7 @@ void TransformVisitor::visit(const IntExpr *expr) {
   try {
     if (expr->suffix == "u") {
       i->intValue = std::stoull(expr->value, nullptr, 0);
-      i->sign = true;
+      i->sign = false;
     } else if (expr->suffix == "") {
       i->intValue = std::stoull(expr->value, nullptr, 0);
     } else {
@@ -804,17 +804,19 @@ void TransformVisitor::visit(const WhileStmt *stmt) {
 }
 
 void TransformVisitor::visit(const ForStmt *stmt) {
-  ExprPtr iter = N<CallExpr>(N<DotExpr>(clone(stmt->iter), "__iter__"));
-
-  // TODO
-  // ExprPtr nextFunc = N<DotExpr>()
-
   ctx->addBlock();
+  auto gen = getTemporaryVar("gen");
+  prepend(N<AssignStmt>(N<IdExpr>(gen),
+                        N<CallExpr>(N<DotExpr>(clone(stmt->iter), "__iter__"))));
+
   if (auto i = CAST(stmt->var, IdExpr)) {
     string varName = i->value;
     ctx->add(TransformItem::Var, varName);
-    resultStmt =
-        N<ForStmt>(transform(stmt->var), transform(iter), transform(stmt->suite));
+    auto result = N<ForStmt>(transform(stmt->var), transform(N<IdExpr>(gen)),
+                             transform(stmt->suite));
+    result->next = transform(N<CallExpr>(N<DotExpr>(N<IdExpr>(gen), "next")));
+    result->done = transform(N<CallExpr>(N<DotExpr>(N<IdExpr>(gen), "done")));
+    resultStmt = move(result);
   } else {
     string varName = getTemporaryVar("for");
     ctx->add(TransformItem::Var, varName);
@@ -823,8 +825,11 @@ void TransformVisitor::visit(const ForStmt *stmt) {
     stmts.push_back(N<AssignStmt>(clone(stmt->var), clone(var), nullptr, false,
                                   /* force */ true));
     stmts.push_back(clone(stmt->suite));
-    resultStmt =
-        N<ForStmt>(clone(var), transform(iter), transform(N<SuiteStmt>(move(stmts))));
+    auto result = N<ForStmt>(clone(var), transform(N<IdExpr>(gen)),
+                             transform(N<SuiteStmt>(move(stmts))));
+    result->next = transform(N<CallExpr>(N<DotExpr>(N<IdExpr>(gen), "next")));
+    result->done = transform(N<CallExpr>(N<DotExpr>(N<IdExpr>(gen), "done")));
+    resultStmt = move(result);
   }
   ctx->popBlock();
 }
@@ -987,7 +992,8 @@ void TransformVisitor::visit(const FunctionStmt *stmt) {
   resultStmt = N<FunctionStmt>(canonicalName, move(ret), clone_nop(stmt->generics),
                                move(args), move(suite), attributes,
                                isClassMember ? ctx->bases.back().name : "");
-  ctx->cache->asts[canonicalName] = clone(resultStmt);
+  auto a = clone(resultStmt);
+  ctx->cache->asts[canonicalName] = move(a);
 }
 
 void TransformVisitor::visit(const ClassStmt *stmt) {
