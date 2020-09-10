@@ -27,6 +27,10 @@ private:
   bool external;
   bool generator;
 
+  bool internal;
+  std::shared_ptr<types::Type> parent;
+  std::string magicName;
+
 public:
   Func(std::string name, std::vector<std::string> argNames,
        std::shared_ptr<types::Type> type);
@@ -50,6 +54,12 @@ public:
 
   void setGenerator() { generator = true; }
   bool isGenerator() const { return generator; }
+
+  void setInternal(std::shared_ptr<types::Type> p, std::string n) {
+    internal = true;
+    parent = std::move(p);
+    magicName = std::move(n);
+  }
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;

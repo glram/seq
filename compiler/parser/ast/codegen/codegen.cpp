@@ -82,7 +82,8 @@ shared_ptr<seq::ir::Operand> CodegenVisitor::toOperand(const CodegenResult res) 
     seqassert(false, "cannot convert lvalue to operand.");
     return nullptr;
   case CodegenResult::RVALUE: {
-    auto t = make_shared<ir::Var>(res.rvalueResult->getType());
+    auto t = make_shared<ir::Var>(res.typeOverride ? res.typeOverride
+                                                   : res.rvalueResult->getType());
     ctx->getBase()->addVar(t);
     ctx->getBlock()->add(
         make_shared<AssignInstr>(make_shared<VarLvalue>(t), res.rvalueResult));
@@ -187,8 +188,9 @@ shared_ptr<seq::ir::IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache,
           LOG7("[codegen] generating internal fn {} -> {}", ast->name, name);
           auto fn = make_shared<ir::Func>(names.back(), std::vector<std::string>(),
                                           ir::types::kNoArgVoidFuncType);
+          fn->setInternal(typ, name);
           // ctx->functions[f.first] = {typ->findMagic(name, types), true};
-          ctx->functions[f.first] = {fn, true};
+          ctx->functions[f.first] = {fn, false};
           ctx->getModule()->addGlobal(fn);
         } else {
           auto fn = make_shared<ir::Func>(name, std::vector<std::string>(),
@@ -299,8 +301,10 @@ void CodegenVisitor::visit(const CallExpr *expr) {
         lhs, items,
         std::static_pointer_cast<ir::types::PartialFuncType>(
             realizeType(expr->getType()->getClass()))));
-  else
+  else {
     result = CodegenResult(make_shared<CallRValue>(lhs, items));
+    result.typeOverride = realizeType(expr->getType()->getClass());
+  }
 }
 
 void CodegenVisitor::visit(const StackAllocExpr *expr) {
@@ -667,10 +671,9 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
     assert(f);
     auto ast = (FunctionStmt *)(ctx->cache->realizationAsts[real.first].get());
     assert(ast);
-    if (in(ast->attributes, "internal"))
-      continue;
+
     LOG7("[codegen] generating fn {}", real.first);
-    f->setName(real.first);
+    // f->setName(real.first);
     f->setAttribute(kSrcInfoAttribute, make_shared<SrcInfoAttribute>(getSrcInfo()));
     if (!ctx->isToplevel())
       f->setEnclosingFunc(ctx->getBase());
@@ -684,6 +687,7 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
       names.push_back(ast->args[i - 1].name);
     }
     f->setArgNames(names);
+
     f->setType(realizeType(t->getClass()));
     f->setAttribute(kFuncAttribute, make_shared<FuncAttribute>(ast->attributes));
     for (auto a : ast->attributes) {
@@ -694,7 +698,7 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
       auto newName = ctx->cache->reverseLookup[stmt->name];
       f->setName(newName);
       f->setExternal();
-    } else {
+    } else if (!in(ast->attributes, "internal")) {
       for (auto &arg : names)
         ctx->addVar(arg, f->getArgVar(arg));
       transform(ast->suite);

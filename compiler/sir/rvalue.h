@@ -63,7 +63,7 @@ public:
   PartialCallRValue(std::shared_ptr<Operand> func,
                     std::vector<std::shared_ptr<Operand>> args,
                     std::shared_ptr<types::PartialFuncType> tval);
-  std::shared_ptr<types::Type> getType() { return tval; };
+  std::shared_ptr<types::Type> getType() override { return tval; };
 
   std::shared_ptr<Operand> getFunc() { return func; }
   std::vector<std::shared_ptr<Operand>> getArgs() { return args; }

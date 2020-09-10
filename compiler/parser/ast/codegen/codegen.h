@@ -39,6 +39,8 @@ struct CodegenResult {
   std::shared_ptr<seq::ir::Pattern> patternResult;
   std::shared_ptr<seq::ir::types::Type> typeResult;
 
+  std::shared_ptr<seq::ir::types::Type> typeOverride;
+
   CodegenResult() : tag(NONE){};
   explicit CodegenResult(std::shared_ptr<seq::ir::Operand> op)
       : tag(OP), operandResult(std::move(op)){};

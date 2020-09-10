@@ -11,7 +11,8 @@ namespace ir {
 
 Func::Func(std::string name, std::vector<std::string> argNames,
            std::shared_ptr<types::Type> type)
-    : Var(std::move(name), type), argNames(argNames) {
+    : Var(std::move(name), type), argNames(argNames), external(), generator(),
+      internal() {
 
   argVars = std::vector<std::shared_ptr<Var>>{};
   auto argTypes = std::static_pointer_cast<types::FuncType>(type)->getArgTypes();
@@ -50,9 +51,17 @@ std::string Func::textRepresentation() const {
   for (const auto &var : vars) {
     fmt::format_to(buf, FMT_STRING("{}\n"), var->textRepresentation());
   }
+
   fmt::format_to(buf, FMT_STRING("]{{\n"));
-  for (const auto &block : blocks) {
-    fmt::format_to(buf, FMT_STRING("{}\n"), block->textRepresentation());
+  if (internal) {
+    fmt::format_to(buf, FMT_STRING("internal: {}.{}\n"), parent->referenceString(),
+                   magicName);
+  } else if (external) {
+    fmt::format_to(buf, FMT_STRING("external\n"));
+  } else {
+    for (const auto &block : blocks) {
+      fmt::format_to(buf, FMT_STRING("{}\n"), block->textRepresentation());
+    }
   }
   fmt::format_to(buf, FMT_STRING("}}; {}"), attributeString());
   return std::string(buf.data(), buf.size());

@@ -216,7 +216,7 @@ CodegenContext::realizeType(types::ClassTypePtr t) {
       // name = "";
       handle = std::make_shared<seq::ir::types::MemberedType>(name, types, names);
     } else {
-      handle = std::make_shared<seq::ir::types::MemberedType>(name, types, names);
+      handle = std::make_shared<seq::ir::types::MemberedType>(name, types, names, true);
     }
   }
   return this->types[t->realizeString()] = handle;
