@@ -22,6 +22,8 @@ namespace seq {
 namespace ir {
 namespace types {
 
+int Type::currentId = 0;
+
 const std::shared_ptr<Type> kStringType = std::make_shared<Type>("str");
 const std::shared_ptr<Type> kBoolType = std::make_shared<Type>("bool");
 const std::shared_ptr<Type> kSeqType = std::make_shared<Type>("seq");
@@ -35,6 +37,10 @@ const std::shared_ptr<Type> kTypeType = std::make_shared<Type>("type");
 const std::shared_ptr<Type> kNoArgVoidFuncType = std::make_shared<FuncType>(
     "void->void", kVoidType, std::vector<std::shared_ptr<Type>>());
 
+std::string Type::referenceString() const {
+  return fmt::format(FMT_STRING("{}#{}"), name, id);
+}
+
 std::shared_ptr<Type> MemberedType::getMemberType(std::string n) {
   auto it = std::find(memberNames.begin(), memberNames.end(), n);
   return it == memberNames.end() ? nullptr : memberTypes[it - memberNames.begin()];
@@ -42,7 +48,7 @@ std::shared_ptr<Type> MemberedType::getMemberType(std::string n) {
 
 std::string MemberedType::textRepresentation() const {
   fmt::memory_buffer buf;
-  fmt::format_to(buf, FMT_STRING("{}: ("), getName());
+  fmt::format_to(buf, FMT_STRING("{}: ("), referenceString());
   for (auto i = 0; i < memberNames.size(); ++i) {
     auto sep = i + 1 != memberNames.size() ? ", " : "";
     fmt::format_to(buf, FMT_STRING("{}{}: {}{}"), reference ? "&" : "", memberNames[i],
@@ -54,7 +60,7 @@ std::string MemberedType::textRepresentation() const {
 
 std::string FuncType::textRepresentation() const {
   fmt::memory_buffer buf;
-  fmt::format_to(buf, FMT_STRING("{}: ("), getName());
+  fmt::format_to(buf, FMT_STRING("{}: ("), referenceString());
   for (auto it = argTypes.begin(); it != argTypes.end(); ++it) {
     auto sep = it + 1 != argTypes.end() ? ", " : "";
     fmt::format_to(buf, FMT_STRING("{}{}"), (*it)->referenceString(), sep);
@@ -72,7 +78,8 @@ PartialFuncType::PartialFuncType(std::string name, std::shared_ptr<FuncType> cal
 
 std::string PartialFuncType::textRepresentation() const {
   fmt::memory_buffer buf;
-  fmt::format_to(buf, FMT_STRING("{}: ({}, ["), getName(), callee->referenceString());
+  fmt::format_to(buf, FMT_STRING("{}: ({}, ["), referenceString(),
+                 callee->referenceString());
   for (auto it = callTypes.begin(); it != callTypes.end(); ++it) {
     auto sep = it + 1 != callTypes.end() ? ", " : "";
     fmt::format_to(buf, FMT_STRING("{}{}"), (*it)->referenceString(), sep);

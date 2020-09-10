@@ -13,20 +13,21 @@ class Func;
 
 namespace types {
 
-// TODO functors/type names
-
 class Type : public AttributeHolder<Type> {
 private:
+  static int currentId;
+
   std::string name;
+  int id;
 
 public:
-  Type(std::string name) : name(std::move(name)) {}
+  explicit Type(std::string name) : name(std::move(name)), id(currentId++) {}
   virtual ~Type() = default;
 
   std::string getName() const { return name; }
 
-  std::string referenceString() const override { return name; };
-  virtual std::string textRepresentation() const override { return name; }
+  std::string referenceString() const override;
+  virtual std::string textRepresentation() const override { return referenceString(); }
 };
 
 class MemberedType : public Type {

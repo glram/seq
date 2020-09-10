@@ -8,8 +8,8 @@ namespace ir {
 int Var::varNum = 0;
 
 std::string Var::textRepresentation() const {
-  return fmt::format(FMT_STRING("{}: {}; {};"), referenceString(), type->getName(),
-                     attributeString());
+  return fmt::format(FMT_STRING("{}: {}; {};"), referenceString(),
+                     type->referenceString(), attributeString());
 }
 
 std::string Var::referenceString() const {
