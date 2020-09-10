@@ -11,6 +11,7 @@ namespace ir {
 
 class Var;
 class Func;
+class TryCatch;
 
 class IRModule : public AttributeHolder<IRModule> {
 private:
@@ -18,6 +19,7 @@ private:
   std::string name;
   std::shared_ptr<Func> baseFunc;
   std::shared_ptr<Var> argVar;
+  std::shared_ptr<TryCatch> tc;
 
 public:
   explicit IRModule(std::string name);
@@ -30,6 +32,8 @@ public:
   std::string getName() const { return name; }
 
   std::shared_ptr<Var> getArgVar() { return argVar; };
+
+  std::shared_ptr<TryCatch> getTryCatch() { return tc; }
 
   std::string referenceString() const override { return "module"; };
   std::string textRepresentation() const override;

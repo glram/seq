@@ -29,6 +29,23 @@ std::shared_ptr<types::Type> CallRValue::getType() {
   return std::static_pointer_cast<types::FuncType>(func->getType())->getRType();
 }
 
+PartialCallRValue::PartialCallRValue(std::shared_ptr<Operand> func,
+                                     std::vector<std::shared_ptr<Operand>> args,
+                                     std::shared_ptr<types::PartialFuncType> tval)
+    : func(std::move(func)), args(std::move(args)), tval(std::move(tval)) {}
+
+std::string PartialCallRValue::textRepresentation() const {
+  fmt::memory_buffer buf;
+  fmt::format_to(buf, FMT_STRING("{}("), func->textRepresentation());
+  for (auto it = args.begin(); it != args.end(); it++) {
+    fmt::format_to(buf, FMT_STRING("{}"), *it ? (*it)->textRepresentation() : "...");
+    if (it + 1 != args.end())
+      fmt::format_to(buf, FMT_STRING(", "));
+  }
+  buf.push_back(')');
+  return std::string(buf.data(), buf.size());
+}
+
 std::string CallRValue::textRepresentation() const {
   fmt::memory_buffer buf;
   fmt::format_to(buf, FMT_STRING("{}("), func->textRepresentation());
@@ -57,7 +74,7 @@ std::string MatchRvalue::textRepresentation() const {
 
 PipelineRvalue::PipelineRvalue(std::vector<std::shared_ptr<Operand>> stages,
                                std::vector<bool> parallel)
-    : stages(stages), parallel(std::move(parallel)) {}
+    : stages(std::move(stages)), parallel(std::move(parallel)) {}
 
 std::shared_ptr<types::Type> PipelineRvalue::getType() {
   return !stages.empty() ? stages[stages.size() - 1]->getType() : types::kVoidType;

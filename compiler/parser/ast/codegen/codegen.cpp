@@ -287,11 +287,18 @@ void CodegenVisitor::visit(const CallExpr *expr) {
   vector<shared_ptr<Operand>> items;
   bool isPartial = false;
   for (auto &&i : expr->args) {
-    items.push_back(toOperand(transform(i.value)));
-    isPartial |= !items.back();
+    if (CAST(i.value, EllipsisExpr)) {
+      items.push_back(nullptr);
+      isPartial = true;
+    } else {
+      items.push_back(toOperand(transform(i.value)));
+    }
   }
   if (isPartial)
-    seqassert(false, "Partial call codegen not supported");
+    result = CodegenResult(make_shared<PartialCallRValue>(
+        lhs, items,
+        std::static_pointer_cast<ir::types::PartialFuncType>(
+            realizeType(expr->getType()->getClass()))));
   else
     result = CodegenResult(make_shared<CallRValue>(lhs, items));
 }
@@ -317,8 +324,16 @@ void CodegenVisitor::visit(const PtrExpr *expr) {
 }
 
 void CodegenVisitor::visit(const YieldExpr *expr) {
-  // TODO fix yield expr
-  seqassert(false, "YieldExpr codegen not supported");
+  ctx->getBase()->setGenerator();
+
+  auto var = make_shared<ir::Var>(realizeType(expr->getType()->getClass()));
+  ctx->getBase()->addVar(var);
+
+  auto dst = newBlock();
+  ctx->getBlock()->setTerminator(make_shared<YieldTerminator>(dst, nullptr, var));
+  ctx->replaceBlock(dst);
+
+  result = CodegenResult(make_shared<VarOperand>(var));
 }
 
 void CodegenVisitor::visit(const SuiteStmt *stmt) {
@@ -599,7 +614,7 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
                       ? std::static_pointer_cast<TryCatchAttribute>(
                             ctx->getBlock()->getAttribute(kTryCatchAttribute))
                             ->handler
-                      : nullptr;
+                      : ctx->getModule()->getTryCatch();
   auto newTc = make_shared<ir::TryCatch>();
   if (parentTc)
     parentTc->addChild(newTc);

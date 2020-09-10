@@ -53,6 +53,24 @@ public:
   std::string textRepresentation() const override;
 };
 
+class PartialCallRValue : public Rvalue {
+private:
+  std::shared_ptr<Operand> func;
+  std::vector<std::shared_ptr<Operand>> args;
+  std::shared_ptr<types::PartialFuncType> tval;
+
+public:
+  PartialCallRValue(std::shared_ptr<Operand> func,
+                    std::vector<std::shared_ptr<Operand>> args,
+                    std::shared_ptr<types::PartialFuncType> tval);
+  std::shared_ptr<types::Type> getType() { return tval; };
+
+  std::shared_ptr<Operand> getFunc() { return func; }
+  std::vector<std::shared_ptr<Operand>> getArgs() { return args; }
+
+  std::string textRepresentation() const override;
+};
+
 class OperandRvalue : public Rvalue {
 private:
   std::shared_ptr<Operand> operand;

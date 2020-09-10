@@ -38,7 +38,7 @@ std::string YieldTerminator::textRepresentation() const {
     fmt::format_to(buf, FMT_STRING(" {}"), res->textRepresentation());
   }
   if (inVar.lock()) {
-    fmt::format_to(buf, FMT_STRING(" -> {}"), inVar.lock()->textRepresentation());
+    fmt::format_to(buf, FMT_STRING(" -> {}"), inVar.lock()->referenceString());
   }
 
   fmt::format_to(buf, FMT_STRING(" {}; {}"), dst.lock()->referenceString(),

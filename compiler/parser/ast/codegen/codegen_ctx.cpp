@@ -195,12 +195,12 @@ CodegenContext::realizeType(types::ClassTypePtr t) {
   } else if (startswith(name, ".Partial.")) {
     auto f = t->getCallable()->getClass();
     assert(f);
-    auto callee = realizeType(f);
+    auto callee = std::static_pointer_cast<seq::ir::types::FuncType>(realizeType(f));
     vector<std::shared_ptr<seq::ir::types::Type>> partials(f->args.size() - 1, nullptr);
     for (int i = 9; i < name.size(); i++)
       if (name[i] == '1')
         partials[i - 9] = realizeType(f->args[i - 9 + 1]->getClass());
-    handle = std::make_shared<seq::ir::types::FuncType>(name, callee, partials);
+    handle = std::make_shared<seq::ir::types::PartialFuncType>(name, callee, partials);
   } else {
     vector<string> names;
     vector<std::shared_ptr<seq::ir::types::Type>> types;

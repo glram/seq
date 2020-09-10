@@ -1,7 +1,22 @@
 #include <algorithm>
+#include <utility>
 
 #include "types.h"
 #include "util/fmt/format.h"
+
+namespace {
+using namespace seq::ir::types;
+std::vector<std::shared_ptr<Type>>
+resolvePartials(std::vector<std::shared_ptr<Type>> calleeArgs,
+                std::vector<std::shared_ptr<Type>> partials) {
+  std::vector<std::shared_ptr<Type>> ret;
+  for (auto it = partials.begin(); it != partials.end(); ++it) {
+    if (!*it)
+      ret.push_back(calleeArgs[it - partials.begin()]);
+  }
+  return ret;
+}
+} // namespace
 
 namespace seq {
 namespace ir {
@@ -47,6 +62,13 @@ std::string FuncType::textRepresentation() const {
   fmt::format_to(buf, FMT_STRING(")->{}"), rType->referenceString());
   return std::string(buf.data(), buf.size());
 }
+
+PartialFuncType::PartialFuncType(std::string name, std::shared_ptr<FuncType> callee,
+                                 std::vector<std::shared_ptr<Type>> callTypes)
+
+    : FuncType(std::move(name), callee->getRType(),
+               resolvePartials(callee->getArgTypes(), callTypes)),
+      callee(std::move(callee)), callTypes(std::move(callTypes)) {}
 
 std::string PartialFuncType::textRepresentation() const {
   fmt::memory_buffer buf;

@@ -67,15 +67,14 @@ public:
   std::string textRepresentation() const override;
 };
 
-class PartialFuncType : public Type {
+class PartialFuncType : public FuncType {
 private:
   std::shared_ptr<Type> callee;
   std::vector<std::shared_ptr<Type>> callTypes;
 
 public:
-  PartialFuncType(std::string name, std::shared_ptr<Type> callee,
-                  std::vector<std::shared_ptr<Type>> callTypes)
-      : Type(name), callee(std::move(callee)), callTypes(std::move(callTypes)) {}
+  PartialFuncType(std::string name, std::shared_ptr<FuncType> callee,
+                  std::vector<std::shared_ptr<Type>> callTypes);
 
   std::shared_ptr<Type> getCallee() { return callee; }
   std::vector<std::shared_ptr<Type>> getCallTypes() { return callTypes; };

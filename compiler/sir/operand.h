@@ -38,7 +38,7 @@ private:
 
 public:
   explicit VarPointerOperand(std::shared_ptr<types::Type> type, std::weak_ptr<Var> var)
-      : type(std::move(type)), var(std::move(var)) {}
+      : var(std::move(var)), type(std::move(type)) {}
   std::shared_ptr<types::Type> getType() override { return type; }
 
   std::weak_ptr<Var> getVar() { return var; }
