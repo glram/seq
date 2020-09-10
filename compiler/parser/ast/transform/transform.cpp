@@ -406,15 +406,16 @@ void TransformVisitor::visit(const UnaryExpr *expr) {
 }
 
 void TransformVisitor::visit(const BinaryExpr *expr) {
-  if (expr->op == "&&") {
-    resultExpr = transform(N<CallExpr>(
-        N<DotExpr>(N<CallExpr>(N<DotExpr>(clone(expr->lexpr), "__bool__")), "__and__"),
-        N<CallExpr>(N<DotExpr>(clone(expr->rexpr), "__bool__"))));
-  } else if (expr->op == "||") {
-    resultExpr = transform(N<CallExpr>(
-        N<DotExpr>(N<CallExpr>(N<DotExpr>(clone(expr->lexpr), "__bool__")), "__or__"),
-        N<CallExpr>(N<DotExpr>(clone(expr->rexpr), "__bool__"))));
-  } else if (expr->op == "is not") {
+  //  if (expr->op == "&&") {
+  //    resultExpr = transform(N<CallExpr>(
+  //        N<DotExpr>(N<CallExpr>(N<DotExpr>(clone(expr->lexpr), "__bool__")),
+  //        "__and__"), N<CallExpr>(N<DotExpr>(clone(expr->rexpr), "__bool__"))));
+  //  } else if (expr->op == "||") {
+  //    resultExpr = transform(N<CallExpr>(
+  //        N<DotExpr>(N<CallExpr>(N<DotExpr>(clone(expr->lexpr), "__bool__")),
+  //        "__or__"), N<CallExpr>(N<DotExpr>(clone(expr->rexpr), "__bool__"))));
+  //  } else
+  if (expr->op == "is not") {
     resultExpr = transform(N<CallExpr>(
         N<DotExpr>(N<BinaryExpr>(transform(expr->lexpr), "is", transform(expr->rexpr)),
                    "__invert__")));
@@ -425,6 +426,10 @@ void TransformVisitor::visit(const BinaryExpr *expr) {
   } else if (expr->op == "in") {
     resultExpr = transform(N<CallExpr>(N<DotExpr>(clone(expr->rexpr), "__contains__"),
                                        clone(expr->lexpr)));
+  } else if (expr->op == "&&" || expr->op == "||") {
+    resultExpr = N<BinaryExpr>(
+        transform(N<CallExpr>(N<DotExpr>(clone(expr->lexpr), "__bool__"))), expr->op,
+        transform(N<CallExpr>(N<DotExpr>(clone(expr->rexpr), "__bool__"))));
   } else {
     resultExpr =
         N<BinaryExpr>(transform(expr->lexpr), expr->op, transform(expr->rexpr));

@@ -245,27 +245,78 @@ void CodegenVisitor::visit(const IfExpr *expr) {
   auto var = make_shared<ir::Var>(realizeType(expr->getType()->getClass()));
   ctx->getBase()->addVar(var);
 
-  auto condResultOp = toOperand(transform(expr->cond));
-
-  auto nextBlock = newBlock();
   auto tBlock = newBlock();
   auto fBlock = newBlock();
+  auto nextBlock = newBlock();
 
+  auto condResultOp = toOperand(transform(expr->cond));
   ctx->getBlock()->setTerminator(
       make_shared<CondJumpTerminator>(tBlock, fBlock, condResultOp));
 
   ctx->addBlock(tBlock);
   auto tResultOp = toOperand(transform(expr->eif));
-  tBlock->add(make_shared<AssignInstr>(make_shared<VarLvalue>(var),
-                                       make_shared<OperandRvalue>(tResultOp)));
-  tBlock->setTerminator(make_shared<JumpTerminator>(nextBlock));
+  ctx->getBlock()->add(make_shared<AssignInstr>(make_shared<VarLvalue>(var),
+                                                make_shared<OperandRvalue>(tResultOp)));
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(nextBlock));
   ctx->popBlock();
 
   ctx->addBlock(fBlock);
   auto fResultOp = toOperand(transform(expr->eelse));
-  fBlock->add(make_shared<AssignInstr>(make_shared<VarLvalue>(var),
-                                       make_shared<OperandRvalue>(fResultOp)));
-  fBlock->setTerminator(make_shared<JumpTerminator>(nextBlock));
+  ctx->getBlock()->add(make_shared<AssignInstr>(make_shared<VarLvalue>(var),
+                                                make_shared<OperandRvalue>(fResultOp)));
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(nextBlock));
+  ctx->popBlock();
+
+  ctx->replaceBlock(nextBlock);
+
+  result = CodegenResult(make_shared<VarOperand>(var));
+}
+
+void CodegenVisitor::visit(const BinaryExpr *expr) {
+  assert(expr->op == "&&" || expr->op == "||");
+
+  auto var = make_shared<ir::Var>(ir::types::kBoolType);
+  ctx->getBase()->addVar(var);
+
+  auto trueBlock = newBlock();
+  auto falseBlock = newBlock();
+  auto nextBlock = newBlock();
+
+  auto lhsOp = toOperand(transform(expr->lexpr));
+  if (expr->op == "&&") {
+    auto tLeftBlock = newBlock();
+    ctx->getBlock()->setTerminator(
+        make_shared<CondJumpTerminator>(tLeftBlock, falseBlock, lhsOp));
+
+    ctx->addBlock(tLeftBlock);
+    auto rhsOp = toOperand(transform(expr->rexpr));
+    ctx->getBlock()->setTerminator(
+        make_shared<CondJumpTerminator>(trueBlock, falseBlock, rhsOp));
+    ctx->popBlock();
+  } else {
+    auto fLeftBlock = newBlock();
+    ctx->getBlock()->setTerminator(
+        make_shared<CondJumpTerminator>(trueBlock, fLeftBlock, lhsOp));
+
+    ctx->addBlock(fLeftBlock);
+    auto rhsOp = toOperand(transform(expr->rexpr));
+    ctx->getBlock()->setTerminator(
+        make_shared<CondJumpTerminator>(trueBlock, falseBlock, rhsOp));
+    ctx->popBlock();
+  }
+
+  ctx->addBlock(trueBlock);
+  auto trueOperand = make_shared<LiteralOperand>(true);
+  ctx->getBlock()->add(make_shared<AssignInstr>(
+      make_shared<VarLvalue>(var), make_shared<OperandRvalue>(trueOperand)));
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(nextBlock));
+  ctx->popBlock();
+
+  ctx->addBlock(falseBlock);
+  auto falseOperand = make_shared<LiteralOperand>(false);
+  ctx->getBlock()->add(make_shared<AssignInstr>(
+      make_shared<VarLvalue>(var), make_shared<OperandRvalue>(falseOperand)));
+  ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(nextBlock));
   ctx->popBlock();
 
   ctx->replaceBlock(nextBlock);
@@ -529,7 +580,8 @@ void CodegenVisitor::visit(const IfStmt *stmt) {
 
       ctx->addBlock(check);
       auto cond = toOperand(transform(i.cond));
-      check->setTerminator(make_shared<CondJumpTerminator>(body, newCheck, cond));
+      ctx->getBlock()->setTerminator(
+          make_shared<CondJumpTerminator>(body, newCheck, cond));
       ctx->popBlock();
 
       ctx->addBlock(body);
@@ -589,7 +641,7 @@ void CodegenVisitor::visit(const MatchStmt *stmt) {
     auto matchOp = toOperand(transform(stmt->what));
     ctx->getBlock()->add(make_shared<AssignInstr>(
         make_shared<VarLvalue>(t), make_shared<MatchRvalue>(pat, matchOp)));
-    check->setTerminator(
+    ctx->getBlock()->setTerminator(
         make_shared<CondJumpTerminator>(body, newCheck, make_shared<VarOperand>(t)));
     ctx->popBlock();
 

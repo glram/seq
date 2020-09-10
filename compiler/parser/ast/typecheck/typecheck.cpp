@@ -206,6 +206,9 @@ void TypecheckVisitor::visit(const BinaryExpr *expr) {
                                   "==", N<CallExpr>(N<DotExpr>(move(re), "__raw__"))));
     }
     resultExpr->setType(forceUnify(expr, ctx->findInternal(".bool")));
+  } else if (expr->op == "&&" || expr->op == "||") {
+    resultExpr = N<BinaryExpr>(move(le), expr->op, move(re));
+    resultExpr->setType(forceUnify(expr, ctx->findInternal(".bool")));
   } else {
     auto mi = magics.find(expr->op);
     if (mi == magics.end())
