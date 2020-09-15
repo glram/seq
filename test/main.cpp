@@ -4,6 +4,7 @@
 #include <fstream>
 #include <gc.h>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <string>
 #include <sys/types.h>
@@ -16,6 +17,18 @@
 #include "parser/common.h"
 #include "parser/parser.h"
 #include "gtest/gtest.h"
+
+#include "parser/ast/cache.h"
+#include "parser/ast/codegen/codegen.h"
+#include "parser/ast/format/format.h"
+#include "parser/ast/transform/transform.h"
+#include "parser/ast/typecheck/typecheck.h"
+#include "parser/ocaml.h"
+#include "parser/parser.h"
+
+#include "sir/var.h"
+#include "sir/bblock.h"
+#include "sir/trycatch.h"
 
 using namespace seq;
 using namespace std;
@@ -265,6 +278,60 @@ INSTANTIATE_TEST_SUITE_P(
 //     testing::Combine(testing::Values("python/pybridge.seq"),
 //                      testing::Values(true, false)),
 //     getTestNameFromParam);
+
+class SIRTest: public testing::TestWithParam<
+    tuple<string /*filename*/, string /* case name */>> {
+  std::string buf;
+
+public:
+  string getFilename(const string &basename) {
+    return string(TEST_DIR) + "/" + basename + ".seq";
+  }
+  string getExpectedFilename(const string &basename) {
+    return string(TEST_DIR) + "/" + basename + ".sir";
+  }
+  void run() {
+    seq::ir::TryCatch::resetId();
+    seq::ir::Var::resetId();
+    seq::ir::BasicBlock::resetId();
+
+    auto file = getFilename(get<0>(GetParam()));
+
+    char abs[PATH_MAX + 1];
+    realpath(file.c_str(), abs);
+
+    ast::StmtPtr codeStmt = ast::parseFile(abs);
+    auto cache = make_shared<ast::Cache>(argv0);
+    auto transformed = ast::TransformVisitor::apply(cache, move(codeStmt));
+    auto typechecked = ast::TypecheckVisitor::apply(cache, move(transformed));
+    auto module = ast::CodegenVisitor::apply(cache, move(typechecked));
+    buf = module->textRepresentation();
+  }
+  string result() { return buf; }
+};
+
+using SIRTuple = std::tuple<std::string, std::string>;
+
+INSTANTIATE_TEST_SUITE_P(SIRTest, SIRTest,
+                         testing::ValuesIn({SIRTuple{"sir/simple", "simple"},
+                                            {"sir/loopgen", "loopgen"},
+                                            {"sir/trycatch", "trycatch"},
+                                            {"sir/controlflow", "controlflow"}}),
+                         [&](const auto &info)
+                            { return get<1>(info.param); });
+
+TEST_P(SIRTest, RUN) {
+  const string file = get<0>(GetParam());
+  run();
+
+  string output = result();
+  std::ifstream t;
+  t.open(getExpectedFilename(file));
+  std::string expected((std::istreambuf_iterator<char>(t)),
+                  std::istreambuf_iterator<char>());
+  t.close();
+  EXPECT_EQ(expected, output);
+}
 
 int main(int argc, char *argv[]) {
   argv0 = ast::executable_path(argv[0]);

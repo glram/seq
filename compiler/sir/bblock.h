@@ -24,6 +24,8 @@ private:
 public:
   BasicBlock() : id(currentId++) {}
 
+  static void resetId();
+
   void add(std::shared_ptr<Instr> instruction) { instructions.push_back(instruction); }
   std::vector<std::shared_ptr<Instr>> getInstructions() { return instructions; }
 

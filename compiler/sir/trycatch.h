@@ -27,6 +27,8 @@ private:
 public:
   TryCatch() : id(currentId++){};
 
+  static void resetId();
+
   std::vector<std::shared_ptr<TryCatch>> getChildren() { return children; }
   void addChild(std::shared_ptr<TryCatch> child) {
     children.push_back(child);

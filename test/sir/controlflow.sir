@@ -1,0 +1,4616 @@
+module module{
+def f$base#0(
+) -> void#7 [
+$#1382: str#0; [];
+$#1383: str#0; [];
+]{
+bb#0 {
+$.RTLD_NOW#548 = 2; [];
+$.RTLD_GLOBAL#549 = 8; [];
+$.BLOCK_SIZE#1310 = 64; [];
+$.CACHELINE_SIZE#1311 = 64; [];
+$.MIN_GALLOP#1312 = 7; [];
+$.INSERTION_SORT_THRESHOLD#1313 = 24; [];
+$.NINTHER_THRESHOLD#1314 = 128; [];
+$.PARTIAL_INSERTION_SORT_LIMIT#1315 = 8; [];
+$.e#1316 = 2.718282; [];
+$.pi#1317 = 3.141593; [];
+$.tau#1318 = 6.283185; [];
+$.inf#1319 = f$3#56('inf'); [];
+$.nan#1320 = f$3#56('nan'); [];
+$._typ_933#1321 = f$__new__#4(); [];
+f$3#3($._typ_933#1321, 21); [];
+$._lst_880#1322 = $._typ_933#1321; [];
+f$append#44($._lst_880#1322, 1); [];
+f$append#44($._lst_880#1322, 1); [];
+f$append#44($._lst_880#1322, 2); [];
+f$append#44($._lst_880#1322, 6); [];
+f$append#44($._lst_880#1322, 24); [];
+f$append#44($._lst_880#1322, 120); [];
+f$append#44($._lst_880#1322, 720); [];
+f$append#44($._lst_880#1322, 5040); [];
+f$append#44($._lst_880#1322, 40320); [];
+f$append#44($._lst_880#1322, 362880); [];
+f$append#44($._lst_880#1322, 3628800); [];
+f$append#44($._lst_880#1322, 39916800); [];
+f$append#44($._lst_880#1322, 479001600); [];
+f$append#44($._lst_880#1322, 6227020800); [];
+f$append#44($._lst_880#1322, 87178291200); [];
+f$append#44($._lst_880#1322, 1307674368000); [];
+f$append#44($._lst_880#1322, 20922789888000); [];
+f$append#44($._lst_880#1322, 355687428096000); [];
+f$append#44($._lst_880#1322, 6402373705728000); [];
+f$append#44($._lst_880#1322, 121645100408832000); [];
+f$append#44($._lst_880#1322, 2432902008176640000); [];
+$._F#1323 = $._lst_880#1322; [];
+$._typ_934#1326 = f$__new__#140(); [];
+f$1#34($._typ_934#1326); [];
+$._DLOPEN_CACHE#1327 = $._typ_934#1326; [];
+$._typ_935#1328 = f$__new__#140(); [];
+f$1#34($._typ_935#1328); [];
+$._DLSYM_CACHE#1329 = $._typ_935#1328; [];
+$.SEEK_SET#1330 = 0; [];
+$.SEEK_CUR#1331 = 1; [];
+$.SEEK_END#1332 = 2; [];
+$.environ#1374 = f$1#176(); [];
+$#1382 = f$dlext#29(); [];
+$#1383 = f$__add__#136('libpython.', $#1382); [];
+$.LD#1381 = f$getenv#27('SEQ_PYTHON', $#1383); [];
+$._PY_INITIALIZED#1384 = false; [];
+$._typ_939#1385 = f$__new__#139(); [];
+f$1#33($._typ_939#1385); [];
+$._PY_MODULE_CACHE#1386 = $._typ_939#1385; [];
+f$crazy_flow#7(); [];
+noterm;
+}; []
+}; []
+def f$__new__#2(
+$len#398: int#4; [];
+) -> Array[int]#701 [
+]{
+internal: Array[int]#701.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$3#3(
+$self#864: .list#703; [];
+$capacity#865: int#4; [];
+) -> void#7 [
+]{
+bb#2 {
+$self#864.self = f$__new__#2($capacity#865); [];
+$self#864.self = 0; [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#4(
+) -> .list#703 [
+]{
+internal: .list#703.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$1#5(
+$self#752: .range#707; [];
+) -> Generator[int]#706 [
+$#754: .range#707; [];
+$#755: .range#707; [];
+$#756: .range#707; [];
+$start#757: int#4; [];
+$stop#758: int#4; [];
+$step#759: int#4; [];
+$i#760: int#4; [];
+$#761: bool#1; [];
+$#762: bool#1; [];
+$#763: bool#1; [];
+$#764: bool#1; [];
+$#765: bool#1; [];
+$#766: bool#1; [];
+]{
+bb#4 {
+$#754 = $self#752.start; [];
+$#755 = $self#752.stop; [];
+$#756 = $self#752.step; [];
+$._assign_714#753 = f$__new__#6($#754, $#755, $#756); [];
+$start#757 = $._assign_714#753.a1; [];
+$stop#758 = $._assign_714#753.a2; [];
+$step#759 = $._assign_714#753.a3; [];
+$i#760 = $start#757; [];
+jmp bb#348; [];
+}; []
+bb#348 {
+$#761 = f$__gt__#185($step#759, 0); [];
+$#762 = f$__bool__#269($#761); [];
+condjump ($#762) bb#351 bb#350; [];
+}; []
+bb#349 {
+return; [];
+}; []
+bb#350 {
+jmp bb#356; [];
+}; []
+bb#351 {
+jmp bb#352; [];
+}; []
+bb#352 {
+$#763 = f$__lt__#280($i#760, $stop#758); [];
+$#764 = f$__bool__#269($#763); [];
+condjump ($#764) bb#353 bb#354; [];
+}; []
+bb#353 {
+yield $i#760 bb#355; [];
+}; [loopAttribute: loop(none, bb#352, bb#353, none, bb#354), ]
+bb#354 {
+jmp bb#349; [];
+}; []
+bb#355 {
+$i#760 = f$__add__#257($i#760, $step#759); [];
+jmp bb#352; [];
+}; [loopAttribute: loop(none, bb#352, bb#353, none, bb#354), ]
+bb#356 {
+$#765 = f$__gt__#185($i#760, $stop#758); [];
+$#766 = f$__bool__#269($#765); [];
+condjump ($#766) bb#357 bb#358; [];
+}; []
+bb#357 {
+yield $i#760 bb#359; [];
+}; [loopAttribute: loop(none, bb#356, bb#357, none, bb#358), ]
+bb#358 {
+jmp bb#349; [];
+}; []
+bb#359 {
+$i#760 = f$__add__#257($i#760, $step#759); [];
+jmp bb#356; [];
+}; [loopAttribute: loop(none, bb#356, bb#357, none, bb#358), ]
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#6(
+$a1#288: int#4; [];
+$a2#289: int#4; [];
+$a3#290: int#4; [];
+) -> .Tuple.3#709 [
+]{
+internal: .Tuple.3#709.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$crazy_flow#7(
+) -> void#7 [
+$#1388: .range#707; [];
+$._for_done#1389: bool#1; [];
+$i#1390: int#4; [];
+$._bin_res#1391: bool#1; [];
+$#1392: int#4; [];
+$#1393: bool#1; [];
+$#1394: bool#1; [];
+$#1395: bool#1; [];
+$#1396: bool#1; [];
+$#1397: bool#1; [];
+$#1398: str#0; [];
+$#1399: str#0; [];
+$#1400: bool#1; [];
+$#1401: bool#1; [];
+$#1402: str#0; [];
+$#1403: str#0; [];
+$._if_res#1404: str#0; [];
+$#1405: bool#1; [];
+$#1406: str#0; [];
+$#1407: str#0; [];
+]{
+bb#6 {
+$#1388 = f$3#97(200); [];
+$._gen_927#1387 = f$1#5($#1388); [];
+jmp bb#588; [];
+}; []
+bb#588 {
+$._for_done#1389 = f$done#174($._gen_927#1387); [];
+jmp bb#589; [];
+}; []
+bb#589 {
+condjump ($._for_done#1389) bb#591 bb#590; [];
+}; []
+bb#590 {
+$i#1390 = f$next#211($._gen_927#1387); [];
+jmp bb#592; [];
+}; [loopAttribute: loop(bb#588, bb#589, bb#590, none, bb#591), ]
+bb#591 {
+jmp bb#600; [];
+}; []
+bb#592 {
+$#1392 = f$__mod__#218($i#1390, 2); [];
+$#1393 = f$__eq__#41($#1392, 0); [];
+$#1394 = f$__bool__#269($#1393); [];
+condjump ($#1394) bb#596 bb#599; [];
+}; [loopAttribute: loop(bb#588, bb#589, bb#590, none, bb#591), ]
+bb#593 {
+$._for_done#1389 = f$done#174($._gen_927#1387); [];
+jmp bb#589; [];
+}; [loopAttribute: loop(bb#588, bb#589, bb#590, none, bb#591), ]
+bb#594 {
+jmp bb#593; [];
+}; [loopAttribute: loop(bb#588, bb#589, bb#590, none, bb#591), ]
+bb#595 {
+$#1398 = f$__str__#164('even or 7!'); [];
+f$seq_print#244($#1398); [];
+$#1399 = f$__str__#164('
+'); [];
+f$seq_print#244($#1399); [];
+jmp bb#593; [];
+}; [loopAttribute: loop(bb#588, bb#589, bb#590, none, bb#591), ]
+bb#596 {
+$._bin_res#1391 = true; [];
+jmp bb#598; [];
+}; [loopAttribute: loop(bb#588, bb#589, bb#590, none, bb#591), ]
+bb#597 {
+$._bin_res#1391 = false; [];
+jmp bb#598; [];
+}; [loopAttribute: loop(bb#588, bb#589, bb#590, none, bb#591), ]
+bb#598 {
+$#1397 = f$__bool__#269($._bin_res#1391); [];
+condjump ($#1397) bb#595 bb#594; [];
+}; [loopAttribute: loop(bb#588, bb#589, bb#590, none, bb#591), ]
+bb#599 {
+$#1395 = f$__eq__#41($i#1390, 7); [];
+$#1396 = f$__bool__#269($#1395); [];
+condjump ($#1396) bb#596 bb#597; [];
+}; [loopAttribute: loop(bb#588, bb#589, bb#590, none, bb#591), ]
+bb#600 {
+$#1400 = f$__bool__#269(false); [];
+condjump ($#1400) bb#601 bb#602; [];
+}; []
+bb#601 {
+jmp bb#600; [];
+}; [loopAttribute: loop(none, bb#600, bb#601, none, bb#602), ]
+bb#602 {
+jmp bb#603; [];
+}; []
+bb#603 {
+$#1401 = f$__bool__#269(true); [];
+condjump ($#1401) bb#604 bb#605; [];
+}; []
+bb#604 {
+$#1402 = f$__str__#164('nice!'); [];
+f$seq_print#244($#1402); [];
+$#1403 = f$__str__#164('
+'); [];
+f$seq_print#244($#1403); [];
+jmp bb#605; [];
+}; [loopAttribute: loop(none, bb#603, bb#604, none, bb#605), ]
+bb#605 {
+$#1405 = f$__bool__#269(true); [];
+condjump ($#1405) bb#606 bb#607; [];
+}; []
+bb#606 {
+$._if_res#1404 = 'hi'; [];
+jmp bb#608; [];
+}; []
+bb#607 {
+$._if_res#1404 = 'bye'; [];
+jmp bb#608; [];
+}; []
+bb#608 {
+$#1406 = f$__str__#164($._if_res#1404); [];
+f$seq_print#244($#1406); [];
+$#1407 = f$__str__#164('
+'); [];
+f$seq_print#244($#1407); [];
+return; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$1#8(
+$self#1370: .EnvMap#716; [];
+$key#1371: str#0; [];
+) -> bool#1 [
+$#1372: .EnvMap#716; [];
+$#1373: bool#1; [];
+]{
+bb#7 {
+f$_init_if_needed#24($self#1370); [];
+$#1372 = $self#1370._map; [];
+$#1373 = f$__contains__#197($#1372, $key#1371); [];
+return $#1373; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#9(
+) -> .KeyError#719 [
+]{
+internal: .KeyError#719.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__ac_set_isboth_false#10(
+$flag#931: Pointer[UInt32]#713; [];
+$i#932: int#4; [];
+) -> void#7 [
+$#933: int#4; [];
+$#934: int#4; [];
+$#935: UInt32#712; [];
+$#936: int#4; [];
+$#937: int#4; [];
+$#938: int#4; [];
+$#939: int#4; [];
+$#940: UInt32#712; [];
+$#941: UInt32#712; [];
+]{
+bb#9 {
+$#933 = f$__rshift__#116($i#932, 4); [];
+$#934 = f$__rshift__#116($i#932, 4); [];
+$#935 = f$__getitem__#276($flag#931, $#934); [];
+$#936 = f$__and__#15($i#932, 15); [];
+$#937 = f$__lshift__#129($#936, 1); [];
+$#938 = f$__lshift__#129(3, $#937); [];
+$#939 = f$__invert__#69($#938); [];
+$#940 = f$2#206($#939); [];
+$#941 = f$__and__#100($#935, $#940); [];
+f$__setitem__#73($flag#931, $#933, $#941); [];
+return; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$_kh_get#11(
+$self#993: .dict#715; [];
+$key#994: str#0; [];
+) -> int#4 [
+$#995: .dict#715; [];
+$#996: bool#1; [];
+$step#997: int#4; [];
+$mask#998: int#4; [];
+$#999: .dict#715; [];
+$k#1000: int#4; [];
+$i#1001: int#4; [];
+$last#1002: int#4; [];
+$._bin_res#1003: bool#1; [];
+$#1004: .dict#715; [];
+$#1005: int#4; [];
+$#1006: bool#1; [];
+$#1007: bool#1; [];
+$#1008: bool#1; [];
+$._bin_res#1009: bool#1; [];
+$#1010: .dict#715; [];
+$#1011: int#4; [];
+$#1012: bool#1; [];
+$#1013: .dict#715; [];
+$#1014: str#0; [];
+$#1015: bool#1; [];
+$#1016: bool#1; [];
+$#1017: bool#1; [];
+$#1018: bool#1; [];
+$#1019: int#4; [];
+$#1020: bool#1; [];
+$#1021: bool#1; [];
+$#1022: .dict#715; [];
+$._if_res#1023: int#4; [];
+$#1024: .dict#715; [];
+$#1025: int#4; [];
+$#1026: bool#1; [];
+$#1027: .dict#715; [];
+]{
+bb#10 {
+jmp bb#405; [];
+}; []
+bb#405 {
+$#995 = $self#993._n_buckets; [];
+$#996 = f$__bool__#16($#995); [];
+condjump ($#996) bb#408 bb#407; [];
+}; []
+bb#406 {
+return; [];
+}; []
+bb#407 {
+return 0; [];
+}; []
+bb#408 {
+$step#997 = 0; [];
+$#999 = $self#993._n_buckets; [];
+$mask#998 = f$__sub__#135($#999, 1); [];
+$k#1000 = f$_dict_hash#89($key#994); [];
+$i#1001 = f$__and__#15($k#1000, $mask#998); [];
+$last#1002 = $i#1001; [];
+jmp bb#409; [];
+}; []
+bb#409 {
+$#1004 = $self#993._flags; [];
+$#1005 = f$__ac_isempty#138($#1004, $i#1001); [];
+$#1006 = f$__bool__#16($#1005); [];
+$#1007 = f$__invert__#58($#1006); [];
+$#1008 = f$__bool__#269($#1007); [];
+condjump ($#1008) bb#415 bb#413; [];
+}; []
+bb#410 {
+$step#997 = f$__add__#257($step#997, 1); [];
+$#1019 = f$__add__#257($i#1001, $step#997); [];
+$i#1001 = f$__and__#15($#1019, $mask#998); [];
+jmp bb#420; [];
+}; [loopAttribute: loop(none, bb#409, bb#410, none, bb#411), ]
+bb#411 {
+$#1024 = $self#993._flags; [];
+$#1025 = f$__ac_iseither#63($#1024, $i#1001); [];
+$#1026 = f$__bool__#16($#1025); [];
+condjump ($#1026) bb#424 bb#425; [];
+}; []
+bb#412 {
+$._bin_res#1003 = true; [];
+jmp bb#414; [];
+}; []
+bb#413 {
+$._bin_res#1003 = false; [];
+jmp bb#414; [];
+}; []
+bb#414 {
+$#1018 = f$__bool__#269($._bin_res#1003); [];
+condjump ($#1018) bb#410 bb#411; [];
+}; []
+bb#415 {
+$#1010 = $self#993._flags; [];
+$#1011 = f$__ac_isdel#75($#1010, $i#1001); [];
+$#1012 = f$__bool__#16($#1011); [];
+condjump ($#1012) bb#416 bb#419; [];
+}; []
+bb#416 {
+$._bin_res#1009 = true; [];
+jmp bb#418; [];
+}; []
+bb#417 {
+$._bin_res#1009 = false; [];
+jmp bb#418; [];
+}; []
+bb#418 {
+$#1017 = f$__bool__#269($._bin_res#1009); [];
+condjump ($#1017) bb#412 bb#413; [];
+}; []
+bb#419 {
+$#1013 = $self#993._keys; [];
+$#1014 = f$__getitem__#279($#1013, $i#1001); [];
+$#1015 = f$__ne__#12($#1014, $key#994); [];
+$#1016 = f$__bool__#269($#1015); [];
+condjump ($#1016) bb#416 bb#417; [];
+}; []
+bb#420 {
+$#1020 = f$__eq__#41($i#1001, $last#1002); [];
+$#1021 = f$__bool__#269($#1020); [];
+condjump ($#1021) bb#423 bb#422; [];
+}; [loopAttribute: loop(none, bb#409, bb#410, none, bb#411), ]
+bb#421 {
+jmp bb#409; [];
+}; [loopAttribute: loop(none, bb#409, bb#410, none, bb#411), ]
+bb#422 {
+jmp bb#421; [];
+}; [loopAttribute: loop(none, bb#409, bb#410, none, bb#411), ]
+bb#423 {
+$#1022 = $self#993._n_buckets; [];
+return $#1022; [];
+}; [loopAttribute: loop(none, bb#409, bb#410, none, bb#411), ]
+bb#424 {
+$#1027 = $self#993._n_buckets; [];
+$._if_res#1023 = $#1027; [];
+jmp bb#426; [];
+}; []
+bb#425 {
+$._if_res#1023 = $i#1001; [];
+jmp bb#426; [];
+}; []
+bb#426 {
+return $._if_res#1023; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__ne__#12(
+$self#1231: str#0; [];
+$other#1232: str#0; [];
+) -> bool#1 [
+$#1233: bool#1; [];
+$#1234: bool#1; [];
+$#1235: bool#1; [];
+]{
+bb#11 {
+$#1233 = f$__eq__#91($self#1231, $other#1232); [];
+$#1234 = f$__bool__#269($#1233); [];
+$#1235 = f$__invert__#58($#1234); [];
+return $#1235; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__ac_set_isdel_true#13(
+$flag#942: Pointer[UInt32]#713; [];
+$i#943: int#4; [];
+) -> void#7 [
+$#944: int#4; [];
+$#945: int#4; [];
+$#946: UInt32#712; [];
+$#947: int#4; [];
+$#948: int#4; [];
+$#949: int#4; [];
+$#950: UInt32#712; [];
+$#951: UInt32#712; [];
+]{
+bb#12 {
+$#944 = f$__rshift__#116($i#943, 4); [];
+$#945 = f$__rshift__#116($i#943, 4); [];
+$#946 = f$__getitem__#276($flag#942, $#945); [];
+$#947 = f$__and__#15($i#943, 15); [];
+$#948 = f$__lshift__#129($#947, 1); [];
+$#949 = f$__lshift__#129(1, $#948); [];
+$#950 = f$2#206($#949); [];
+$#951 = f$__or__#148($#946, $#950); [];
+f$__setitem__#73($flag#942, $#944, $#951); [];
+return; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$__rshift__#14(
+$self#406: UInt32#712; [];
+$other#407: UInt32#712; [];
+) -> UInt32#712 [
+]{
+internal: UInt32#712.__rshift__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__and__#15(
+$self#365: int#4; [];
+$other#366: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__and__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__bool__#16(
+$self#336: int#4; [];
+) -> bool#1 [
+]{
+internal: int#4.__bool__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#17(
+) -> Optional[int]#727 [
+]{
+internal: Optional[int]#727.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#18(
+$a1#291: int#4; [];
+$a2#292: int#4; [];
+$a3#293: int#4; [];
+$a4#294: int#4; [];
+) -> .Tuple.4#729 [
+]{
+internal: .Tuple.4#729.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$2#19(
+$self#1254: str#0; [];
+$s#1255: .slice#731; [];
+) -> str#0 [
+$#1257: int#4; [];
+$#1258: .slice#731; [];
+$#1259: Optional[int]#727; [];
+$#1260: .slice#731; [];
+$#1261: Optional[int]#727; [];
+$#1262: Optional[int]#727; [];
+$start#1263: int#4; [];
+$stop#1264: int#4; [];
+$step#1265: int#4; [];
+$length#1266: int#4; [];
+$#1267: str#0; [];
+$#1268: Pointer[byte]#735; [];
+$#1269: str#0; [];
+]{
+bb#18 {
+$#1257 = f$len#169($self#1254); [];
+$#1258 = $s#1255.start; [];
+$#1259 = f$1#146($#1258); [];
+$#1260 = $s#1255.end; [];
+$#1261 = f$1#146($#1260); [];
+$#1262 = f$__new__#17(); [];
+$._assign_800#1256 = f$adjust_indices#127($#1257, $#1259, $#1261, $#1262); [];
+$start#1263 = $._assign_800#1256.a1; [];
+$stop#1264 = $._assign_800#1256.a2; [];
+$step#1265 = $._assign_800#1256.a3; [];
+$length#1266 = $._assign_800#1256.a4; [];
+$#1267 = $self#1254.ptr; [];
+$#1268 = f$__add__#122($#1267, $start#1263); [];
+$#1269 = f$__new__#154($#1268, $length#1266); [];
+return $#1269; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#20(
+$start#653: int#4; [];
+$end#654: int#4; [];
+) -> .slice#731 [
+]{
+internal: .slice#731.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__getitem__#21(
+$self#1236: str#0; [];
+$idx#1237: int#4; [];
+) -> str#0 [
+$#1238: bool#1; [];
+$#1239: bool#1; [];
+$#1240: int#4; [];
+$._bin_res#1241: bool#1; [];
+$#1242: bool#1; [];
+$#1243: bool#1; [];
+$#1244: int#4; [];
+$#1245: bool#1; [];
+$#1246: bool#1; [];
+$#1247: bool#1; [];
+$#1248: bool#1; [];
+$#1249: bool#1; [];
+$#1251: str#0; [];
+$#1252: Pointer[byte]#735; [];
+$#1253: str#0; [];
+]{
+bb#20 {
+jmp bb#534; [];
+}; []
+bb#534 {
+$#1238 = f$__lt__#280($idx#1237, 0); [];
+$#1239 = f$__bool__#269($#1238); [];
+condjump ($#1239) bb#537 bb#536; [];
+}; []
+bb#535 {
+jmp bb#538; [];
+}; []
+bb#536 {
+jmp bb#535; [];
+}; []
+bb#537 {
+$#1240 = f$len#169($self#1236); [];
+$idx#1237 = f$__add__#257($idx#1237, $#1240); [];
+jmp bb#535; [];
+}; []
+bb#538 {
+$#1242 = f$__le__#102(0, $idx#1237); [];
+$#1243 = f$__bool__#269($#1242); [];
+condjump ($#1243) bb#545 bb#543; [];
+}; []
+bb#539 {
+$#1251 = $self#1236.ptr; [];
+$#1252 = f$__add__#122($#1251, $idx#1237); [];
+$#1253 = f$__new__#154($#1252, 1); [];
+return $#1253; [];
+}; []
+bb#540 {
+jmp bb#539; [];
+}; []
+bb#541 {
+$._typ_937#1250 = f$__new__#264(); [];
+f$2#258($._typ_937#1250, 'string index out of range'); [];
+throw ($._typ_937#1250); [];
+}; []
+bb#542 {
+$._bin_res#1241 = true; [];
+jmp bb#544; [];
+}; []
+bb#543 {
+$._bin_res#1241 = false; [];
+jmp bb#544; [];
+}; []
+bb#544 {
+$#1247 = f$__bool__#269($._bin_res#1241); [];
+$#1248 = f$__invert__#58($#1247); [];
+$#1249 = f$__bool__#269($#1248); [];
+condjump ($#1249) bb#541 bb#540; [];
+}; []
+bb#545 {
+$#1244 = f$len#169($self#1236); [];
+$#1245 = f$__lt__#280($idx#1237, $#1244); [];
+$#1246 = f$__bool__#269($#1245); [];
+condjump ($#1246) bb#542 bb#543; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$from_ptr#22(
+$t#1285: Pointer[byte]#735; [];
+) -> str#0 [
+$n#1286: int#4; [];
+$p#1287: Pointer[byte]#735; [];
+$#1288: str#0; [];
+]{
+bb#21 {
+$n#1286 = f$strlen#114($t#1285); [];
+$p#1287 = f$2#204($n#1286); [];
+f$memcpy#125($p#1287, $t#1285, $n#1286); [];
+$#1288 = f$__new__#154($p#1287, $n#1286); [];
+return $#1288; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__len__#23(
+$self#991: .dict#715; [];
+) -> int#4 [
+$#992: .dict#715; [];
+]{
+bb#22 {
+$#992 = $self#991._size; [];
+return $#992; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$_init_if_needed#24(
+$self#1335: .EnvMap#716; [];
+) -> void#7 [
+$#1336: .EnvMap#716; [];
+$#1337: int#4; [];
+$#1338: bool#1; [];
+$#1339: bool#1; [];
+$env#1340: Pointer[Pointer[byte]]#744; [];
+$p#1341: Pointer[byte]#735; [];
+$i#1342: int#4; [];
+$#1343: bool#1; [];
+$s#1344: str#0; [];
+$#1345: bool#1; [];
+$j#1346: int#4; [];
+$found#1347: bool#1; [];
+$#1348: int#4; [];
+$#1349: bool#1; [];
+$#1350: bool#1; [];
+$#1351: str#0; [];
+$#1352: bool#1; [];
+$#1353: bool#1; [];
+$k#1354: str#0; [];
+$._if_res#1355: str#0; [];
+$#1356: bool#1; [];
+$#1357: .slice#731; [];
+$#1358: str#0; [];
+$v#1359: str#0; [];
+$._if_res#1360: str#0; [];
+$#1361: bool#1; [];
+$#1362: int#4; [];
+$#1363: .rslice#755; [];
+$#1364: str#0; [];
+$#1365: .EnvMap#716; [];
+]{
+bb#23 {
+jmp bb#561; [];
+}; []
+bb#561 {
+$#1336 = $self#1335._map; [];
+$#1337 = f$len#168($#1336); [];
+$#1338 = f$__eq__#41($#1337, 0); [];
+$#1339 = f$__bool__#269($#1338); [];
+condjump ($#1339) bb#564 bb#563; [];
+}; []
+bb#562 {
+return; [];
+}; []
+bb#563 {
+jmp bb#562; [];
+}; []
+bb#564 {
+$env#1340 = f$seq_env#142(); [];
+$p#1341 = f$__getitem__#277($env#1340, 0); [];
+$i#1342 = 0; [];
+jmp bb#565; [];
+}; []
+bb#565 {
+$#1343 = f$__bool__#180($p#1341); [];
+condjump ($#1343) bb#566 bb#567; [];
+}; []
+bb#566 {
+$s#1344 = f$from_ptr#22($p#1341); [];
+jmp bb#568; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#567 {
+jmp bb#562; [];
+}; []
+bb#568 {
+$#1345 = f$__bool__#79($s#1344); [];
+condjump ($#1345) bb#571 bb#570; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#569 {
+$i#1342 = f$__add__#257($i#1342, 1); [];
+$p#1341 = f$__getitem__#277($env#1340, $i#1342); [];
+jmp bb#565; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#570 {
+jmp bb#569; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#571 {
+$j#1346 = 0; [];
+$found#1347 = false; [];
+jmp bb#572; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#572 {
+$#1348 = f$len#169($s#1344); [];
+$#1349 = f$__lt__#280($j#1346, $#1348); [];
+$#1350 = f$__bool__#269($#1349); [];
+condjump ($#1350) bb#573 bb#574; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#573 {
+jmp bb#575; [];
+}; [loopAttribute: loop(none, bb#572, bb#573, none, bb#574), ]
+bb#574 {
+$#1356 = f$__bool__#269($found#1347); [];
+condjump ($#1356) bb#579 bb#580; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#575 {
+$#1351 = f$__getitem__#21($s#1344, $j#1346); [];
+$#1352 = f$__eq__#91($#1351, '='); [];
+$#1353 = f$__bool__#269($#1352); [];
+condjump ($#1353) bb#578 bb#577; [];
+}; [loopAttribute: loop(none, bb#572, bb#573, none, bb#574), ]
+bb#576 {
+$j#1346 = f$__add__#257($j#1346, 1); [];
+jmp bb#572; [];
+}; [loopAttribute: loop(none, bb#572, bb#573, none, bb#574), ]
+bb#577 {
+jmp bb#576; [];
+}; [loopAttribute: loop(none, bb#572, bb#573, none, bb#574), ]
+bb#578 {
+$found#1347 = true; [];
+jmp bb#574; [];
+}; [loopAttribute: loop(none, bb#572, bb#573, none, bb#574), ]
+bb#579 {
+$#1357 = f$__new__#20(0, $j#1346); [];
+$#1358 = f$2#19($s#1344, $#1357); [];
+$._if_res#1355 = $#1358; [];
+jmp bb#581; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#580 {
+$._if_res#1355 = $s#1344; [];
+jmp bb#581; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#581 {
+$k#1354 = $._if_res#1355; [];
+$#1361 = f$__bool__#269($found#1347); [];
+condjump ($#1361) bb#582 bb#583; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#582 {
+$#1362 = f$__add__#257($j#1346, 1); [];
+$#1363 = f$__new__#37($#1362); [];
+$#1364 = f$4#150($s#1344, $#1363); [];
+$._if_res#1360 = $#1364; [];
+jmp bb#584; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#583 {
+$._if_res#1360 = ''; [];
+jmp bb#584; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+bb#584 {
+$v#1359 = $._if_res#1360; [];
+$#1365 = $self#1335._map; [];
+f$__setitem__#118($#1365, $k#1354, $v#1359); [];
+jmp bb#569; [];
+}; [loopAttribute: loop(none, bb#565, bb#566, none, bb#567), ]
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$1#25(
+$self#1366: .EnvMap#716; [];
+$key#1367: str#0; [];
+) -> str#0 [
+$#1368: .EnvMap#716; [];
+$#1369: str#0; [];
+]{
+bb#24 {
+f$_init_if_needed#24($self#1366); [];
+$#1368 = $self#1366._map; [];
+$#1369 = f$__getitem__#272($#1368, $key#1367); [];
+return $#1369; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__add__#26(
+$self#391: float#3; [];
+$other#392: float#3; [];
+) -> float#3 [
+]{
+internal: float#3.__add__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$getenv#27(
+$key#1375: str#0; [];
+$default#1376: str#0; [];
+) -> str#0 [
+$._if_res#1377: str#0; [];
+$#1378: bool#1; [];
+$#1379: bool#1; [];
+$#1380: str#0; [];
+]{
+bb#26 {
+$#1378 = f$1#8($.environ#1374, $key#1375); [];
+$#1379 = f$__bool__#269($#1378); [];
+condjump ($#1379) bb#585 bb#586; [];
+}; []
+bb#585 {
+$#1380 = f$1#25($.environ#1374, $key#1375); [];
+$._if_res#1377 = $#1380; [];
+jmp bb#587; [];
+}; []
+bb#586 {
+$._if_res#1377 = $default#1376; [];
+jmp bb#587; [];
+}; []
+bb#587 {
+return $._if_res#1377; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$__or__#28(
+$self#367: int#4; [];
+$other#368: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__or__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$dlext#29(
+) -> str#0 [
+$#1324: bool#1; [];
+$#1325: bool#1; [];
+]{
+bb#28 {
+jmp bb#557; [];
+}; []
+bb#557 {
+$#1324 = f$seq_is_macos#103(); [];
+$#1325 = f$__bool__#269($#1324); [];
+condjump ($#1325) bb#560 bb#559; [];
+}; []
+bb#558 {
+return; [];
+}; []
+bb#559 {
+return 'so'; [];
+}; []
+bb#560 {
+return 'dylib'; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$_init#30(
+$self#963: .dict#745; [];
+) -> void#7 [
+]{
+bb#29 {
+$self#963.self = 0; [];
+$self#963.self = 0; [];
+$self#963.self = 0; [];
+$self#963.self = 0; [];
+$self#963.self = f$__new__#54(); [];
+$self#963.self = f$__new__#53(); [];
+$self#963.self = f$__new__#51(); [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$_init#31(
+$self#964: .dict#749; [];
+) -> void#7 [
+]{
+bb#30 {
+$self#964.self = 0; [];
+$self#964.self = 0; [];
+$self#964.self = 0; [];
+$self#964.self = 0; [];
+$self#964.self = f$__new__#54(); [];
+$self#964.self = f$__new__#53(); [];
+$self#964.self = f$__new__#50(); [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$_init#32(
+$self#965: .dict#715; [];
+) -> void#7 [
+]{
+bb#31 {
+$self#965.self = 0; [];
+$self#965.self = 0; [];
+$self#965.self = 0; [];
+$self#965.self = 0; [];
+$self#965.self = f$__new__#54(); [];
+$self#965.self = f$__new__#53(); [];
+$self#965.self = f$__new__#53(); [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$1#33(
+$self#966: .dict#749; [];
+) -> void#7 [
+]{
+bb#32 {
+f$_init#31($self#966); [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$1#34(
+$self#967: .dict#745; [];
+) -> void#7 [
+]{
+bb#33 {
+f$_init#30($self#967); [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$1#35(
+$self#968: .dict#715; [];
+) -> void#7 [
+]{
+bb#34 {
+f$_init#32($self#968); [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__setitem__#36(
+$self#402: Array[int]#701; [];
+$index#403: int#4; [];
+$what#404: int#4; [];
+) -> void#7 [
+]{
+internal: Array[int]#701.__setitem__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#37(
+$start#652: int#4; [];
+) -> .rslice#755 [
+]{
+internal: .rslice#755.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$1#38(
+$data#399: Pointer[int]#757; [];
+$len#400: int#4; [];
+) -> Array[int]#701 [
+]{
+internal: Array[int]#701.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$_resize#39(
+$self#871: .list#703; [];
+$new_cap#872: int#4; [];
+) -> void#7 [
+$p#873: Pointer[int]#757; [];
+$#874: .list#703; [];
+$#875: .list#703; [];
+$#876: Pointer[byte]#735; [];
+$#877: int#4; [];
+$#878: int#4; [];
+$#879: Pointer[byte]#735; [];
+]{
+bb#38 {
+$#874 = $self#871.arr; [];
+$#875 = $#874.ptr; [];
+$#876 = f$as_byte#131($#875); [];
+$#877 = f$sizeof#224(); [];
+$#878 = f$__mul__#229($new_cap#872, $#877); [];
+$#879 = f$realloc#111($#876, $#878); [];
+$p#873 = f$1#216($#879); [];
+$self#871.self = f$1#38($p#873, $new_cap#872); [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__div__#40(
+$self#345: int#4; [];
+$other#346: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__div__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__eq__#41(
+$self#353: int#4; [];
+$other#354: int#4; [];
+) -> bool#1 [
+]{
+internal: int#4.__eq__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$_kh_end#42(
+$self#1200: .dict#715; [];
+) -> int#4 [
+$#1201: .dict#715; [];
+]{
+bb#41 {
+$#1201 = $self#1200._n_buckets; [];
+return $#1201; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__ac_fsize#43(
+$m#952: int#4; [];
+) -> int#4 [
+$._if_res#953: int#4; [];
+$#954: bool#1; [];
+$#955: bool#1; [];
+$#956: int#4; [];
+]{
+bb#42 {
+$#954 = f$__lt__#280($m#952, 16); [];
+$#955 = f$__bool__#269($#954); [];
+condjump ($#955) bb#398 bb#399; [];
+}; []
+bb#398 {
+$._if_res#953 = 1; [];
+jmp bb#400; [];
+}; []
+bb#399 {
+$#956 = f$__rshift__#116($m#952, 4); [];
+$._if_res#953 = $#956; [];
+jmp bb#400; [];
+}; []
+bb#400 {
+return $._if_res#953; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$append#44(
+$self#866: .list#703; [];
+$x#867: int#4; [];
+) -> void#7 [
+$#868: .list#703; [];
+$#869: .list#703; [];
+$#870: .list#703; [];
+]{
+bb#43 {
+f$_resize_if_full#193($self#866); [];
+$#868 = $self#866.arr; [];
+$#869 = $self#866.len; [];
+f$__setitem__#36($#868, $#869, $x#867); [];
+$#870 = $self#866.len; [];
+$self#866.self = f$__add__#257($#870, 1); [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$adjust_indices_helper#45(
+$length#659: int#4; [];
+$start#660: int#4; [];
+$stop#661: int#4; [];
+$step#662: int#4; [];
+) -> .Tuple.4#729 [
+$#663: bool#1; [];
+$#664: bool#1; [];
+$#665: bool#1; [];
+$#666: bool#1; [];
+$._if_res#667: int#4; [];
+$#668: bool#1; [];
+$#669: bool#1; [];
+$#670: bool#1; [];
+$#671: bool#1; [];
+$._if_res#672: int#4; [];
+$#673: bool#1; [];
+$#674: bool#1; [];
+$#675: int#4; [];
+$#676: bool#1; [];
+$#677: bool#1; [];
+$#678: bool#1; [];
+$#679: bool#1; [];
+$._if_res#680: int#4; [];
+$#681: bool#1; [];
+$#682: bool#1; [];
+$#683: bool#1; [];
+$#684: bool#1; [];
+$._if_res#685: int#4; [];
+$#686: bool#1; [];
+$#687: bool#1; [];
+$#688: int#4; [];
+$#689: bool#1; [];
+$#690: bool#1; [];
+$#691: bool#1; [];
+$#692: bool#1; [];
+$#693: int#4; [];
+$#694: int#4; [];
+$#695: int#4; [];
+$#696: int#4; [];
+$#697: int#4; [];
+$#698: .Tuple.4#729; [];
+$#699: bool#1; [];
+$#700: bool#1; [];
+$#701: int#4; [];
+$#702: int#4; [];
+$#703: int#4; [];
+$#704: int#4; [];
+$#705: .Tuple.4#729; [];
+$#706: .Tuple.4#729; [];
+]{
+bb#44 {
+jmp bb#284; [];
+}; []
+bb#284 {
+$#663 = f$__lt__#280($start#660, 0); [];
+$#664 = f$__bool__#269($#663); [];
+condjump ($#664) bb#287 bb#286; [];
+}; []
+bb#285 {
+jmp bb#300; [];
+}; []
+bb#286 {
+$#670 = f$__ge__#217($start#660, $length#659); [];
+$#671 = f$__bool__#269($#670); [];
+condjump ($#671) bb#296 bb#295; [];
+}; []
+bb#287 {
+$start#660 = f$__add__#257($start#660, $length#659); [];
+jmp bb#288; [];
+}; []
+bb#288 {
+$#665 = f$__lt__#280($start#660, 0); [];
+$#666 = f$__bool__#269($#665); [];
+condjump ($#666) bb#291 bb#290; [];
+}; []
+bb#289 {
+jmp bb#285; [];
+}; []
+bb#290 {
+jmp bb#289; [];
+}; []
+bb#291 {
+$#668 = f$__lt__#280($step#662, 0); [];
+$#669 = f$__bool__#269($#668); [];
+condjump ($#669) bb#292 bb#293; [];
+}; []
+bb#292 {
+$._if_res#667 = -1; [];
+jmp bb#294; [];
+}; []
+bb#293 {
+$._if_res#667 = 0; [];
+jmp bb#294; [];
+}; []
+bb#294 {
+$start#660 = $._if_res#667; [];
+jmp bb#289; [];
+}; []
+bb#295 {
+jmp bb#285; [];
+}; []
+bb#296 {
+$#673 = f$__lt__#280($step#662, 0); [];
+$#674 = f$__bool__#269($#673); [];
+condjump ($#674) bb#297 bb#298; [];
+}; []
+bb#297 {
+$#675 = f$__sub__#135($length#659, 1); [];
+$._if_res#672 = $#675; [];
+jmp bb#299; [];
+}; []
+bb#298 {
+$._if_res#672 = $length#659; [];
+jmp bb#299; [];
+}; []
+bb#299 {
+$start#660 = $._if_res#672; [];
+jmp bb#285; [];
+}; []
+bb#300 {
+$#676 = f$__lt__#280($stop#661, 0); [];
+$#677 = f$__bool__#269($#676); [];
+condjump ($#677) bb#303 bb#302; [];
+}; []
+bb#301 {
+jmp bb#316; [];
+}; []
+bb#302 {
+$#683 = f$__ge__#217($stop#661, $length#659); [];
+$#684 = f$__bool__#269($#683); [];
+condjump ($#684) bb#312 bb#311; [];
+}; []
+bb#303 {
+$stop#661 = f$__add__#257($stop#661, $length#659); [];
+jmp bb#304; [];
+}; []
+bb#304 {
+$#678 = f$__lt__#280($stop#661, 0); [];
+$#679 = f$__bool__#269($#678); [];
+condjump ($#679) bb#307 bb#306; [];
+}; []
+bb#305 {
+jmp bb#301; [];
+}; []
+bb#306 {
+jmp bb#305; [];
+}; []
+bb#307 {
+$#681 = f$__lt__#280($step#662, 0); [];
+$#682 = f$__bool__#269($#681); [];
+condjump ($#682) bb#308 bb#309; [];
+}; []
+bb#308 {
+$._if_res#680 = -1; [];
+jmp bb#310; [];
+}; []
+bb#309 {
+$._if_res#680 = 0; [];
+jmp bb#310; [];
+}; []
+bb#310 {
+$stop#661 = $._if_res#680; [];
+jmp bb#305; [];
+}; []
+bb#311 {
+jmp bb#301; [];
+}; []
+bb#312 {
+$#686 = f$__lt__#280($step#662, 0); [];
+$#687 = f$__bool__#269($#686); [];
+condjump ($#687) bb#313 bb#314; [];
+}; []
+bb#313 {
+$#688 = f$__sub__#135($length#659, 1); [];
+$._if_res#685 = $#688; [];
+jmp bb#315; [];
+}; []
+bb#314 {
+$._if_res#685 = $length#659; [];
+jmp bb#315; [];
+}; []
+bb#315 {
+$stop#661 = $._if_res#685; [];
+jmp bb#301; [];
+}; []
+bb#316 {
+$#689 = f$__lt__#280($step#662, 0); [];
+$#690 = f$__bool__#269($#689); [];
+condjump ($#690) bb#319 bb#318; [];
+}; []
+bb#317 {
+$#706 = f$__new__#18($start#660, $stop#661, $step#662, 0); [];
+return $#706; [];
+}; []
+bb#318 {
+jmp bb#324; [];
+}; []
+bb#319 {
+jmp bb#320; [];
+}; []
+bb#320 {
+$#691 = f$__lt__#280($stop#661, $start#660); [];
+$#692 = f$__bool__#269($#691); [];
+condjump ($#692) bb#323 bb#322; [];
+}; []
+bb#321 {
+jmp bb#317; [];
+}; []
+bb#322 {
+jmp bb#321; [];
+}; []
+bb#323 {
+$#693 = f$__sub__#135($start#660, $stop#661); [];
+$#694 = f$__sub__#135($#693, 1); [];
+$#695 = f$__neg__#82($step#662); [];
+$#696 = f$__div__#40($#694, $#695); [];
+$#697 = f$__add__#257($#696, 1); [];
+$#698 = f$__new__#18($start#660, $stop#661, $step#662, $#697); [];
+return $#698; [];
+}; []
+bb#324 {
+$#699 = f$__lt__#280($start#660, $stop#661); [];
+$#700 = f$__bool__#269($#699); [];
+condjump ($#700) bb#327 bb#326; [];
+}; []
+bb#325 {
+jmp bb#317; [];
+}; []
+bb#326 {
+jmp bb#325; [];
+}; []
+bb#327 {
+$#701 = f$__sub__#135($stop#661, $start#660); [];
+$#702 = f$__sub__#135($#701, 1); [];
+$#703 = f$__div__#40($#702, $step#662); [];
+$#704 = f$__add__#257($#703, 1); [];
+$#705 = f$__new__#18($start#660, $stop#661, $step#662, $#704); [];
+return $#705; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$2#46(
+$self#732: .ValueError#761; [];
+$message#733: str#0; [];
+) -> void#7 [
+]{
+bb#45 {
+$self#732.self = f$__new__#267('ValueError', $message#733, '', '', 0, 0); [];
+return; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$8#47(
+$b#334: UInt32#712; [];
+) -> int#4 [
+]{
+internal: int#4.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#48(
+) -> .ValueError#761 [
+]{
+internal: .ValueError#761.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__ne__#49(
+$self#330: Pointer[byte]#735; [];
+$other#331: Pointer[byte]#735; [];
+) -> bool#1 [
+]{
+internal: Pointer[byte]#735.__ne__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#50(
+) -> Pointer[.pyobj]#748 [
+]{
+internal: Pointer[.pyobj]#748.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#51(
+) -> Pointer[Pointer[byte]]#744 [
+]{
+internal: Pointer[Pointer[byte]]#744.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#52(
+) -> Pointer[byte]#735 [
+]{
+internal: Pointer[byte]#735.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#53(
+) -> Pointer[str]#714 [
+]{
+internal: Pointer[str]#714.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#54(
+) -> Pointer[UInt32]#713 [
+]{
+internal: Pointer[UInt32]#713.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__len__#55(
+$self#401: Array[byte]#771; [];
+) -> int#4 [
+]{
+internal: Array[byte]#771.__len__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$3#56(
+$s#1289: str#0; [];
+) -> float#3 [
+$buf#1290: Array[byte]#771; [];
+$n#1291: int#4; [];
+$need_dyn_alloc#1292: bool#1; [];
+$#1293: int#4; [];
+$p#1294: Pointer[byte]#735; [];
+$._if_res#1295: Pointer[byte]#735; [];
+$#1296: bool#1; [];
+$#1297: int#4; [];
+$#1298: Pointer[byte]#735; [];
+$#1299: Array[byte]#771; [];
+$#1300: str#0; [];
+$#1301: byte#8; [];
+$end#1302: Pointer[byte]#735; [];
+$result#1303: float#3; [];
+$#1304: bool#1; [];
+$#1305: Pointer[byte]#735; [];
+$#1306: bool#1; [];
+$#1307: bool#1; [];
+$#1309: str#0; [];
+]{
+bb#55 {
+$buf#1290 = new(Array[byte]#771, 32); [];
+$n#1291 = f$len#169($s#1289); [];
+$#1293 = f$len#170($buf#1290); [];
+$need_dyn_alloc#1292 = f$__ge__#217($n#1291, $#1293); [];
+$#1296 = f$__bool__#269($need_dyn_alloc#1292); [];
+condjump ($#1296) bb#546 bb#547; [];
+}; []
+bb#546 {
+$#1297 = f$__add__#257($n#1291, 1); [];
+$#1298 = f$alloc_atomic#98($#1297); [];
+$._if_res#1295 = $#1298; [];
+jmp bb#548; [];
+}; []
+bb#547 {
+$#1299 = $buf#1290.ptr; [];
+$._if_res#1295 = $#1299; [];
+jmp bb#548; [];
+}; []
+bb#548 {
+$p#1294 = $._if_res#1295; [];
+$#1300 = $s#1289.ptr; [];
+f$memcpy#125($p#1294, $#1300, $n#1291); [];
+$#1301 = f$2#253(0); [];
+f$__setitem__#72($p#1294, $n#1291, $#1301); [];
+$end#1302 = f$__new__#52(); [];
+$result#1303 = f$strtod#101($p#1294, &$end#1302); [];
+jmp bb#549; [];
+}; []
+bb#549 {
+$#1304 = f$__bool__#269($need_dyn_alloc#1292); [];
+condjump ($#1304) bb#552 bb#551; [];
+}; []
+bb#550 {
+jmp bb#553; [];
+}; []
+bb#551 {
+jmp bb#550; [];
+}; []
+bb#552 {
+f$1#270($p#1294); [];
+jmp bb#550; [];
+}; []
+bb#553 {
+$#1305 = f$__add__#122($p#1294, $n#1291); [];
+$#1306 = f$__ne__#49($end#1302, $#1305); [];
+$#1307 = f$__bool__#269($#1306); [];
+condjump ($#1307) bb#556 bb#555; [];
+}; []
+bb#554 {
+return $result#1303; [];
+}; []
+bb#555 {
+jmp bb#554; [];
+}; []
+bb#556 {
+$._typ_932#1308 = f$__new__#48(); [];
+$#1309 = f$__add__#136('could not convert string to float: ', $s#1289); [];
+f$2#46($._typ_932#1308, $#1309); [];
+throw ($._typ_932#1308); [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$2#57(
+$self#740: .AttributeError#784; [];
+$message#741: str#0; [];
+) -> void#7 [
+]{
+bb#56 {
+$self#740.self = f$__new__#267('AttributeError', $message#741, '', '', 0, 0); [];
+return; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__invert__#58(
+$self#387: bool#1; [];
+) -> bool#1 [
+]{
+internal: bool#1.__invert__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$_ensure_not_none#59(
+$p#856: Pointer[byte]#735; [];
+$memb#857: str#0; [];
+) -> void#7 [
+$#858: bool#1; [];
+$#859: bool#1; [];
+$#860: bool#1; [];
+$#862: str#0; [];
+$#863: str#0; [];
+]{
+bb#58 {
+jmp bb#390; [];
+}; []
+bb#390 {
+$#858 = f$__bool__#180($p#856); [];
+$#859 = f$__invert__#58($#858); [];
+$#860 = f$__bool__#269($#859); [];
+condjump ($#860) bb#393 bb#392; [];
+}; []
+bb#391 {
+return; [];
+}; []
+bb#392 {
+jmp bb#391; [];
+}; []
+bb#393 {
+$._typ_931#861 = f$__new__#252(); [];
+$#862 = f$__add__#136(''NoneType' object has no attribute '', $memb#857); [];
+$#863 = f$__add__#136($#862, '''); [];
+f$2#57($._typ_931#861, $#863); [];
+throw ($._typ_931#861); [];
+}; []
+}; [funcAttributes: builtin, srcInfoAttribute: <internal>:0:0, ]
+def f$strtoll#60(
+$.a0#456: Pointer[byte]#735; [];
+$.a1#457: Pointer[Pointer[byte]]#744; [];
+$.a2#458: Int32#788; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$sin#61(
+$.a0#493: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$acos#62(
+$.a0#487: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__ac_iseither#63(
+$flag#910: Pointer[UInt32]#713; [];
+$i#911: int#4; [];
+) -> int#4 [
+$#912: int#4; [];
+$#913: UInt32#712; [];
+$#914: int#4; [];
+$#915: int#4; [];
+$#916: UInt32#712; [];
+$#917: UInt32#712; [];
+$#918: int#4; [];
+$#919: int#4; [];
+]{
+bb#62 {
+$#912 = f$__rshift__#116($i#911, 4); [];
+$#913 = f$__getitem__#276($flag#910, $#912); [];
+$#914 = f$__and__#15($i#911, 15); [];
+$#915 = f$__lshift__#129($#914, 1); [];
+$#916 = f$2#206($#915); [];
+$#917 = f$__rshift__#14($#913, $#916); [];
+$#918 = f$8#47($#917); [];
+$#919 = f$__and__#15($#918, 3); [];
+return $#919; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$round#64(
+$.a0#486: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$expm1#65(
+$.a0#477: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$fopen#66(
+$.a0#518: Pointer[byte]#735; [];
+$.a1#519: Pointer[byte]#735; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$exp#67(
+$.a0#476: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$ferror#68(
+$.a0#516: Pointer[byte]#735; [];
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__invert__#69(
+$self#338: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__invert__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$fmod#70(
+$.a0#474: float#3; [];
+$.a1#475: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__setitem__#71(
+$self#319: Pointer[str]#714; [];
+$index#320: int#4; [];
+$what#321: str#0; [];
+) -> void#7 [
+]{
+internal: Pointer[str]#714.__setitem__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__setitem__#72(
+$self#322: Pointer[byte]#735; [];
+$index#323: int#4; [];
+$what#324: byte#8; [];
+) -> void#7 [
+]{
+internal: Pointer[byte]#735.__setitem__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__setitem__#73(
+$self#325: Pointer[UInt32]#713; [];
+$index#326: int#4; [];
+$what#327: UInt32#712; [];
+) -> void#7 [
+]{
+internal: Pointer[UInt32]#713.__setitem__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$pow#74(
+$.a0#484: float#3; [];
+$.a1#485: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__ac_isdel#75(
+$flag#900: Pointer[UInt32]#713; [];
+$i#901: int#4; [];
+) -> int#4 [
+$#902: int#4; [];
+$#903: UInt32#712; [];
+$#904: int#4; [];
+$#905: int#4; [];
+$#906: UInt32#712; [];
+$#907: UInt32#712; [];
+$#908: int#4; [];
+$#909: int#4; [];
+]{
+bb#74 {
+$#902 = f$__rshift__#116($i#901, 4); [];
+$#903 = f$__getitem__#276($flag#900, $#902); [];
+$#904 = f$__and__#15($i#901, 15); [];
+$#905 = f$__lshift__#129($#904, 1); [];
+$#906 = f$2#206($#905); [];
+$#907 = f$__rshift__#14($#903, $#906); [];
+$#908 = f$8#47($#907); [];
+$#909 = f$__and__#15($#908, 1); [];
+return $#909; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$seq_pid#76(
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#77(
+$a1#281: .dict#715; [];
+) -> .Tuple.1#742 [
+]{
+internal: .Tuple.1#742.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$tanh#78(
+$.a0#497: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__bool__#79(
+$self#380: str#0; [];
+) -> bool#1 [
+$#381: str#0; [];
+$#382: bool#1; [];
+]{
+bb#78 {
+$#381 = $self#380.len; [];
+$#382 = f$__ne__#162($#381, 0); [];
+return $#382; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__bool__#80(
+$self#394: Optional[int]#727; [];
+) -> bool#1 [
+]{
+internal: Optional[int]#727.__bool__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$floor#81(
+$.a0#472: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__neg__#82(
+$self#337: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__neg__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$istitle#83(
+$.a0#470: int#4; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__elemsize__#84(
+) -> int#4 [
+]{
+internal: Pointer[str]#714.__elemsize__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__elemsize__#85(
+) -> int#4 [
+]{
+internal: Pointer[int]#757.__elemsize__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$log2#86(
+$.a0#505: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$fabs#87(
+$.a0#473: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$isalpha#88(
+$.a0#469: int#4; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$_dict_hash#89(
+$key#957: str#0; [];
+) -> int#4 [
+$k#958: int#4; [];
+$#959: int#4; [];
+$#960: int#4; [];
+$#961: int#4; [];
+$#962: int#4; [];
+]{
+bb#88 {
+$k#958 = f$hash#120($key#957); [];
+$#959 = f$__rshift__#116($k#958, 33); [];
+$#960 = f$__xor__#202($#959, $k#958); [];
+$#961 = f$__lshift__#129($k#958, 11); [];
+$#962 = f$__xor__#202($#960, $#961); [];
+return $#962; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$sinh#90(
+$.a0#496: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__eq__#91(
+$self#1215: str#0; [];
+$other#1216: str#0; [];
+) -> bool#1 [
+$#1217: int#4; [];
+$#1218: int#4; [];
+$#1219: bool#1; [];
+$#1220: bool#1; [];
+$i#1221: int#4; [];
+$#1222: int#4; [];
+$#1223: bool#1; [];
+$#1224: bool#1; [];
+$#1225: str#0; [];
+$#1226: byte#8; [];
+$#1227: str#0; [];
+$#1228: byte#8; [];
+$#1229: bool#1; [];
+$#1230: bool#1; [];
+]{
+bb#90 {
+jmp bb#523; [];
+}; []
+bb#523 {
+$#1217 = f$len#169($self#1215); [];
+$#1218 = f$len#169($other#1216); [];
+$#1219 = f$__ne__#162($#1217, $#1218); [];
+$#1220 = f$__bool__#269($#1219); [];
+condjump ($#1220) bb#526 bb#525; [];
+}; []
+bb#524 {
+$i#1221 = 0; [];
+jmp bb#527; [];
+}; []
+bb#525 {
+jmp bb#524; [];
+}; []
+bb#526 {
+return false; [];
+}; []
+bb#527 {
+$#1222 = f$len#169($self#1215); [];
+$#1223 = f$__lt__#280($i#1221, $#1222); [];
+$#1224 = f$__bool__#269($#1223); [];
+condjump ($#1224) bb#528 bb#529; [];
+}; []
+bb#528 {
+jmp bb#530; [];
+}; [loopAttribute: loop(none, bb#527, bb#528, none, bb#529), ]
+bb#529 {
+return true; [];
+}; []
+bb#530 {
+$#1225 = $self#1215.ptr; [];
+$#1226 = f$__getitem__#278($#1225, $i#1221); [];
+$#1227 = $other#1216.ptr; [];
+$#1228 = f$__getitem__#278($#1227, $i#1221); [];
+$#1229 = f$__ne__#249($#1226, $#1228); [];
+$#1230 = f$__bool__#269($#1229); [];
+condjump ($#1230) bb#533 bb#532; [];
+}; [loopAttribute: loop(none, bb#527, bb#528, none, bb#529), ]
+bb#531 {
+$i#1221 = f$__add__#257($i#1221, 1); [];
+jmp bb#527; [];
+}; [loopAttribute: loop(none, bb#527, bb#528, none, bb#529), ]
+bb#532 {
+jmp bb#531; [];
+}; [loopAttribute: loop(none, bb#527, bb#528, none, bb#529), ]
+bb#533 {
+return false; [];
+}; [loopAttribute: loop(none, bb#527, bb#528, none, bb#529), ]
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$tolower#92(
+$.a0#467: int#4; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$islower#93(
+$.a0#465: int#4; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$isspace#94(
+$.a0#463: int#4; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$tan#95(
+$.a0#494: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_realloc#96(
+$.a0#436: Pointer[byte]#735; [];
+$.a1#437: int#4; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$3#97(
+$stop#750: int#4; [];
+) -> .range#707 [
+$#751: .Tuple.3#709; [];
+]{
+bb#96 {
+$#751 = f$__new__#6(0, $stop#750, 1); [];
+return $#751; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$alloc_atomic#98(
+$sz#646: int#4; [];
+) -> Pointer[byte]#735 [
+$#647: Pointer[byte]#735; [];
+]{
+bb#97 {
+$#647 = f$seq_alloc_atomic#166($sz#646); [];
+return $#647; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$isdigit#99(
+$.a0#462: int#4; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__and__#100(
+$self#408: UInt32#712; [];
+$other#409: UInt32#712; [];
+) -> UInt32#712 [
+]{
+internal: UInt32#712.__and__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$strtod#101(
+$.a0#459: Pointer[byte]#735; [];
+$.a1#460: Pointer[Pointer[byte]]#744; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__le__#102(
+$self#361: int#4; [];
+$other#362: int#4; [];
+) -> bool#1 [
+]{
+internal: int#4.__le__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_is_macos#103(
+) -> bool#1 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$status#104(
+$self#744: .SystemExit#815; [];
+) -> int#4 [
+$#745: .SystemExit#815; [];
+]{
+bb#103 {
+$#745 = $self#744._status; [];
+return $#745; [];
+}; []
+}; [funcAttributes: property,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_rlock_acquire#105(
+$.a0#451: Pointer[byte]#735; [];
+$.a1#452: bool#1; [];
+$.a2#453: float#3; [];
+) -> bool#1 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_rlock_new#106(
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$gzopen#107(
+$.a0#550: Pointer[byte]#735; [];
+$.a1#551: Pointer[byte]#735; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__invert__#108(
+$self#395: Optional[int]#727; [];
+) -> int#4 [
+]{
+internal: Optional[int]#727.__invert__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_i32_to_float#109(
+$.a0#455: Int32#788; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_lock_release#110(
+$.a0#450: Pointer[byte]#735; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$realloc#111(
+$p#648: Pointer[byte]#735; [];
+$sz#649: int#4; [];
+) -> Pointer[byte]#735 [
+$#650: Pointer[byte]#735; [];
+]{
+bb#110 {
+$#650 = f$seq_realloc#96($p#648, $sz#649); [];
+return $#650; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$_test_failed#112(
+$file#422: str#0; [];
+$line#423: int#4; [];
+$msg#424: str#0; [];
+) -> void#7 [
+$s#425: str#0; [];
+$#426: str#0; [];
+$#427: str#0; [];
+$#428: str#0; [];
+$#429: str#0; [];
+$#430: bool#1; [];
+$#431: str#0; [];
+$#432: str#0; [];
+$#433: str#0; [];
+]{
+bb#111 {
+$#426 = f$__add__#136('[1;31mTEST FAILED:[0m ', $file#422); [];
+$#427 = f$__add__#136($#426, ' (line '); [];
+$#428 = f$2#152($line#423); [];
+$#429 = f$__add__#136($#427, $#428); [];
+$s#425 = f$__add__#136($#429, ')'); [];
+jmp bb#280; [];
+}; []
+bb#280 {
+$#430 = f$__bool__#79($msg#424); [];
+condjump ($#430) bb#283 bb#282; [];
+}; []
+bb#281 {
+$#432 = f$__str__#164($s#425); [];
+f$seq_print#244($#432); [];
+$#433 = f$__str__#164('
+'); [];
+f$seq_print#244($#433); [];
+return; [];
+}; []
+bb#282 {
+jmp bb#281; [];
+}; []
+bb#283 {
+$#431 = f$__add__#136(': ', $msg#424); [];
+$s#425 = f$__add__#136($s#425, $#431); [];
+jmp bb#281; [];
+}; []
+}; [funcAttributes: builtin, srcInfoAttribute: <internal>:0:0, ]
+def f$atoi#113(
+$.a0#542: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$strlen#114(
+$.a0#461: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_strdup#115(
+$.a0#445: Pointer[byte]#735; [];
+) -> str#0 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__rshift__#116(
+$self#351: int#4; [];
+$other#352: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__rshift__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_align_default#117(
+$.a0#609: .seq#851; [];
+$.a1#610: .seq#851; [];
+$.a2#611: Pointer[.Alignment]#853; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__setitem__#118(
+$self#979: .dict#715; [];
+$key#980: str#0; [];
+$val#981: str#0; [];
+) -> void#7 [
+$ret#983: int#4; [];
+$x#984: int#4; [];
+$#985: .dict#715; [];
+]{
+bb#117 {
+$._assign_781#982 = f$_kh_put#236($self#979, $key#980); [];
+$ret#983 = $._assign_781#982.a1; [];
+$x#984 = $._assign_781#982.a2; [];
+$#985 = $self#979._vals; [];
+f$__setitem__#71($#985, $x#984, $val#981); [];
+return; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$_handle_exit#119(
+$e#748: .SystemExit#815; [];
+) -> void#7 [
+$#749: int#4; [];
+]{
+bb#118 {
+$#749 = f$status#104($e#748); [];
+f$exit#144($#749); [];
+return; [];
+}; []
+}; [funcAttributes: builtin, srcInfoAttribute: <internal>:0:0, ]
+def f$hash#120(
+$x#773: str#0; [];
+) -> int#4 [
+$#774: int#4; [];
+]{
+bb#119 {
+'
+    hash(x)
+
+    Returns hashed value only for immutable objects
+    '; [];
+$#774 = f$__hash__#228($x#773); [];
+return $#774; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$isalnum#121(
+$.a0#468: int#4; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__add__#122(
+$self#328: Pointer[byte]#735; [];
+$other#329: int#4; [];
+) -> Pointer[byte]#735 [
+]{
+internal: Pointer[byte]#735.__add__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_gc_add_roots#123(
+$.a0#439: Pointer[byte]#735; [];
+$.a1#440: Pointer[byte]#735; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$fseek#124(
+$.a0#530: Pointer[byte]#735; [];
+$.a1#531: int#4; [];
+$.a2#532: Int32#788; [];
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$memcpy#125(
+$dest#383: Pointer[byte]#735; [];
+$src#384: Pointer[byte]#735; [];
+$len#385: int#4; [];
+) -> void#7 [
+]{
+internal: str#0.memcpy
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_gc_remove_roots#126(
+$.a0#441: Pointer[byte]#735; [];
+$.a1#442: Pointer[byte]#735; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$adjust_indices#127(
+$length#655: int#4; [];
+$start#656: Optional[int]#727; [];
+$stop#657: Optional[int]#727; [];
+$step#658: Optional[int]#727; [];
+) -> .Tuple.4#729 [
+$stepx#707: int#4; [];
+$._if_res#708: int#4; [];
+$#709: bool#1; [];
+$#710: int#4; [];
+$startx#711: int#4; [];
+$stopx#712: int#4; [];
+$#713: bool#1; [];
+$#714: bool#1; [];
+$#715: bool#1; [];
+$._if_res#716: int#4; [];
+$#717: bool#1; [];
+$#718: int#4; [];
+$._if_res#719: int#4; [];
+$#720: bool#1; [];
+$#721: int#4; [];
+$._if_res#722: int#4; [];
+$#723: bool#1; [];
+$#724: int#4; [];
+$#725: int#4; [];
+$._if_res#726: int#4; [];
+$#727: bool#1; [];
+$#728: int#4; [];
+$#729: int#4; [];
+$#730: int#4; [];
+$#731: .Tuple.4#729; [];
+]{
+bb#126 {
+$#709 = f$__bool__#80($step#658); [];
+condjump ($#709) bb#328 bb#329; [];
+}; []
+bb#328 {
+$#710 = f$__invert__#108($step#658); [];
+$._if_res#708 = $#710; [];
+jmp bb#330; [];
+}; []
+bb#329 {
+$._if_res#708 = 1; [];
+jmp bb#330; [];
+}; []
+bb#330 {
+$stepx#707 = $._if_res#708; [];
+$startx#711 = 0; [];
+$stopx#712 = 0; [];
+$#713 = f$__ne__#162($stepx#707, 0); [];
+assert ($#713) bb#331; [];
+}; []
+bb#331 {
+jmp bb#332; [];
+}; []
+bb#332 {
+$#714 = f$__gt__#185($stepx#707, 0); [];
+$#715 = f$__bool__#269($#714); [];
+condjump ($#715) bb#335 bb#334; [];
+}; []
+bb#333 {
+$#731 = f$adjust_indices_helper#45($length#655, $startx#711, $stopx#712, $stepx#707); [];
+return $#731; [];
+}; []
+bb#334 {
+$#723 = f$__bool__#80($start#656); [];
+condjump ($#723) bb#342 bb#343; [];
+}; []
+bb#335 {
+$#717 = f$__bool__#80($start#656); [];
+condjump ($#717) bb#336 bb#337; [];
+}; []
+bb#336 {
+$#718 = f$__invert__#108($start#656); [];
+$._if_res#716 = $#718; [];
+jmp bb#338; [];
+}; []
+bb#337 {
+$._if_res#716 = 0; [];
+jmp bb#338; [];
+}; []
+bb#338 {
+$startx#711 = $._if_res#716; [];
+$#720 = f$__bool__#80($stop#657); [];
+condjump ($#720) bb#339 bb#340; [];
+}; []
+bb#339 {
+$#721 = f$__invert__#108($stop#657); [];
+$._if_res#719 = $#721; [];
+jmp bb#341; [];
+}; []
+bb#340 {
+$._if_res#719 = $length#655; [];
+jmp bb#341; [];
+}; []
+bb#341 {
+$stopx#712 = $._if_res#719; [];
+jmp bb#333; [];
+}; []
+bb#342 {
+$#724 = f$__invert__#108($start#656); [];
+$._if_res#722 = $#724; [];
+jmp bb#344; [];
+}; []
+bb#343 {
+$#725 = f$__sub__#135($length#655, 1); [];
+$._if_res#722 = $#725; [];
+jmp bb#344; [];
+}; []
+bb#344 {
+$startx#711 = $._if_res#722; [];
+$#727 = f$__bool__#80($stop#657); [];
+condjump ($#727) bb#345 bb#346; [];
+}; []
+bb#345 {
+$#728 = f$__invert__#108($stop#657); [];
+$._if_res#726 = $#728; [];
+jmp bb#347; [];
+}; []
+bb#346 {
+$#729 = f$__add__#257($length#655, 1); [];
+$#730 = f$__neg__#82($#729); [];
+$._if_res#726 = $#730; [];
+jmp bb#347; [];
+}; []
+bb#347 {
+$stopx#712 = $._if_res#726; [];
+jmp bb#333; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__len__#128(
+$self#378: str#0; [];
+) -> int#4 [
+$#379: str#0; [];
+]{
+bb#127 {
+$#379 = $self#378.len; [];
+return $#379; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__lshift__#129(
+$self#349: int#4; [];
+$other#350: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__lshift__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$as_byte#130(
+$self#304: Pointer[str]#714; [];
+) -> Pointer[byte]#735 [
+]{
+internal: Pointer[str]#714.as_byte
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$as_byte#131(
+$self#305: Pointer[int]#757; [];
+) -> Pointer[byte]#735 [
+]{
+internal: Pointer[int]#757.as_byte
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$cosh#132(
+$.a0#495: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$6#133(
+$b#333: byte#8; [];
+) -> int#4 [
+]{
+internal: int#4.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$isupper#134(
+$.a0#464: int#4; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__sub__#135(
+$self#341: int#4; [];
+$other#342: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__sub__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__add__#136(
+$self#412: str#0; [];
+$other#413: str#0; [];
+) -> str#0 [
+$len1#414: int#4; [];
+$len2#415: int#4; [];
+$len3#416: int#4; [];
+$p#417: Pointer[byte]#735; [];
+$#418: str#0; [];
+$#419: Pointer[byte]#735; [];
+$#420: str#0; [];
+$#421: str#0; [];
+]{
+bb#135 {
+$len1#414 = $self#412.len; [];
+$len2#415 = $other#413.len; [];
+$len3#416 = f$__add__#257($len1#414, $len2#415); [];
+$p#417 = f$2#204($len3#416); [];
+$#418 = $self#412.ptr; [];
+f$memcpy#125($p#417, $#418, $len1#414); [];
+$#419 = f$__add__#122($p#417, $len1#414); [];
+$#420 = $other#413.ptr; [];
+f$memcpy#125($#419, $#420, $len2#415); [];
+$#421 = f$__new__#154($p#417, $len3#416); [];
+return $#421; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$atanh#137(
+$.a0#500: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__ac_isempty#138(
+$flag#890: Pointer[UInt32]#713; [];
+$i#891: int#4; [];
+) -> int#4 [
+$#892: int#4; [];
+$#893: UInt32#712; [];
+$#894: int#4; [];
+$#895: int#4; [];
+$#896: UInt32#712; [];
+$#897: UInt32#712; [];
+$#898: int#4; [];
+$#899: int#4; [];
+]{
+bb#137 {
+$#892 = f$__rshift__#116($i#891, 4); [];
+$#893 = f$__getitem__#276($flag#890, $#892); [];
+$#894 = f$__and__#15($i#891, 15); [];
+$#895 = f$__lshift__#129($#894, 1); [];
+$#896 = f$2#206($#895); [];
+$#897 = f$__rshift__#14($#893, $#896); [];
+$#898 = f$8#47($#897); [];
+$#899 = f$__and__#15($#898, 2); [];
+return $#899; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#139(
+) -> .dict#749 [
+]{
+internal: .dict#749.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#140(
+) -> .dict#745 [
+]{
+internal: .dict#745.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#141(
+) -> .dict#715 [
+]{
+internal: .dict#715.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_env#142(
+) -> Pointer[Pointer[byte]]#744 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$ldexp#143(
+$.a0#478: float#3; [];
+$.a1#479: int#4; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$exit#144(
+$.a0#539: int#4; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$log2#145(
+$.a0#481: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$1#146(
+$what#393: int#4; [];
+) -> Optional[int]#727 [
+]{
+internal: Optional[int]#727.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_stdout#147(
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__or__#148(
+$self#410: UInt32#712; [];
+$other#411: UInt32#712; [];
+) -> UInt32#712 [
+]{
+internal: UInt32#712.__or__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_stderr#149(
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$4#150(
+$self#1270: str#0; [];
+$s#1271: .rslice#755; [];
+) -> str#0 [
+$#1273: int#4; [];
+$#1274: .rslice#755; [];
+$#1275: Optional[int]#727; [];
+$#1276: Optional[int]#727; [];
+$#1277: Optional[int]#727; [];
+$start#1278: int#4; [];
+$stop#1279: int#4; [];
+$step#1280: int#4; [];
+$length#1281: int#4; [];
+$#1282: str#0; [];
+$#1283: Pointer[byte]#735; [];
+$#1284: str#0; [];
+]{
+bb#149 {
+$#1273 = f$len#169($self#1270); [];
+$#1274 = $s#1271.start; [];
+$#1275 = f$1#146($#1274); [];
+$#1276 = f$__new__#17(); [];
+$#1277 = f$__new__#17(); [];
+$._assign_802#1272 = f$adjust_indices#127($#1273, $#1275, $#1276, $#1277); [];
+$start#1278 = $._assign_802#1272.a1; [];
+$stop#1279 = $._assign_802#1272.a2; [];
+$step#1280 = $._assign_802#1272.a3; [];
+$length#1281 = $._assign_802#1272.a4; [];
+$#1282 = $self#1270.ptr; [];
+$#1283 = f$__add__#122($#1282, $start#1278); [];
+$#1284 = f$__new__#154($#1283, $length#1281); [];
+return $#1284; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$2#151(
+$what#373: str#0; [];
+) -> str#0 [
+$#374: str#0; [];
+]{
+bb#150 {
+$#374 = f$__str__#164($what#373); [];
+return $#374; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$2#152(
+$what#375: int#4; [];
+) -> str#0 [
+$#376: str#0; [];
+]{
+bb#151 {
+$#376 = f$__str__#273($what#375); [];
+return $#376; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_time#153(
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#154(
+$p#301: Pointer[byte]#735; [];
+$l#302: int#4; [];
+) -> str#0 [
+]{
+internal: str#0.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$1#155(
+$self#371: int#4; [];
+$other#372: float#3; [];
+) -> float#3 [
+]{
+internal: int#4.__mul__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$atan#156(
+$.a0#489: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$toupper#157(
+$.a0#466: int#4; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$acosh#158(
+$.a0#498: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_free#159(
+$.a0#438: Pointer[byte]#735; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$asinh#160(
+$.a0#499: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_gc_exclude_static_roots#161(
+$.a0#443: Pointer[byte]#735; [];
+$.a1#444: Pointer[byte]#735; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__ne__#162(
+$self#355: int#4; [];
+$other#356: int#4; [];
+) -> bool#1 [
+]{
+internal: int#4.__ne__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$dlsym#163(
+$.a0#545: Pointer[byte]#735; [];
+$.a1#546: Pointer[byte]#735; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__str__#164(
+$what#377: str#0; [];
+) -> str#0 [
+]{
+bb#163 {
+return $what#377; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$omp_get_thread_num#165(
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_alloc_atomic#166(
+$.a0#435: int#4; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$log#167(
+$.a0#480: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$len#168(
+$x#767: .dict#715; [];
+) -> int#4 [
+$#768: int#4; [];
+]{
+bb#167 {
+'
+    len(x)
+
+    Return the length of x
+    '; [];
+$#768 = f$__len__#23($x#767); [];
+return $#768; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$len#169(
+$x#769: str#0; [];
+) -> int#4 [
+$#770: int#4; [];
+]{
+bb#168 {
+'
+    len(x)
+
+    Return the length of x
+    '; [];
+$#770 = f$__len__#128($x#769); [];
+return $#770; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$len#170(
+$x#771: Array[byte]#771; [];
+) -> int#4 [
+$#772: int#4; [];
+]{
+bb#169 {
+'
+    len(x)
+
+    Return the length of x
+    '; [];
+$#772 = f$__len__#55($x#771); [];
+return $#772; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$sqrt#171(
+$.a0#483: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_align_splice#172(
+$.a0#591: .seq#851; [];
+$.a1#592: .seq#851; [];
+$.a2#593: Pointer[Int8]#872; [];
+$.a3#594: Int8#871; [];
+$.a4#595: Int8#871; [];
+$.a5#596: Int8#871; [];
+$.a6#597: Int8#871; [];
+$.a7#598: int#4; [];
+$.a8#599: int#4; [];
+$.a9#600: Pointer[.Alignment]#853; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$asin#173(
+$.a0#488: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$done#174(
+$self#397: Generator[int]#706; [];
+) -> bool#1 [
+]{
+internal: Generator[int]#706.done
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_lock_acquire#175(
+$.a0#447: Pointer[byte]#735; [];
+$.a1#448: bool#1; [];
+$.a2#449: float#3; [];
+) -> bool#1 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$1#176(
+) -> .EnvMap#716 [
+$#1334: .Tuple.1#742; [];
+]{
+bb#175 {
+$._typ_936#1333 = f$__new__#141(); [];
+f$1#35($._typ_936#1333); [];
+$#1334 = f$__new__#77($._typ_936#1333); [];
+return $#1334; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_gc_clear_roots#177(
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_str_ptr#178(
+$.a0#446: Pointer[byte]#735; [];
+) -> str#0 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_lock_new#179(
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__bool__#180(
+$self#310: Pointer[byte]#735; [];
+) -> bool#1 [
+]{
+internal: Pointer[byte]#735.__bool__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_stdin#181(
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$_make_assert_error#182(
+$msg#746: str#0; [];
+) -> .AssertionError#837 [
+]{
+bb#181 {
+$._typ_928#747 = f$__new__#196(); [];
+f$2#266($._typ_928#747, $msg#746); [];
+return $._typ_928#747; [];
+}; []
+}; [funcAttributes: builtin, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_check_errno#183(
+) -> str#0 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_time_monotonic#184(
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__gt__#185(
+$self#359: int#4; [];
+$other#360: int#4; [];
+) -> bool#1 [
+]{
+internal: int#4.__gt__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$erf#186(
+$.a0#506: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$erfc#187(
+$.a0#507: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$modf#188(
+$.a0#514: float#3; [];
+$.a1#515: Pointer[float]#874; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$_raw_type_str#189(
+$p#829: Pointer[byte]#735; [];
+$name#830: str#0; [];
+) -> str#0 [
+$pstr#831: str#0; [];
+$total#832: int#4; [];
+$#833: str#0; [];
+$#834: int#4; [];
+$#835: int#4; [];
+$#836: str#0; [];
+$#837: int#4; [];
+$buf#838: Pointer[byte]#735; [];
+$where#839: int#4; [];
+$#840: byte#8; [];
+$#841: Pointer[byte]#735; [];
+$#842: str#0; [];
+$#843: str#0; [];
+$#844: str#0; [];
+$#845: byte#8; [];
+$#846: byte#8; [];
+$#847: byte#8; [];
+$#848: byte#8; [];
+$#849: Pointer[byte]#735; [];
+$#850: str#0; [];
+$#851: str#0; [];
+$#852: str#0; [];
+$#853: byte#8; [];
+$#854: str#0; [];
+$#855: str#0; [];
+]{
+bb#188 {
+$pstr#831 = f$seq_str_ptr#178($p#829); [];
+$#833 = $name#830.len; [];
+$#834 = f$__add__#257(1, $#833); [];
+$#835 = f$__add__#257($#834, 4); [];
+$#836 = $pstr#831.len; [];
+$#837 = f$__add__#257($#835, $#836); [];
+$total#832 = f$__add__#257($#837, 1); [];
+$buf#838 = f$2#204($total#832); [];
+$where#839 = 0; [];
+$#840 = f$2#253(60); [];
+f$__setitem__#72($buf#838, $where#839, $#840); [];
+$where#839 = f$__add__#257($where#839, 1); [];
+$#841 = f$__add__#122($buf#838, $where#839); [];
+$#842 = $name#830.ptr; [];
+$#843 = $name#830.len; [];
+f$memcpy#125($#841, $#842, $#843); [];
+$#844 = $name#830.len; [];
+$where#839 = f$__add__#257($where#839, $#844); [];
+$#845 = f$2#253(32); [];
+f$__setitem__#72($buf#838, $where#839, $#845); [];
+$where#839 = f$__add__#257($where#839, 1); [];
+$#846 = f$2#253(97); [];
+f$__setitem__#72($buf#838, $where#839, $#846); [];
+$where#839 = f$__add__#257($where#839, 1); [];
+$#847 = f$2#253(116); [];
+f$__setitem__#72($buf#838, $where#839, $#847); [];
+$where#839 = f$__add__#257($where#839, 1); [];
+$#848 = f$2#253(32); [];
+f$__setitem__#72($buf#838, $where#839, $#848); [];
+$where#839 = f$__add__#257($where#839, 1); [];
+$#849 = f$__add__#122($buf#838, $where#839); [];
+$#850 = $pstr#831.ptr; [];
+$#851 = $pstr#831.len; [];
+f$memcpy#125($#849, $#850, $#851); [];
+$#852 = $pstr#831.len; [];
+$where#839 = f$__add__#257($where#839, $#852); [];
+$#853 = f$2#253(62); [];
+f$__setitem__#72($buf#838, $where#839, $#853); [];
+$#854 = $pstr#831.ptr; [];
+f$1#270($#854); [];
+$#855 = f$__new__#154($buf#838, $total#832); [];
+return $#855; [];
+}; []
+}; [funcAttributes: builtin, srcInfoAttribute: <internal>:0:0, ]
+def f$tgamma#190(
+$.a0#508: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$remainder#191(
+$.a0#510: float#3; [];
+$.a1#511: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$frexp#192(
+$.a0#512: float#3; [];
+$.a1#513: Pointer[Int32]#873; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$_resize_if_full#193(
+$self#880: .list#703; [];
+) -> void#7 [
+$#881: .list#703; [];
+$#882: .list#703; [];
+$#883: .list#703; [];
+$#884: bool#1; [];
+$#885: bool#1; [];
+$new_cap#886: int#4; [];
+$#887: .list#703; [];
+$#888: int#4; [];
+$#889: int#4; [];
+]{
+bb#192 {
+jmp bb#394; [];
+}; []
+bb#394 {
+$#881 = $self#880.len; [];
+$#882 = $self#880.arr; [];
+$#883 = $#882.len; [];
+$#884 = f$__eq__#41($#881, $#883); [];
+$#885 = f$__bool__#269($#884); [];
+condjump ($#885) bb#397 bb#396; [];
+}; []
+bb#395 {
+return; [];
+}; []
+bb#396 {
+jmp bb#395; [];
+}; []
+bb#397 {
+$#887 = $self#880.len; [];
+$#888 = f$__mul__#229(3, $#887); [];
+$#889 = f$__add__#257(1, $#888); [];
+$new_cap#886 = f$__div__#40($#889, 2); [];
+f$_resize#39($self#880, $new_cap#886); [];
+jmp bb#395; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$fclose#194(
+$.a0#520: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$fgetc#195(
+$.a0#517: Pointer[byte]#735; [];
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#196(
+) -> .AssertionError#837 [
+]{
+internal: .AssertionError#837.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__contains__#197(
+$self#986: .dict#715; [];
+$key#987: str#0; [];
+) -> bool#1 [
+$#988: int#4; [];
+$#989: int#4; [];
+$#990: bool#1; [];
+]{
+bb#196 {
+$#988 = f$_kh_get#11($self#986, $key#987); [];
+$#989 = f$_kh_end#42($self#986); [];
+$#990 = f$__ne__#162($#988, $#989); [];
+return $#990; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$fwrite#198(
+$.a0#525: Pointer[byte]#735; [];
+$.a1#526: int#4; [];
+$.a2#527: int#4; [];
+$.a3#528: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_palign_dual#199(
+$.a0#622: .pseq#903; [];
+$.a1#623: .pseq#903; [];
+$.a2#624: Pointer[Int8]#872; [];
+$.a3#625: Int8#871; [];
+$.a4#626: Int8#871; [];
+$.a5#627: Int8#871; [];
+$.a6#628: Int8#871; [];
+$.a7#629: int#4; [];
+$.a8#630: int#4; [];
+$.a9#631: int#4; [];
+$.a10#632: int#4; [];
+$.a11#633: Pointer[.Alignment]#853; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_rlock_release#200(
+$.a0#454: Pointer[byte]#735; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$ftell#201(
+$.a0#529: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__xor__#202(
+$self#369: int#4; [];
+$other#370: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__xor__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$2#203(
+$sz#308: int#4; [];
+) -> Pointer[UInt32]#713 [
+]{
+internal: Pointer[UInt32]#713.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$2#204(
+$sz#309: int#4; [];
+) -> Pointer[byte]#735 [
+]{
+internal: Pointer[byte]#735.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$fgets#205(
+$.a0#533: Pointer[byte]#735; [];
+$.a1#534: int#4; [];
+$.a2#535: Pointer[byte]#735; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$2#206(
+$what#405: int#4; [];
+) -> UInt32#712 [
+]{
+internal: UInt32#712.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$getline#207(
+$.a0#536: Pointer[Pointer[byte]]#744; [];
+$n#537: Pointer[int]#757; [];
+$file#538: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$system#208(
+$cmd#540: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$2#209(
+$self#736: .KeyError#719; [];
+$message#737: str#0; [];
+) -> void#7 [
+]{
+bb#208 {
+$self#736.self = f$__new__#267('KeyError', $message#737, '', '', 0, 0); [];
+return; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$free#210(
+$.a0#541: Pointer[byte]#735; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$next#211(
+$self#396: Generator[int]#706; [];
+) -> int#4 [
+]{
+internal: Generator[int]#706.next
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$dlerror#212(
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$ceil#213(
+$.a0#471: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$omp_get_max_threads#214(
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$1#215(
+$other#306: Pointer[byte]#735; [];
+) -> Pointer[str]#714 [
+]{
+internal: Pointer[str]#714.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$1#216(
+$other#307: Pointer[byte]#735; [];
+) -> Pointer[int]#757 [
+]{
+internal: Pointer[int]#757.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__ge__#217(
+$self#363: int#4; [];
+$other#364: int#4; [];
+) -> bool#1 [
+]{
+internal: int#4.__ge__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__mod__#218(
+$self#347: int#4; [];
+$other#348: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__mod__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$dlclose#219(
+$.a0#547: Pointer[byte]#735; [];
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$atan2#220(
+$.a0#490: float#3; [];
+$.a1#491: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$lgamma#221(
+$.a0#509: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$gzerror#222(
+$.a0#552: Pointer[byte]#735; [];
+$.a1#553: Pointer[Int32]#873; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$sizeof#223(
+) -> int#4 [
+$#644: int#4; [];
+]{
+bb#222 {
+$#644 = f$__elemsize__#84(); [];
+return $#644; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$sizeof#224(
+) -> int#4 [
+$#645: int#4; [];
+]{
+bb#223 {
+$#645 = f$__elemsize__#85(); [];
+return $#645; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$log1p#225(
+$.a0#503: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$gzgets#226(
+$.a0#555: Pointer[byte]#735; [];
+$.a1#556: Pointer[byte]#735; [];
+$.a2#557: Int32#788; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$gzclose#227(
+$.a0#558: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__hash__#228(
+$self#1202: str#0; [];
+) -> int#4 [
+$h#1203: int#4; [];
+$#1205: str#0; [];
+$#1206: str#0; [];
+$p#1207: Pointer[byte]#735; [];
+$n#1208: int#4; [];
+$i#1209: int#4; [];
+$#1210: bool#1; [];
+$#1211: bool#1; [];
+$#1212: int#4; [];
+$#1213: byte#8; [];
+$#1214: int#4; [];
+]{
+bb#227 {
+$h#1203 = 0; [];
+$#1205 = $self#1202.ptr; [];
+$#1206 = $self#1202.len; [];
+$._assign_798#1204 = f$__new__#247($#1205, $#1206); [];
+$p#1207 = $._assign_798#1204.a1; [];
+$n#1208 = $._assign_798#1204.a2; [];
+$i#1209 = 0; [];
+jmp bb#520; [];
+}; []
+bb#520 {
+$#1210 = f$__lt__#280($i#1209, $n#1208); [];
+$#1211 = f$__bool__#269($#1210); [];
+condjump ($#1211) bb#521 bb#522; [];
+}; []
+bb#521 {
+$#1212 = f$__mul__#229(31, $h#1203); [];
+$#1213 = f$__getitem__#278($p#1207, $i#1209); [];
+$#1214 = f$6#133($#1213); [];
+$h#1203 = f$__add__#257($#1212, $#1214); [];
+$i#1209 = f$__add__#257($i#1209, 1); [];
+jmp bb#520; [];
+}; [loopAttribute: loop(none, bb#520, bb#521, none, bb#522), ]
+bb#522 {
+return $h#1203; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__mul__#229(
+$self#343: int#4; [];
+$other#344: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__mul__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$copysign#230(
+$.a0#501: float#3; [];
+$.a1#502: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$_tuple_fix_index#231(
+$idx#791: int#4; [];
+$len#792: int#4; [];
+) -> int#4 [
+$#793: bool#1; [];
+$#794: bool#1; [];
+$._bin_res#795: bool#1; [];
+$#796: bool#1; [];
+$#797: bool#1; [];
+$#798: bool#1; [];
+$#799: bool#1; [];
+$#800: bool#1; [];
+]{
+bb#230 {
+jmp bb#364; [];
+}; []
+bb#364 {
+$#793 = f$__lt__#280($idx#791, 0); [];
+$#794 = f$__bool__#269($#793); [];
+condjump ($#794) bb#367 bb#366; [];
+}; []
+bb#365 {
+jmp bb#368; [];
+}; []
+bb#366 {
+jmp bb#365; [];
+}; []
+bb#367 {
+$idx#791 = f$__add__#257($idx#791, $len#792); [];
+jmp bb#365; [];
+}; []
+bb#368 {
+$#796 = f$__lt__#280($idx#791, 0); [];
+$#797 = f$__bool__#269($#796); [];
+condjump ($#797) bb#372 bb#375; [];
+}; []
+bb#369 {
+return $idx#791; [];
+}; []
+bb#370 {
+jmp bb#369; [];
+}; []
+bb#371 {
+$._typ_930#801 = f$__new__#264(); [];
+f$2#258($._typ_930#801, 'tuple index out of range'); [];
+throw ($._typ_930#801); [];
+}; []
+bb#372 {
+$._bin_res#795 = true; [];
+jmp bb#374; [];
+}; []
+bb#373 {
+$._bin_res#795 = false; [];
+jmp bb#374; [];
+}; []
+bb#374 {
+$#800 = f$__bool__#269($._bin_res#795); [];
+condjump ($#800) bb#371 bb#370; [];
+}; []
+bb#375 {
+$#798 = f$__ge__#217($idx#791, $len#792); [];
+$#799 = f$__bool__#269($#798); [];
+condjump ($#799) bb#372 bb#373; [];
+}; []
+}; [funcAttributes: builtin, srcInfoAttribute: <internal>:0:0, ]
+def f$gzwrite#232(
+$.a0#562: Pointer[byte]#735; [];
+$.a1#563: Pointer[byte]#735; [];
+$.a2#564: UInt32#712; [];
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$gztell#233(
+$.a0#565: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_align#234(
+$.a0#569: .seq#851; [];
+$.a1#570: .seq#851; [];
+$.a2#571: Pointer[Int8]#872; [];
+$.a3#572: Int8#871; [];
+$.a4#573: Int8#871; [];
+$.a5#574: int#4; [];
+$.a6#575: int#4; [];
+$.a7#576: int#4; [];
+$.a8#577: int#4; [];
+$.a9#578: Pointer[.Alignment]#853; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_palign_global#235(
+$.a0#634: .pseq#903; [];
+$.a1#635: .pseq#903; [];
+$.a2#636: Pointer[Int8]#872; [];
+$.a3#637: Int8#871; [];
+$.a4#638: Int8#871; [];
+$.a5#639: int#4; [];
+$.a6#640: Pointer[.Alignment]#853; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$_kh_put#236(
+$self#1126: .dict#715; [];
+$key#1127: str#0; [];
+) -> .Tuple.2#777 [
+$#1128: .dict#715; [];
+$#1129: .dict#715; [];
+$#1130: bool#1; [];
+$#1131: bool#1; [];
+$#1132: .dict#715; [];
+$#1133: .dict#715; [];
+$#1134: int#4; [];
+$#1135: bool#1; [];
+$#1136: bool#1; [];
+$#1137: .dict#715; [];
+$#1138: int#4; [];
+$#1139: .dict#715; [];
+$#1140: int#4; [];
+$mask#1141: int#4; [];
+$#1142: .dict#715; [];
+$step#1143: int#4; [];
+$site#1144: int#4; [];
+$x#1145: int#4; [];
+$k#1146: int#4; [];
+$i#1147: int#4; [];
+$#1148: .dict#715; [];
+$#1149: int#4; [];
+$#1150: bool#1; [];
+$last#1151: int#4; [];
+$._bin_res#1152: bool#1; [];
+$#1153: .dict#715; [];
+$#1154: int#4; [];
+$#1155: bool#1; [];
+$#1156: bool#1; [];
+$#1157: bool#1; [];
+$._bin_res#1158: bool#1; [];
+$#1159: .dict#715; [];
+$#1160: int#4; [];
+$#1161: bool#1; [];
+$#1162: .dict#715; [];
+$#1163: str#0; [];
+$#1164: bool#1; [];
+$#1165: bool#1; [];
+$#1166: bool#1; [];
+$#1167: bool#1; [];
+$#1168: .dict#715; [];
+$#1169: int#4; [];
+$#1170: bool#1; [];
+$#1171: int#4; [];
+$#1172: bool#1; [];
+$#1173: bool#1; [];
+$#1174: .dict#715; [];
+$#1175: bool#1; [];
+$#1176: bool#1; [];
+$._bin_res#1177: bool#1; [];
+$#1178: .dict#715; [];
+$#1179: int#4; [];
+$#1180: bool#1; [];
+$#1181: .dict#715; [];
+$#1182: bool#1; [];
+$#1183: bool#1; [];
+$#1184: bool#1; [];
+$ret#1185: int#4; [];
+$#1186: .dict#715; [];
+$#1187: int#4; [];
+$#1188: bool#1; [];
+$#1189: .dict#715; [];
+$#1190: .dict#715; [];
+$#1191: .dict#715; [];
+$#1192: .dict#715; [];
+$#1193: .dict#715; [];
+$#1194: int#4; [];
+$#1195: bool#1; [];
+$#1196: .dict#715; [];
+$#1197: .dict#715; [];
+$#1198: .dict#715; [];
+$#1199: .Tuple.2#777; [];
+]{
+bb#235 {
+jmp bb#471; [];
+}; []
+bb#471 {
+$#1128 = $self#1126._n_occupied; [];
+$#1129 = $self#1126._upper_bound; [];
+$#1130 = f$__ge__#217($#1128, $#1129); [];
+$#1131 = f$__bool__#269($#1130); [];
+condjump ($#1131) bb#474 bb#473; [];
+}; []
+bb#472 {
+$#1142 = $self#1126._n_buckets; [];
+$mask#1141 = f$__sub__#135($#1142, 1); [];
+$step#1143 = 0; [];
+$site#1144 = $self#1126._n_buckets; [];
+$x#1145 = $site#1144; [];
+$k#1146 = f$_dict_hash#89($key#1127); [];
+$i#1147 = f$__and__#15($k#1146, $mask#1141); [];
+jmp bb#479; [];
+}; []
+bb#473 {
+jmp bb#472; [];
+}; []
+bb#474 {
+jmp bb#475; [];
+}; []
+bb#475 {
+$#1132 = $self#1126._n_buckets; [];
+$#1133 = $self#1126._size; [];
+$#1134 = f$__lshift__#129($#1133, 1); [];
+$#1135 = f$__gt__#185($#1132, $#1134); [];
+$#1136 = f$__bool__#269($#1135); [];
+condjump ($#1136) bb#478 bb#477; [];
+}; []
+bb#476 {
+jmp bb#472; [];
+}; []
+bb#477 {
+$#1139 = $self#1126._n_buckets; [];
+$#1140 = f$__add__#257($#1139, 1); [];
+f$_kh_resize#262($self#1126, $#1140); [];
+jmp bb#476; [];
+}; []
+bb#478 {
+$#1137 = $self#1126._n_buckets; [];
+$#1138 = f$__sub__#135($#1137, 1); [];
+f$_kh_resize#262($self#1126, $#1138); [];
+jmp bb#476; [];
+}; []
+bb#479 {
+$#1148 = $self#1126._flags; [];
+$#1149 = f$__ac_isempty#138($#1148, $i#1147); [];
+$#1150 = f$__bool__#16($#1149); [];
+condjump ($#1150) bb#482 bb#481; [];
+}; []
+bb#480 {
+$ret#1185 = 0; [];
+jmp bb#514; [];
+}; []
+bb#481 {
+$last#1151 = $i#1147; [];
+jmp bb#483; [];
+}; []
+bb#482 {
+$x#1145 = $i#1147; [];
+jmp bb#480; [];
+}; []
+bb#483 {
+$#1153 = $self#1126._flags; [];
+$#1154 = f$__ac_isempty#138($#1153, $i#1147); [];
+$#1155 = f$__bool__#16($#1154); [];
+$#1156 = f$__invert__#58($#1155); [];
+$#1157 = f$__bool__#269($#1156); [];
+condjump ($#1157) bb#489 bb#487; [];
+}; []
+bb#484 {
+jmp bb#494; [];
+}; [loopAttribute: loop(none, bb#483, bb#484, none, bb#485), ]
+bb#485 {
+jmp bb#502; [];
+}; []
+bb#486 {
+$._bin_res#1152 = true; [];
+jmp bb#488; [];
+}; []
+bb#487 {
+$._bin_res#1152 = false; [];
+jmp bb#488; [];
+}; []
+bb#488 {
+$#1167 = f$__bool__#269($._bin_res#1152); [];
+condjump ($#1167) bb#484 bb#485; [];
+}; []
+bb#489 {
+$#1159 = $self#1126._flags; [];
+$#1160 = f$__ac_isdel#75($#1159, $i#1147); [];
+$#1161 = f$__bool__#16($#1160); [];
+condjump ($#1161) bb#490 bb#493; [];
+}; []
+bb#490 {
+$._bin_res#1158 = true; [];
+jmp bb#492; [];
+}; []
+bb#491 {
+$._bin_res#1158 = false; [];
+jmp bb#492; [];
+}; []
+bb#492 {
+$#1166 = f$__bool__#269($._bin_res#1158); [];
+condjump ($#1166) bb#486 bb#487; [];
+}; []
+bb#493 {
+$#1162 = $self#1126._keys; [];
+$#1163 = f$__getitem__#279($#1162, $i#1147); [];
+$#1164 = f$__ne__#12($#1163, $key#1127); [];
+$#1165 = f$__bool__#269($#1164); [];
+condjump ($#1165) bb#490 bb#491; [];
+}; []
+bb#494 {
+$#1168 = $self#1126._flags; [];
+$#1169 = f$__ac_isdel#75($#1168, $i#1147); [];
+$#1170 = f$__bool__#16($#1169); [];
+condjump ($#1170) bb#497 bb#496; [];
+}; [loopAttribute: loop(none, bb#483, bb#484, none, bb#485), ]
+bb#495 {
+$step#1143 = f$__add__#257($step#1143, 1); [];
+$#1171 = f$__add__#257($i#1147, $step#1143); [];
+$i#1147 = f$__and__#15($#1171, $mask#1141); [];
+jmp bb#498; [];
+}; [loopAttribute: loop(none, bb#483, bb#484, none, bb#485), ]
+bb#496 {
+jmp bb#495; [];
+}; [loopAttribute: loop(none, bb#483, bb#484, none, bb#485), ]
+bb#497 {
+$site#1144 = $i#1147; [];
+jmp bb#495; [];
+}; [loopAttribute: loop(none, bb#483, bb#484, none, bb#485), ]
+bb#498 {
+$#1172 = f$__eq__#41($i#1147, $last#1151); [];
+$#1173 = f$__bool__#269($#1172); [];
+condjump ($#1173) bb#501 bb#500; [];
+}; [loopAttribute: loop(none, bb#483, bb#484, none, bb#485), ]
+bb#499 {
+jmp bb#483; [];
+}; [loopAttribute: loop(none, bb#483, bb#484, none, bb#485), ]
+bb#500 {
+jmp bb#499; [];
+}; [loopAttribute: loop(none, bb#483, bb#484, none, bb#485), ]
+bb#501 {
+$x#1145 = $site#1144; [];
+jmp bb#485; [];
+}; [loopAttribute: loop(none, bb#483, bb#484, none, bb#485), ]
+bb#502 {
+$#1174 = $self#1126._n_buckets; [];
+$#1175 = f$__eq__#41($x#1145, $#1174); [];
+$#1176 = f$__bool__#269($#1175); [];
+condjump ($#1176) bb#505 bb#504; [];
+}; []
+bb#503 {
+jmp bb#480; [];
+}; []
+bb#504 {
+jmp bb#503; [];
+}; []
+bb#505 {
+jmp bb#506; [];
+}; []
+bb#506 {
+$#1178 = $self#1126._flags; [];
+$#1179 = f$__ac_isempty#138($#1178, $i#1147); [];
+$#1180 = f$__bool__#16($#1179); [];
+condjump ($#1180) bb#513 bb#511; [];
+}; []
+bb#507 {
+jmp bb#503; [];
+}; []
+bb#508 {
+$x#1145 = $i#1147; [];
+jmp bb#507; [];
+}; []
+bb#509 {
+$x#1145 = $site#1144; [];
+jmp bb#507; [];
+}; []
+bb#510 {
+$._bin_res#1177 = true; [];
+jmp bb#512; [];
+}; []
+bb#511 {
+$._bin_res#1177 = false; [];
+jmp bb#512; [];
+}; []
+bb#512 {
+$#1184 = f$__bool__#269($._bin_res#1177); [];
+condjump ($#1184) bb#509 bb#508; [];
+}; []
+bb#513 {
+$#1181 = $self#1126._n_buckets; [];
+$#1182 = f$__ne__#162($site#1144, $#1181); [];
+$#1183 = f$__bool__#269($#1182); [];
+condjump ($#1183) bb#510 bb#511; [];
+}; []
+bb#514 {
+$#1186 = $self#1126._flags; [];
+$#1187 = f$__ac_isempty#138($#1186, $x#1145); [];
+$#1188 = f$__bool__#16($#1187); [];
+condjump ($#1188) bb#517 bb#516; [];
+}; []
+bb#515 {
+$#1199 = f$__new__#246($ret#1185, $x#1145); [];
+return $#1199; [];
+}; []
+bb#516 {
+$#1193 = $self#1126._flags; [];
+$#1194 = f$__ac_isdel#75($#1193, $x#1145); [];
+$#1195 = f$__bool__#16($#1194); [];
+condjump ($#1195) bb#519 bb#518; [];
+}; []
+bb#517 {
+$#1189 = $self#1126._keys; [];
+f$__setitem__#71($#1189, $x#1145, $key#1127); [];
+$#1190 = $self#1126._flags; [];
+f$__ac_set_isboth_false#10($#1190, $x#1145); [];
+$#1191 = $self#1126._size; [];
+$self#1126.self = f$__add__#257($#1191, 1); [];
+$#1192 = $self#1126._n_occupied; [];
+$self#1126.self = f$__add__#257($#1192, 1); [];
+$ret#1185 = 1; [];
+jmp bb#515; [];
+}; []
+bb#518 {
+jmp bb#515; [];
+}; []
+bb#519 {
+$#1196 = $self#1126._keys; [];
+f$__setitem__#71($#1196, $x#1145, $key#1127); [];
+$#1197 = $self#1126._flags; [];
+f$__ac_set_isboth_false#10($#1197, $x#1145); [];
+$#1198 = $self#1126._size; [];
+$self#1126.self = f$__add__#257($#1198, 1); [];
+$ret#1185 = 2; [];
+jmp bb#515; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_align_dual#237(
+$.a0#579: .seq#851; [];
+$.a1#580: .seq#851; [];
+$.a2#581: Pointer[Int8]#872; [];
+$.a3#582: Int8#871; [];
+$.a4#583: Int8#871; [];
+$.a5#584: Int8#871; [];
+$.a6#585: Int8#871; [];
+$.a7#586: int#4; [];
+$.a8#587: int#4; [];
+$.a9#588: int#4; [];
+$.a10#589: int#4; [];
+$.a11#590: Pointer[.Alignment]#853; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$omp_get_num_threads#238(
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_align_global#239(
+$.a0#601: .seq#851; [];
+$.a1#602: .seq#851; [];
+$.a2#603: Pointer[Int8]#872; [];
+$.a3#604: Int8#871; [];
+$.a4#605: Int8#871; [];
+$.a5#606: int#4; [];
+$.a6#607: bool#1; [];
+$.a7#608: Pointer[.Alignment]#853; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_alloc#240(
+$.a0#434: int#4; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_palign#241(
+$.a0#612: .pseq#903; [];
+$.a1#613: .pseq#903; [];
+$.a2#614: Pointer[Int8]#872; [];
+$.a3#615: Int8#871; [];
+$.a4#616: Int8#871; [];
+$.a5#617: int#4; [];
+$.a6#618: int#4; [];
+$.a7#619: int#4; [];
+$.a8#620: int#4; [];
+$.a9#621: Pointer[.Alignment]#853; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_palign_default#242(
+$.a0#641: .pseq#903; [];
+$.a1#642: .pseq#903; [];
+$.a2#643: Pointer[.Alignment]#853; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$ord#243(
+$s#775: str#0; [];
+) -> int#4 [
+$#776: int#4; [];
+$#777: bool#1; [];
+$#778: bool#1; [];
+$#780: int#4; [];
+$#781: str#0; [];
+$#782: str#0; [];
+$#783: str#0; [];
+$#784: str#0; [];
+$#785: byte#8; [];
+$#786: int#4; [];
+]{
+bb#242 {
+'
+    ord(s)
+
+    Return an integer representing the Unicode code point of s
+    '; [];
+jmp bb#360; [];
+}; []
+bb#360 {
+$#776 = f$len#169($s#775); [];
+$#777 = f$__ne__#162($#776, 1); [];
+$#778 = f$__bool__#269($#777); [];
+condjump ($#778) bb#363 bb#362; [];
+}; []
+bb#361 {
+$#784 = $s#775.ptr; [];
+$#785 = f$__getitem__#278($#784, 0); [];
+$#786 = f$6#133($#785); [];
+return $#786; [];
+}; []
+bb#362 {
+jmp bb#361; [];
+}; []
+bb#363 {
+$._typ_929#779 = f$__new__#271(); [];
+$#780 = f$len#169($s#775); [];
+$#781 = f$2#152($#780); [];
+$#782 = f$__add__#136('ord() expected a character, but string of length ', $#781); [];
+$#783 = f$__add__#136($#782, ' found'); [];
+f$2#275($._typ_929#779, $#783); [];
+throw ($._typ_929#779); [];
+}; []
+}; [funcAttributes: builtin, srcInfoAttribute: <internal>:0:0, ]
+def f$seq_print#244(
+$.a0#303: str#0; [];
+) -> void#7 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$chr#245(
+$i#787: int#4; [];
+) -> str#0 [
+$p#788: Pointer[byte]#735; [];
+$#789: byte#8; [];
+$#790: str#0; [];
+]{
+bb#244 {
+'
+    chr(i)
+
+    Return a string representing a character whose Unicode
+    code point is an integer
+    '; [];
+$p#788 = f$2#204(1); [];
+$#789 = f$2#253($i#787); [];
+f$__setitem__#72($p#788, 0, $#789); [];
+$#790 = f$__new__#154($p#788, 1); [];
+return $#790; [];
+}; []
+}; [funcAttributes: builtin, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#246(
+$a1#282: int#4; [];
+$a2#283: int#4; [];
+) -> .Tuple.2#777 [
+]{
+internal: .Tuple.2#777.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#247(
+$a1#284: Pointer[byte]#735; [];
+$a2#285: int#4; [];
+) -> .Tuple.2#776 [
+]{
+internal: .Tuple.2#776.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#248(
+$a1#286: str#0; [];
+$a2#287: str#0; [];
+) -> .Tuple.2#774 [
+]{
+internal: .Tuple.2#774.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__ne__#249(
+$self#389: byte#8; [];
+$other#390: byte#8; [];
+) -> bool#1 [
+]{
+internal: byte#8.__ne__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$log10#250(
+$.a0#482: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$gzseek#251(
+$.a0#566: Pointer[byte]#735; [];
+$.a1#567: int#4; [];
+$.a2#568: Int32#788; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#252(
+) -> .AttributeError#784 [
+]{
+internal: .AttributeError#784.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$2#253(
+$i#388: int#4; [];
+) -> byte#8 [
+]{
+internal: byte#8.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$gzgetc#254(
+$.a0#554: Pointer[byte]#735; [];
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$trunc#255(
+$.a0#504: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$omp_get_num_procs#256(
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__add__#257(
+$self#339: int#4; [];
+$other#340: int#4; [];
+) -> int#4 [
+]{
+internal: int#4.__add__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$2#258(
+$self#734: .IndexError#840; [];
+$message#735: str#0; [];
+) -> void#7 [
+]{
+bb#257 {
+$self#734.self = f$__new__#267('IndexError', $message#735, '', '', 0, 0); [];
+return; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$3#259(
+$f#332: float#3; [];
+) -> int#4 [
+]{
+internal: int#4.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$_tuple_str#260(
+$strs#802: Pointer[str]#714; [];
+$n#803: int#4; [];
+) -> str#0 [
+$total#804: int#4; [];
+$i#805: int#4; [];
+$#806: bool#1; [];
+$#807: bool#1; [];
+$#808: str#0; [];
+$#809: str#0; [];
+$#810: int#4; [];
+$#811: bool#1; [];
+$#812: bool#1; [];
+$buf#813: Pointer[byte]#735; [];
+$where#814: int#4; [];
+$#815: byte#8; [];
+$#816: bool#1; [];
+$#817: bool#1; [];
+$s#818: str#0; [];
+$l#819: int#4; [];
+$#820: Pointer[byte]#735; [];
+$#821: str#0; [];
+$#822: int#4; [];
+$#823: bool#1; [];
+$#824: bool#1; [];
+$#825: byte#8; [];
+$#826: byte#8; [];
+$#827: byte#8; [];
+$#828: str#0; [];
+]{
+bb#259 {
+$total#804 = 2; [];
+$i#805 = 0; [];
+jmp bb#376; [];
+}; []
+bb#376 {
+$#806 = f$__lt__#280($i#805, $n#803); [];
+$#807 = f$__bool__#269($#806); [];
+condjump ($#807) bb#377 bb#378; [];
+}; []
+bb#377 {
+$#808 = f$__getitem__#279($strs#802, $i#805); [];
+$#809 = $#808.len; [];
+$total#804 = f$__add__#257($total#804, $#809); [];
+jmp bb#379; [];
+}; [loopAttribute: loop(none, bb#376, bb#377, none, bb#378), ]
+bb#378 {
+$buf#813 = f$2#204($total#804); [];
+$where#814 = 0; [];
+$#815 = f$2#253(40); [];
+f$__setitem__#72($buf#813, $where#814, $#815); [];
+$where#814 = f$__add__#257($where#814, 1); [];
+$i#805 = 0; [];
+jmp bb#383; [];
+}; []
+bb#379 {
+$#810 = f$__sub__#135($n#803, 1); [];
+$#811 = f$__lt__#280($i#805, $#810); [];
+$#812 = f$__bool__#269($#811); [];
+condjump ($#812) bb#382 bb#381; [];
+}; [loopAttribute: loop(none, bb#376, bb#377, none, bb#378), ]
+bb#380 {
+$i#805 = f$__add__#257($i#805, 1); [];
+jmp bb#376; [];
+}; [loopAttribute: loop(none, bb#376, bb#377, none, bb#378), ]
+bb#381 {
+jmp bb#380; [];
+}; [loopAttribute: loop(none, bb#376, bb#377, none, bb#378), ]
+bb#382 {
+$total#804 = f$__add__#257($total#804, 2); [];
+jmp bb#380; [];
+}; [loopAttribute: loop(none, bb#376, bb#377, none, bb#378), ]
+bb#383 {
+$#816 = f$__lt__#280($i#805, $n#803); [];
+$#817 = f$__bool__#269($#816); [];
+condjump ($#817) bb#384 bb#385; [];
+}; []
+bb#384 {
+$s#818 = f$__getitem__#279($strs#802, $i#805); [];
+$l#819 = $s#818.len; [];
+$#820 = f$__add__#122($buf#813, $where#814); [];
+$#821 = $s#818.ptr; [];
+f$memcpy#125($#820, $#821, $l#819); [];
+$where#814 = f$__add__#257($where#814, $l#819); [];
+jmp bb#386; [];
+}; [loopAttribute: loop(none, bb#383, bb#384, none, bb#385), ]
+bb#385 {
+$#827 = f$2#253(41); [];
+f$__setitem__#72($buf#813, $where#814, $#827); [];
+$#828 = f$__new__#154($buf#813, $total#804); [];
+return $#828; [];
+}; []
+bb#386 {
+$#822 = f$__sub__#135($n#803, 1); [];
+$#823 = f$__lt__#280($i#805, $#822); [];
+$#824 = f$__bool__#269($#823); [];
+condjump ($#824) bb#389 bb#388; [];
+}; [loopAttribute: loop(none, bb#383, bb#384, none, bb#385), ]
+bb#387 {
+$i#805 = f$__add__#257($i#805, 1); [];
+jmp bb#383; [];
+}; [loopAttribute: loop(none, bb#383, bb#384, none, bb#385), ]
+bb#388 {
+jmp bb#387; [];
+}; [loopAttribute: loop(none, bb#383, bb#384, none, bb#385), ]
+bb#389 {
+$#825 = f$2#253(44); [];
+f$__setitem__#72($buf#813, $where#814, $#825); [];
+$where#814 = f$__add__#257($where#814, 1); [];
+$#826 = f$2#253(32); [];
+f$__setitem__#72($buf#813, $where#814, $#826); [];
+$where#814 = f$__add__#257($where#814, 1); [];
+jmp bb#387; [];
+}; [loopAttribute: loop(none, bb#383, bb#384, none, bb#385), ]
+}; [funcAttributes: builtin, srcInfoAttribute: <internal>:0:0, ]
+def f$dlopen#261(
+$.a0#543: Pointer[byte]#735; [];
+$.a1#544: int#4; [];
+) -> Pointer[byte]#735 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$_kh_resize#262(
+$self#1028: .dict#715; [];
+$new_n_buckets#1029: int#4; [];
+) -> void#7 [
+$HASH_UPPER#1030: float#3; [];
+$new_flags#1031: Pointer[UInt32]#713; [];
+$j#1032: int#4; [];
+$#1033: int#4; [];
+$#1034: int#4; [];
+$#1035: int#4; [];
+$#1036: int#4; [];
+$#1037: int#4; [];
+$#1038: int#4; [];
+$#1039: bool#1; [];
+$#1040: bool#1; [];
+$#1041: .dict#715; [];
+$#1042: float#3; [];
+$#1043: float#3; [];
+$#1044: int#4; [];
+$#1045: bool#1; [];
+$#1046: bool#1; [];
+$fsize#1047: int#4; [];
+$i#1048: int#4; [];
+$#1049: bool#1; [];
+$#1050: bool#1; [];
+$#1051: UInt32#712; [];
+$#1052: .dict#715; [];
+$#1053: bool#1; [];
+$#1054: bool#1; [];
+$#1055: .dict#715; [];
+$#1056: Pointer[byte]#735; [];
+$#1057: int#4; [];
+$#1058: int#4; [];
+$#1059: Pointer[byte]#735; [];
+$#1060: .dict#715; [];
+$#1061: Pointer[byte]#735; [];
+$#1062: int#4; [];
+$#1063: int#4; [];
+$#1064: Pointer[byte]#735; [];
+$#1065: bool#1; [];
+$#1066: .dict#715; [];
+$#1067: bool#1; [];
+$#1068: bool#1; [];
+$#1069: .dict#715; [];
+$#1070: int#4; [];
+$#1071: bool#1; [];
+$#1072: bool#1; [];
+$key#1073: str#0; [];
+$#1074: .dict#715; [];
+$val#1075: str#0; [];
+$#1076: .dict#715; [];
+$new_mask#1077: int#4; [];
+$#1078: .dict#715; [];
+$#1079: bool#1; [];
+$step#1080: int#4; [];
+$k#1081: int#4; [];
+$i#1082: int#4; [];
+$#1083: int#4; [];
+$#1084: bool#1; [];
+$#1085: bool#1; [];
+$#1086: bool#1; [];
+$#1087: int#4; [];
+$._bin_res#1088: bool#1; [];
+$#1089: .dict#715; [];
+$#1090: bool#1; [];
+$#1091: bool#1; [];
+$#1092: .dict#715; [];
+$#1093: int#4; [];
+$#1094: bool#1; [];
+$#1095: bool#1; [];
+$#1096: bool#1; [];
+$#1098: .dict#715; [];
+$#1099: str#0; [];
+$#1100: .dict#715; [];
+$#1101: .Tuple.2#774; [];
+$#1103: .dict#715; [];
+$#1104: str#0; [];
+$#1105: .dict#715; [];
+$#1106: .Tuple.2#774; [];
+$#1107: .dict#715; [];
+$#1108: .dict#715; [];
+$#1109: .dict#715; [];
+$#1110: .dict#715; [];
+$#1111: bool#1; [];
+$#1112: bool#1; [];
+$#1113: .dict#715; [];
+$#1114: Pointer[byte]#735; [];
+$#1115: int#4; [];
+$#1116: int#4; [];
+$#1117: Pointer[byte]#735; [];
+$#1118: .dict#715; [];
+$#1119: Pointer[byte]#735; [];
+$#1120: int#4; [];
+$#1121: int#4; [];
+$#1122: Pointer[byte]#735; [];
+$#1123: .dict#715; [];
+$#1124: float#3; [];
+$#1125: float#3; [];
+]{
+bb#261 {
+$HASH_UPPER#1030 = 0.770000; [];
+$new_flags#1031 = f$__new__#54(); [];
+$j#1032 = 1; [];
+$new_n_buckets#1029 = f$__sub__#135($new_n_buckets#1029, 1); [];
+$#1033 = f$__rshift__#116($new_n_buckets#1029, 1); [];
+$new_n_buckets#1029 = f$__or__#28($new_n_buckets#1029, $#1033); [];
+$#1034 = f$__rshift__#116($new_n_buckets#1029, 2); [];
+$new_n_buckets#1029 = f$__or__#28($new_n_buckets#1029, $#1034); [];
+$#1035 = f$__rshift__#116($new_n_buckets#1029, 4); [];
+$new_n_buckets#1029 = f$__or__#28($new_n_buckets#1029, $#1035); [];
+$#1036 = f$__rshift__#116($new_n_buckets#1029, 8); [];
+$new_n_buckets#1029 = f$__or__#28($new_n_buckets#1029, $#1036); [];
+$#1037 = f$__rshift__#116($new_n_buckets#1029, 16); [];
+$new_n_buckets#1029 = f$__or__#28($new_n_buckets#1029, $#1037); [];
+$#1038 = f$__rshift__#116($new_n_buckets#1029, 32); [];
+$new_n_buckets#1029 = f$__or__#28($new_n_buckets#1029, $#1038); [];
+$new_n_buckets#1029 = f$__add__#257($new_n_buckets#1029, 1); [];
+jmp bb#427; [];
+}; []
+bb#427 {
+$#1039 = f$__lt__#280($new_n_buckets#1029, 4); [];
+$#1040 = f$__bool__#269($#1039); [];
+condjump ($#1040) bb#430 bb#429; [];
+}; []
+bb#428 {
+jmp bb#431; [];
+}; []
+bb#429 {
+jmp bb#428; [];
+}; []
+bb#430 {
+$new_n_buckets#1029 = 4; [];
+jmp bb#428; [];
+}; []
+bb#431 {
+$#1041 = $self#1028._size; [];
+$#1042 = f$1#155($new_n_buckets#1029, $HASH_UPPER#1030); [];
+$#1043 = f$__add__#26($#1042, 0.500000); [];
+$#1044 = f$3#259($#1043); [];
+$#1045 = f$__ge__#217($#1041, $#1044); [];
+$#1046 = f$__bool__#269($#1045); [];
+condjump ($#1046) bb#434 bb#433; [];
+}; []
+bb#432 {
+jmp bb#442; [];
+}; []
+bb#433 {
+$fsize#1047 = f$__ac_fsize#43($new_n_buckets#1029); [];
+$new_flags#1031 = f$2#203($fsize#1047); [];
+$i#1048 = 0; [];
+jmp bb#435; [];
+}; []
+bb#434 {
+$j#1032 = 0; [];
+jmp bb#432; [];
+}; []
+bb#435 {
+$#1049 = f$__lt__#280($i#1048, $fsize#1047); [];
+$#1050 = f$__bool__#269($#1049); [];
+condjump ($#1050) bb#436 bb#437; [];
+}; []
+bb#436 {
+$#1051 = f$2#206(2863311530); [];
+f$__setitem__#73($new_flags#1031, $i#1048, $#1051); [];
+$i#1048 = f$__add__#257($i#1048, 1); [];
+jmp bb#435; [];
+}; [loopAttribute: loop(none, bb#435, bb#436, none, bb#437), ]
+bb#437 {
+jmp bb#438; [];
+}; []
+bb#438 {
+$#1052 = $self#1028._n_buckets; [];
+$#1053 = f$__lt__#280($#1052, $new_n_buckets#1029); [];
+$#1054 = f$__bool__#269($#1053); [];
+condjump ($#1054) bb#441 bb#440; [];
+}; []
+bb#439 {
+jmp bb#432; [];
+}; []
+bb#440 {
+jmp bb#439; [];
+}; []
+bb#441 {
+$#1055 = $self#1028._keys; [];
+$#1056 = f$as_byte#130($#1055); [];
+$#1057 = f$sizeof#223(); [];
+$#1058 = f$__mul__#229($new_n_buckets#1029, $#1057); [];
+$#1059 = f$realloc#111($#1056, $#1058); [];
+$self#1028.self = f$1#215($#1059); [];
+$#1060 = $self#1028._vals; [];
+$#1061 = f$as_byte#130($#1060); [];
+$#1062 = f$sizeof#223(); [];
+$#1063 = f$__mul__#229($new_n_buckets#1029, $#1062); [];
+$#1064 = f$realloc#111($#1061, $#1063); [];
+$self#1028.self = f$1#215($#1064); [];
+jmp bb#439; [];
+}; []
+bb#442 {
+$#1065 = f$__bool__#16($j#1032); [];
+condjump ($#1065) bb#445 bb#444; [];
+}; []
+bb#443 {
+return; [];
+}; []
+bb#444 {
+jmp bb#443; [];
+}; []
+bb#445 {
+$j#1032 = 0; [];
+jmp bb#446; [];
+}; []
+bb#446 {
+$#1066 = $self#1028._n_buckets; [];
+$#1067 = f$__ne__#162($j#1032, $#1066); [];
+$#1068 = f$__bool__#269($#1067); [];
+condjump ($#1068) bb#447 bb#448; [];
+}; []
+bb#447 {
+jmp bb#449; [];
+}; [loopAttribute: loop(none, bb#446, bb#447, none, bb#448), ]
+bb#448 {
+jmp bb#467; [];
+}; []
+bb#449 {
+$#1069 = $self#1028._flags; [];
+$#1070 = f$__ac_iseither#63($#1069, $j#1032); [];
+$#1071 = f$__eq__#41($#1070, 0); [];
+$#1072 = f$__bool__#269($#1071); [];
+condjump ($#1072) bb#452 bb#451; [];
+}; [loopAttribute: loop(none, bb#446, bb#447, none, bb#448), ]
+bb#450 {
+$j#1032 = f$__add__#257($j#1032, 1); [];
+jmp bb#446; [];
+}; [loopAttribute: loop(none, bb#446, bb#447, none, bb#448), ]
+bb#451 {
+jmp bb#450; [];
+}; [loopAttribute: loop(none, bb#446, bb#447, none, bb#448), ]
+bb#452 {
+$#1074 = $self#1028._keys; [];
+$key#1073 = f$__getitem__#279($#1074, $j#1032); [];
+$#1076 = $self#1028._vals; [];
+$val#1075 = f$__getitem__#279($#1076, $j#1032); [];
+$new_mask#1077 = f$__sub__#135($new_n_buckets#1029, 1); [];
+$#1078 = $self#1028._flags; [];
+f$__ac_set_isdel_true#13($#1078, $j#1032); [];
+jmp bb#453; [];
+}; [loopAttribute: loop(none, bb#446, bb#447, none, bb#448), ]
+bb#453 {
+$#1079 = f$__bool__#269(true); [];
+condjump ($#1079) bb#454 bb#455; [];
+}; [loopAttribute: loop(none, bb#446, bb#447, none, bb#448), ]
+bb#454 {
+$step#1080 = 0; [];
+$k#1081 = f$_dict_hash#89($key#1073); [];
+$i#1082 = f$__and__#15($k#1081, $new_mask#1077); [];
+jmp bb#456; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#455 {
+jmp bb#450; [];
+}; [loopAttribute: loop(none, bb#446, bb#447, none, bb#448), ]
+bb#456 {
+$#1083 = f$__ac_isempty#138($new_flags#1031, $i#1082); [];
+$#1084 = f$__bool__#16($#1083); [];
+$#1085 = f$__invert__#58($#1084); [];
+$#1086 = f$__bool__#269($#1085); [];
+condjump ($#1086) bb#457 bb#458; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#457 {
+$step#1080 = f$__add__#257($step#1080, 1); [];
+$#1087 = f$__add__#257($i#1082, $step#1080); [];
+$i#1082 = f$__and__#15($#1087, $new_mask#1077); [];
+jmp bb#456; [];
+}; [loopAttribute: loop(none, bb#456, bb#457, none, bb#458), ]
+bb#458 {
+f$__ac_set_isempty_false#263($new_flags#1031, $i#1082); [];
+jmp bb#459; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#459 {
+$#1089 = $self#1028._n_buckets; [];
+$#1090 = f$__lt__#280($i#1082, $#1089); [];
+$#1091 = f$__bool__#269($#1090); [];
+condjump ($#1091) bb#466 bb#464; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#460 {
+jmp bb#453; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#461 {
+$#1108 = $self#1028._keys; [];
+f$__setitem__#71($#1108, $i#1082, $key#1073); [];
+$#1109 = $self#1028._vals; [];
+f$__setitem__#71($#1109, $i#1082, $val#1075); [];
+jmp bb#455; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#462 {
+$#1098 = $self#1028._keys; [];
+$#1099 = f$__getitem__#279($#1098, $i#1082); [];
+$._assign_796#1097 = f$__new__#248($key#1073, $#1099); [];
+$#1100 = $self#1028._keys; [];
+$#1101 = $._assign_796#1097.a1; [];
+f$__setitem__#71($#1100, $i#1082, $#1101); [];
+$key#1073 = $._assign_796#1097.a2; [];
+$#1103 = $self#1028._vals; [];
+$#1104 = f$__getitem__#279($#1103, $i#1082); [];
+$._assign_797#1102 = f$__new__#248($val#1075, $#1104); [];
+$#1105 = $self#1028._vals; [];
+$#1106 = $._assign_797#1102.a1; [];
+f$__setitem__#71($#1105, $i#1082, $#1106); [];
+$val#1075 = $._assign_797#1102.a2; [];
+$#1107 = $self#1028._flags; [];
+f$__ac_set_isdel_true#13($#1107, $i#1082); [];
+jmp bb#460; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#463 {
+$._bin_res#1088 = true; [];
+jmp bb#465; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#464 {
+$._bin_res#1088 = false; [];
+jmp bb#465; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#465 {
+$#1096 = f$__bool__#269($._bin_res#1088); [];
+condjump ($#1096) bb#462 bb#461; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#466 {
+$#1092 = $self#1028._flags; [];
+$#1093 = f$__ac_iseither#63($#1092, $i#1082); [];
+$#1094 = f$__eq__#41($#1093, 0); [];
+$#1095 = f$__bool__#269($#1094); [];
+condjump ($#1095) bb#463 bb#464; [];
+}; [loopAttribute: loop(none, bb#453, bb#454, none, bb#455), ]
+bb#467 {
+$#1110 = $self#1028._n_buckets; [];
+$#1111 = f$__gt__#185($#1110, $new_n_buckets#1029); [];
+$#1112 = f$__bool__#269($#1111); [];
+condjump ($#1112) bb#470 bb#469; [];
+}; []
+bb#468 {
+$self#1028.self = $new_flags#1031; [];
+$self#1028.self = $new_n_buckets#1029; [];
+$self#1028.self = $self#1028._size; [];
+$#1123 = $self#1028._n_buckets; [];
+$#1124 = f$1#155($#1123, $HASH_UPPER#1030); [];
+$#1125 = f$__add__#26($#1124, 0.500000); [];
+$self#1028.self = f$3#259($#1125); [];
+jmp bb#443; [];
+}; []
+bb#469 {
+jmp bb#468; [];
+}; []
+bb#470 {
+$#1113 = $self#1028._keys; [];
+$#1114 = f$as_byte#130($#1113); [];
+$#1115 = f$sizeof#223(); [];
+$#1116 = f$__mul__#229($new_n_buckets#1029, $#1115); [];
+$#1117 = f$realloc#111($#1114, $#1116); [];
+$self#1028.self = f$1#215($#1117); [];
+$#1118 = $self#1028._vals; [];
+$#1119 = f$as_byte#130($#1118); [];
+$#1120 = f$sizeof#223(); [];
+$#1121 = f$__mul__#229($new_n_buckets#1029, $#1120); [];
+$#1122 = f$realloc#111($#1119, $#1121); [];
+$self#1028.self = f$1#215($#1122); [];
+jmp bb#468; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__ac_set_isempty_false#263(
+$flag#920: Pointer[UInt32]#713; [];
+$i#921: int#4; [];
+) -> void#7 [
+$#922: int#4; [];
+$#923: int#4; [];
+$#924: UInt32#712; [];
+$#925: int#4; [];
+$#926: int#4; [];
+$#927: int#4; [];
+$#928: int#4; [];
+$#929: UInt32#712; [];
+$#930: UInt32#712; [];
+]{
+bb#262 {
+$#922 = f$__rshift__#116($i#921, 4); [];
+$#923 = f$__rshift__#116($i#921, 4); [];
+$#924 = f$__getitem__#276($flag#920, $#923); [];
+$#925 = f$__and__#15($i#921, 15); [];
+$#926 = f$__lshift__#129($#925, 1); [];
+$#927 = f$__lshift__#129(2, $#926); [];
+$#928 = f$__invert__#69($#927); [];
+$#929 = f$2#206($#928); [];
+$#930 = f$__and__#100($#924, $#929); [];
+f$__setitem__#73($flag#920, $#922, $#930); [];
+return; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#264(
+) -> .IndexError#840 [
+]{
+internal: .IndexError#840.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$gzread#265(
+$.a0#559: Pointer[byte]#735; [];
+$.a1#560: Pointer[byte]#735; [];
+$.a2#561: UInt32#712; [];
+) -> Int32#788 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$2#266(
+$self#742: .AssertionError#837; [];
+$message#743: str#0; [];
+) -> void#7 [
+]{
+bb#265 {
+$self#742.self = f$__new__#267('AssertionError', $message#743, '', '', 0, 0); [];
+return; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#267(
+$a1#295: str#0; [];
+$a2#296: str#0; [];
+$a3#297: str#0; [];
+$a4#298: str#0; [];
+$a5#299: int#4; [];
+$a6#300: int#4; [];
+) -> .Tuple.6#888 [
+]{
+internal: .Tuple.6#888.__new__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$cos#268(
+$.a0#492: float#3; [];
+) -> float#3 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$__bool__#269(
+$self#386: bool#1; [];
+) -> bool#1 [
+]{
+internal: bool#1.__bool__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$1#270(
+$p#651: Pointer[byte]#735; [];
+) -> void#7 [
+]{
+bb#269 {
+f$seq_free#159($p#651); [];
+return; [];
+}; []
+}; [funcAttributes: , srcInfoAttribute: <internal>:0:0, ]
+def f$__new__#271(
+) -> .TypeError#848 [
+]{
+internal: .TypeError#848.__new__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$__getitem__#272(
+$self#969: .dict#715; [];
+$key#970: str#0; [];
+) -> str#0 [
+$x#971: int#4; [];
+$#972: int#4; [];
+$#973: bool#1; [];
+$#974: bool#1; [];
+$#975: .dict#715; [];
+$#976: str#0; [];
+$#978: str#0; [];
+]{
+bb#271 {
+$x#971 = f$_kh_get#11($self#969, $key#970); [];
+jmp bb#401; [];
+}; []
+bb#401 {
+$#972 = f$_kh_end#42($self#969); [];
+$#973 = f$__ne__#162($x#971, $#972); [];
+$#974 = f$__bool__#269($#973); [];
+condjump ($#974) bb#404 bb#403; [];
+}; []
+bb#402 {
+$._typ_938#977 = f$__new__#9(); [];
+$#978 = f$2#151($key#970); [];
+f$2#209($._typ_938#977, $#978); [];
+throw ($._typ_938#977); [];
+}; []
+bb#403 {
+jmp bb#402; [];
+}; []
+bb#404 {
+$#975 = $self#969._vals; [];
+$#976 = f$__getitem__#279($#975, $x#971); [];
+return $#976; [];
+}; []
+}; [funcAttributes: .class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__str__#273(
+$self#335: int#4; [];
+) -> str#0 [
+]{
+internal: int#4.__str__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+def f$fread#274(
+$.a0#521: Pointer[byte]#735; [];
+$.a1#522: int#4; [];
+$.a2#523: int#4; [];
+$.a3#524: Pointer[byte]#735; [];
+) -> int#4 [
+]{
+external
+}; [funcAttributes: .c, srcInfoAttribute: <internal>:0:0, ]
+def f$2#275(
+$self#738: .TypeError#848; [];
+$message#739: str#0; [];
+) -> void#7 [
+]{
+bb#274 {
+$self#738.self = f$__new__#267('TypeError', $message#739, '', '', 0, 0); [];
+return; [];
+}; []
+}; [funcAttributes: .class, srcInfoAttribute: <internal>:0:0, ]
+def f$__getitem__#276(
+$self#311: Pointer[UInt32]#713; [];
+$index#312: int#4; [];
+) -> UInt32#712 [
+]{
+internal: Pointer[UInt32]#713.__getitem__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__getitem__#277(
+$self#313: Pointer[Pointer[byte]]#744; [];
+$index#314: int#4; [];
+) -> Pointer[byte]#735 [
+]{
+internal: Pointer[Pointer[byte]]#744.__getitem__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__getitem__#278(
+$self#315: Pointer[byte]#735; [];
+$index#316: int#4; [];
+) -> byte#8 [
+]{
+internal: Pointer[byte]#735.__getitem__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__getitem__#279(
+$self#317: Pointer[str]#714; [];
+$index#318: int#4; [];
+) -> str#0 [
+]{
+internal: Pointer[str]#714.__getitem__
+}; [funcAttributes: internal,.class,.method, srcInfoAttribute: <internal>:0:0, ]
+def f$__lt__#280(
+$self#357: int#4; [];
+$other#358: int#4; [];
+) -> bool#1 [
+]{
+internal: int#4.__lt__
+}; [funcAttributes: internal,.class, srcInfoAttribute: <internal>:0:0, ]
+$.RTLD_NOW#548: int#4; [];
+$.RTLD_GLOBAL#549: int#4; [];
+$._typ_928#747: .AssertionError#837; [];
+$._assign_714#753: .Tuple.3#709; [];
+$._typ_929#779: .TypeError#848; [];
+$._typ_930#801: .IndexError#840; [];
+$._typ_931#861: .AttributeError#784; [];
+$._typ_938#977: .KeyError#719; [];
+$._assign_781#982: .Tuple.2#777; [];
+$._assign_796#1097: .Tuple.2#774; [];
+$._assign_797#1102: .Tuple.2#774; [];
+$._assign_798#1204: .Tuple.2#776; [];
+$._typ_937#1250: .IndexError#840; [];
+$._assign_800#1256: .Tuple.4#729; [];
+$._assign_802#1272: .Tuple.4#729; [];
+$._typ_932#1308: .ValueError#761; [];
+$.BLOCK_SIZE#1310: int#4; [];
+$.CACHELINE_SIZE#1311: int#4; [];
+$.MIN_GALLOP#1312: int#4; [];
+$.INSERTION_SORT_THRESHOLD#1313: int#4; [];
+$.NINTHER_THRESHOLD#1314: int#4; [];
+$.PARTIAL_INSERTION_SORT_LIMIT#1315: int#4; [];
+$.e#1316: float#3; [];
+$.pi#1317: float#3; [];
+$.tau#1318: float#3; [];
+$.inf#1319: float#3; [];
+$.nan#1320: float#3; [];
+$._typ_933#1321: .list#703; [];
+$._lst_880#1322: .list#703; [];
+$._F#1323: .list#703; [];
+$._typ_934#1326: .dict#745; [];
+$._DLOPEN_CACHE#1327: .dict#745; [];
+$._typ_935#1328: .dict#745; [];
+$._DLSYM_CACHE#1329: .dict#745; [];
+$.SEEK_SET#1330: int#4; [];
+$.SEEK_CUR#1331: int#4; [];
+$.SEEK_END#1332: int#4; [];
+$._typ_936#1333: .dict#715; [];
+$.environ#1374: .EnvMap#716; [];
+$.LD#1381: str#0; [];
+$._PY_INITIALIZED#1384: bool#1; [];
+$._typ_939#1385: .dict#749; [];
+$._PY_MODULE_CACHE#1386: .dict#749; [];
+$._gen_927#1387: Generator[int]#706; [];
+}; []
+
+try#0[
+]{
+}; []

@@ -36,6 +36,10 @@ using std::weak_ptr;
 
 using namespace seq::ir;
 
+namespace {
+std::string temporaryName(const std::string &name) { return "._" + name; }
+} // namespace
+
 namespace seq {
 namespace ast {
 
@@ -242,7 +246,8 @@ void CodegenVisitor::visit(const IdExpr *expr) {
 }
 
 void CodegenVisitor::visit(const IfExpr *expr) {
-  auto var = make_shared<ir::Var>(realizeType(expr->getType()->getClass()));
+  auto var = make_shared<ir::Var>(temporaryName("if_res"),
+                                  realizeType(expr->getType()->getClass()));
   ctx->getBase()->addVar(var);
 
   auto tBlock = newBlock();
@@ -275,7 +280,7 @@ void CodegenVisitor::visit(const IfExpr *expr) {
 void CodegenVisitor::visit(const BinaryExpr *expr) {
   assert(expr->op == "&&" || expr->op == "||");
 
-  auto var = make_shared<ir::Var>(ir::types::kBoolType);
+  auto var = make_shared<ir::Var>(temporaryName("bin_res"), ir::types::kBoolType);
   ctx->getBase()->addVar(var);
 
   auto trueBlock = newBlock();
@@ -381,7 +386,8 @@ void CodegenVisitor::visit(const PtrExpr *expr) {
 void CodegenVisitor::visit(const YieldExpr *expr) {
   ctx->getBase()->setGenerator();
 
-  auto var = make_shared<ir::Var>(realizeType(expr->getType()->getClass()));
+  auto var = make_shared<ir::Var>(temporaryName("yield_res"),
+                                  realizeType(expr->getType()->getClass()));
   ctx->getBase()->addVar(var);
 
   auto dst = newBlock();
@@ -529,7 +535,7 @@ void CodegenVisitor::visit(const ForStmt *stmt) {
       kLoopAttribute,
       make_shared<LoopAttribute>(setup, cond, begin, weak_ptr<BasicBlock>(), end));
 
-  auto doneVar = make_shared<ir::Var>(ir::types::kBoolType);
+  auto doneVar = make_shared<ir::Var>(temporaryName("for_done"), ir::types::kBoolType);
   ctx->getBase()->addVar(doneVar);
 
   auto varId = CAST(stmt->var, IdExpr);
@@ -636,7 +642,7 @@ void CodegenVisitor::visit(const MatchStmt *stmt) {
       pat = transform(stmt->patterns[ci]).patternResult;
     }
 
-    auto t = make_shared<ir::Var>(ir::types::kBoolType);
+    auto t = make_shared<ir::Var>(temporaryName("match_res"), ir::types::kBoolType);
     ctx->getBase()->addVar(t);
     auto matchOp = toOperand(transform(stmt->what));
     ctx->getBlock()->add(make_shared<AssignInstr>(
@@ -686,17 +692,17 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
 
   int varIdx = 0;
   for (auto &c : stmt->catches) {
-    /// TODO: get rid of typeinfo here?
     auto cBlock = newBlock();
+    newTc->addCatch(c.exc->getType() ? realizeType(c.exc->getType()->getClass())
+                                     : nullptr,
+                    c.var, cBlock);
+    ctx->addLevel();
+    ctx->addVar(c.var, newTc->getVar(varIdx));
     ctx->addBlock(cBlock);
     transform(c.suite);
     condSetTerminator(make_shared<JumpTerminator>(end));
     ctx->popBlock();
-
-    newTc->addCatch(c.exc->getType() ? realizeType(c.exc->getType()->getClass())
-                                     : nullptr,
-                    c.var, newBlock());
-    ctx->addVar(c.var, newTc->getVar(varIdx));
+    ctx->removeLevel();
   }
   if (stmt->finally) {
     auto fBlock = newBlock();
@@ -705,6 +711,7 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
     ctx->popBlock();
     newTc->setFinallyBlock(fBlock);
   }
+  ctx->replaceBlock(end);
 }
 
 void CodegenVisitor::visit(const ThrowStmt *stmt) {

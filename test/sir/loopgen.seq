@@ -1,0 +1,5 @@
+def loopgen(x: int):
+    yield from range(0, x)
+
+for x in loopgen(1):
+    print(str(x))

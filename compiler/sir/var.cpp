@@ -5,7 +5,9 @@
 namespace seq {
 namespace ir {
 
-int Var::varNum = 0;
+int Var::currentId = 0;
+
+void Var::resetId() { currentId = 0; }
 
 std::string Var::textRepresentation() const {
   return fmt::format(FMT_STRING("{}: {}; {};"), referenceString(),

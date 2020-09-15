@@ -1,0 +1,13 @@
+def crazy_flow():
+    for i in range(200):
+        if i % 2 == 0 or i == 7:
+            print("even or 7!")
+    while False:
+        pass
+    while True:
+        print("nice!")
+        break
+
+    print("hi" if True else "bye")
+
+crazy_flow()

@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base.h"
@@ -15,9 +16,8 @@ class IRModule;
 
 class Var : public AttributeHolder<Var> {
 private:
-  static int varNum;
+  static int currentId;
 
-  // TODO: refactor out
 protected:
   std::string name;
   std::shared_ptr<types::Type> type;
@@ -27,8 +27,10 @@ protected:
 
 public:
   Var(std::string name, std::shared_ptr<types::Type> type)
-      : name(std::move(name)), type(std::move(type)), id(varNum++){};
-  explicit Var(std::shared_ptr<types::Type> type) : Var("unnamed", type) {}
+      : name(std::move(name)), type(std::move(type)), id(currentId++){};
+  explicit Var(std::shared_ptr<types::Type> type) : Var("", std::move(type)) {}
+
+  static void resetId();
 
   virtual ~Var() = default;
 

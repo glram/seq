@@ -1,0 +1,6 @@
+try:
+    raise ValueError("fail")
+except ValueError as e:
+    print(e.message)
+finally:
+    print("oof")

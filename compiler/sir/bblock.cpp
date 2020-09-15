@@ -9,6 +9,8 @@ namespace ir {
 
 int BasicBlock::currentId = 0;
 
+void BasicBlock::resetId() { currentId = 0; }
+
 std::string BasicBlock::referenceString() const {
   return fmt::format(FMT_STRING("bb#{}"), id);
 }
