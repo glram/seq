@@ -19,22 +19,22 @@ std::string MemberRvalue::textRepresentation() const {
   return fmt::format(FMT_STRING("{}.{}"), var->textRepresentation(), field);
 }
 
-CallRValue::CallRValue(std::shared_ptr<Operand> func) : func(std::move(func)) {}
+CallRvalue::CallRvalue(std::shared_ptr<Operand> func) : func(std::move(func)) {}
 
-CallRValue::CallRValue(std::shared_ptr<Operand> func,
+CallRvalue::CallRvalue(std::shared_ptr<Operand> func,
                        std::vector<std::shared_ptr<Operand>> args)
     : func(std::move(func)), args(std::move(args)) {}
 
-std::shared_ptr<types::Type> CallRValue::getType() {
+std::shared_ptr<types::Type> CallRvalue::getType() {
   return std::static_pointer_cast<types::FuncType>(func->getType())->getRType();
 }
 
-PartialCallRValue::PartialCallRValue(std::shared_ptr<Operand> func,
+PartialCallRvalue::PartialCallRvalue(std::shared_ptr<Operand> func,
                                      std::vector<std::shared_ptr<Operand>> args,
                                      std::shared_ptr<types::PartialFuncType> tval)
     : func(std::move(func)), args(std::move(args)), tval(std::move(tval)) {}
 
-std::string PartialCallRValue::textRepresentation() const {
+std::string PartialCallRvalue::textRepresentation() const {
   fmt::memory_buffer buf;
   fmt::format_to(buf, FMT_STRING("{}("), func->textRepresentation());
   for (auto it = args.begin(); it != args.end(); it++) {
@@ -46,7 +46,7 @@ std::string PartialCallRValue::textRepresentation() const {
   return std::string(buf.data(), buf.size());
 }
 
-std::string CallRValue::textRepresentation() const {
+std::string CallRvalue::textRepresentation() const {
   fmt::memory_buffer buf;
   fmt::format_to(buf, FMT_STRING("{}("), func->textRepresentation());
   for (auto it = args.begin(); it != args.end(); it++) {

@@ -24,38 +24,54 @@ namespace types {
 
 int Type::currentId = 0;
 
-const std::shared_ptr<Type> kStringType = std::make_shared<Type>("str");
-const std::shared_ptr<Type> kBoolType = std::make_shared<Type>("bool");
-const std::shared_ptr<Type> kSeqType = std::make_shared<Type>("seq");
-const std::shared_ptr<Type> kFloatType = std::make_shared<Type>("float");
-const std::shared_ptr<Type> kIntType = std::make_shared<Type>("int");
-const std::shared_ptr<Type> kUIntType = std::make_shared<Type>("uint");
-const std::shared_ptr<Type> kAnyType = std::make_shared<Type>("any");
-const std::shared_ptr<Type> kVoidType = std::make_shared<Type>("void");
-const std::shared_ptr<Type> kByteType = std::make_shared<Type>("byte");
-const std::shared_ptr<Type> kTypeType = std::make_shared<Type>("type");
-const std::shared_ptr<Type> kNoArgVoidFuncType = std::make_shared<FuncType>(
+std::shared_ptr<Type> kStringType = std::make_shared<Type>("str");
+std::shared_ptr<Type> kBoolType = std::make_shared<Type>("bool");
+std::shared_ptr<Type> kSeqType = std::make_shared<Type>("seq");
+std::shared_ptr<Type> kFloatType = std::make_shared<Type>("float");
+std::shared_ptr<Type> kIntType = std::make_shared<Type>("int");
+std::shared_ptr<Type> kAnyType = std::make_shared<Type>("any");
+std::shared_ptr<Type> kVoidType = std::make_shared<Type>("void");
+std::shared_ptr<Type> kByteType = std::make_shared<Type>("byte");
+std::shared_ptr<Type> kNoArgVoidFuncType = std::make_shared<FuncType>(
     "void->void", kVoidType, std::vector<std::shared_ptr<Type>>());
+
+void Type::resetId() {
+  currentId = 0;
+  kStringType = std::make_shared<Type>("str");
+  kBoolType = std::make_shared<Type>("bool");
+  kSeqType = std::make_shared<Type>("seq");
+  kFloatType = std::make_shared<Type>("float");
+  kIntType = std::make_shared<Type>("int");
+  kAnyType = std::make_shared<Type>("any");
+  kVoidType = std::make_shared<Type>("void");
+  kByteType = std::make_shared<Type>("byte");
+  kNoArgVoidFuncType = std::make_shared<FuncType>("void->void", kVoidType,
+                                                  std::vector<std::shared_ptr<Type>>());
+}
 
 std::string Type::referenceString() const {
   return fmt::format(FMT_STRING("{}#{}"), name, id);
 }
 
-std::shared_ptr<Type> MemberedType::getMemberType(std::string n) {
+std::shared_ptr<Type> RecordType::getMemberType(std::string n) {
   auto it = std::find(memberNames.begin(), memberNames.end(), n);
   return it == memberNames.end() ? nullptr : memberTypes[it - memberNames.begin()];
 }
 
-std::string MemberedType::textRepresentation() const {
+std::string RecordType::textRepresentation() const {
   fmt::memory_buffer buf;
   fmt::format_to(buf, FMT_STRING("{}: ("), referenceString());
   for (auto i = 0; i < memberNames.size(); ++i) {
     auto sep = i + 1 != memberNames.size() ? ", " : "";
-    fmt::format_to(buf, FMT_STRING("{}{}: {}{}"), reference ? "&" : "", memberNames[i],
+    fmt::format_to(buf, FMT_STRING("{}: {}{}"), memberNames[i],
                    memberTypes[i]->referenceString(), sep);
   }
   buf.push_back(')');
   return std::string(buf.data(), buf.size());
+}
+
+std::string RefType::textRepresentation() const {
+  return fmt::format("{}: ref({})", referenceString(), contents->textRepresentation());
 }
 
 std::string FuncType::textRepresentation() const {

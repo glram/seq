@@ -20,6 +20,8 @@ extern const std::string kLoopAttribute;
 extern const std::string kFuncAttribute;
 
 struct Attribute {
+  virtual ~Attribute() = default;
+
   virtual std::string textRepresentation() const = 0;
 };
 

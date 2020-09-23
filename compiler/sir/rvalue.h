@@ -6,6 +6,8 @@
 #include "base.h"
 #include "types/types.h"
 
+#include "codegen/codegen.h"
+
 namespace seq {
 namespace ir {
 
@@ -16,6 +18,8 @@ class Var;
 class Rvalue : public AttributeHolder<Rvalue> {
 public:
   virtual ~Rvalue() = default;
+
+  virtual void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
 
   virtual std::shared_ptr<types::Type> getType() = 0;
 
@@ -29,6 +33,11 @@ private:
 
 public:
   MemberRvalue(std::shared_ptr<Operand> var, std::string field);
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<MemberRvalue>(getShared()));
+  }
+
   std::shared_ptr<types::Type> getType() override;
 
   std::shared_ptr<Operand> getVar() { return var; }
@@ -37,14 +46,19 @@ public:
   std::string textRepresentation() const override;
 };
 
-class CallRValue : public Rvalue {
+class CallRvalue : public Rvalue {
 private:
   std::shared_ptr<Operand> func;
   std::vector<std::shared_ptr<Operand>> args;
 
 public:
-  explicit CallRValue(std::shared_ptr<Operand> func);
-  CallRValue(std::shared_ptr<Operand> func, std::vector<std::shared_ptr<Operand>> args);
+  explicit CallRvalue(std::shared_ptr<Operand> func);
+  CallRvalue(std::shared_ptr<Operand> func, std::vector<std::shared_ptr<Operand>> args);
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<CallRvalue>(getShared()));
+  }
+
   std::shared_ptr<types::Type> getType() override;
 
   std::shared_ptr<Operand> getFunc() { return func; }
@@ -53,16 +67,21 @@ public:
   std::string textRepresentation() const override;
 };
 
-class PartialCallRValue : public Rvalue {
+class PartialCallRvalue : public Rvalue {
 private:
   std::shared_ptr<Operand> func;
   std::vector<std::shared_ptr<Operand>> args;
   std::shared_ptr<types::PartialFuncType> tval;
 
 public:
-  PartialCallRValue(std::shared_ptr<Operand> func,
+  PartialCallRvalue(std::shared_ptr<Operand> func,
                     std::vector<std::shared_ptr<Operand>> args,
                     std::shared_ptr<types::PartialFuncType> tval);
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<PartialCallRvalue>(getShared()));
+  }
+
   std::shared_ptr<types::Type> getType() override { return tval; };
 
   std::shared_ptr<Operand> getFunc() { return func; }
@@ -77,6 +96,11 @@ private:
 
 public:
   explicit OperandRvalue(std::shared_ptr<Operand> operand);
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<OperandRvalue>(getShared()));
+  }
+
   std::shared_ptr<types::Type> getType() override;
 
   std::shared_ptr<Operand> getOperand() { return operand; }
@@ -92,6 +116,11 @@ private:
 public:
   MatchRvalue(std::shared_ptr<Pattern> pattern, std::shared_ptr<Operand> operand)
       : pattern(std::move(pattern)), operand(std::move(operand)) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<MatchRvalue>(getShared()));
+  }
+
   std::shared_ptr<types::Type> getType() override { return types::kBoolType; }
 
   std::shared_ptr<Pattern> getPattern() { return pattern; }
@@ -108,6 +137,11 @@ private:
 public:
   PipelineRvalue(std::vector<std::shared_ptr<Operand>> stages,
                  std::vector<bool> parallel);
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<PipelineRvalue>(getShared()));
+  }
+
   std::shared_ptr<types::Type> getType() override;
 
   std::vector<std::shared_ptr<Operand>> getStages() { return stages; }
@@ -124,6 +158,10 @@ private:
 public:
   StackAllocRvalue(std::shared_ptr<types::Array> tval, std::shared_ptr<Operand> count)
       : tval(std::move(tval)), count(std::move(count)) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<StackAllocRvalue>(getShared()));
+  }
 
   std::shared_ptr<types::Type> getType() override { return tval; }
   std::shared_ptr<Operand> getCount() { return count; }

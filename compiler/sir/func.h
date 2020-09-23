@@ -7,6 +7,8 @@
 #include "types/types.h"
 #include "var.h"
 
+#include "codegen/codegen.h"
+
 namespace seq {
 namespace ir {
 
@@ -63,6 +65,10 @@ public:
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<Func>(getShared()));
+  }
 };
 
 } // namespace ir

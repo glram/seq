@@ -214,9 +214,10 @@ CodegenContext::realizeType(types::ClassTypePtr t) {
         x.push_back(t->getName());
       // if (startswith(name, ".Tuple."))
       // name = "";
-      handle = std::make_shared<seq::ir::types::MemberedType>(name, types, names);
+      handle = std::make_shared<seq::ir::types::RecordType>(name, types, names);
     } else {
-      handle = std::make_shared<seq::ir::types::MemberedType>(name, types, names, true);
+      auto internal = std::make_shared<seq::ir::types::RecordType>("", types, names);
+      handle = std::make_shared<seq::ir::types::RefType>(name, internal);
     }
   }
   return this->types[t->realizeString()] = handle;

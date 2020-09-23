@@ -6,6 +6,8 @@
 
 #include "base.h"
 
+#include "codegen/codegen.h"
+
 namespace seq {
 namespace ir {
 
@@ -23,6 +25,8 @@ private:
 
 public:
   explicit IRModule(std::string name);
+
+  void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
 
   std::vector<std::shared_ptr<Var>> getGlobals() { return globals; }
   void addGlobal(std::shared_ptr<Var> var);

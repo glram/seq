@@ -5,6 +5,8 @@
 #include "base.h"
 #include "types/types.h"
 
+#include "codegen/codegen.h"
+
 namespace seq {
 namespace ir {
 
@@ -13,6 +15,8 @@ class Var;
 class Operand : public AttributeHolder<Operand> {
 public:
   virtual ~Operand() = default;
+
+  virtual void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
 
   virtual std::shared_ptr<types::Type> getType() = 0;
   std::string referenceString() const override { return "operand"; };
@@ -24,6 +28,11 @@ private:
 
 public:
   explicit VarOperand(std::weak_ptr<Var> var) : var(std::move(var)) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<VarOperand>(getShared()));
+  }
+
   std::shared_ptr<types::Type> getType() override;
 
   std::weak_ptr<Var> getVar() { return var; }
@@ -39,6 +48,11 @@ private:
 public:
   explicit VarPointerOperand(std::shared_ptr<types::Type> type, std::weak_ptr<Var> var)
       : var(std::move(var)), type(std::move(type)) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<VarPointerOperand>(getShared()));
+  }
+
   std::shared_ptr<types::Type> getType() override { return type; }
 
   std::weak_ptr<Var> getVar() { return var; }
@@ -52,7 +66,6 @@ class LiteralOperand : public Operand {
 private:
   LiteralType literalType;
   seq_int_t ival;
-  uint64_t uival;
   double fval;
   bool bval;
   std::string sval;
@@ -60,30 +73,29 @@ private:
 
 public:
   LiteralOperand()
-      : literalType(LiteralType::NONE), ival(0), uival(0), fval(0.0), bval(false),
-        sval(), isSeq(false) {}
+      : literalType(LiteralType::NONE), ival(0), fval(0.0), bval(false), sval(),
+        isSeq(false) {}
   explicit LiteralOperand(seq_int_t ival)
-      : literalType(LiteralType::INT), ival(ival), uival(0), fval(0.0), bval(false),
-        sval(), isSeq(false) {}
-  explicit LiteralOperand(uint64_t uival)
-      : literalType(LiteralType::INT), ival(0), uival(uival), fval(0.0), bval(false),
-        sval(), isSeq(false) {}
+      : literalType(LiteralType::INT), ival(ival), fval(0.0), bval(false), sval(),
+        isSeq(false) {}
   explicit LiteralOperand(double fval)
-      : literalType(LiteralType::FLOAT), ival(0), uival(0), fval(fval), bval(false),
-        sval(), isSeq(false) {}
+      : literalType(LiteralType::FLOAT), ival(0), fval(fval), bval(false), sval(),
+        isSeq(false) {}
   explicit LiteralOperand(bool bval)
-      : literalType(LiteralType::BOOL), ival(0), uival(0), fval(0.0), bval(bval),
-        sval(), isSeq(false) {}
+      : literalType(LiteralType::BOOL), ival(0), fval(0.0), bval(bval), sval(),
+        isSeq(false) {}
   explicit LiteralOperand(std::string sval, bool seq = false)
-      : literalType(seq ? LiteralType::SEQ : LiteralType::STR), ival(0), uival(0),
-        fval(0.0), bval(false), sval(std::move(sval)), isSeq(seq) {}
+      : literalType(seq ? LiteralType::SEQ : LiteralType::STR), ival(0), fval(0.0),
+        bval(false), sval(std::move(sval)), isSeq(seq) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<LiteralOperand>(getShared()));
+  }
 
   std::shared_ptr<types::Type> getType() override {
     switch (literalType) {
     case INT:
       return types::kIntType;
-    case UINT:
-      return types::kUIntType;
     case FLOAT:
       return types::kFloatType;
     case BOOL:
@@ -99,7 +111,6 @@ public:
 
   LiteralType getLiteralType() const { return literalType; }
   seq_int_t getIval() const { return ival; }
-  uint64_t getUIval() const { return uival; }
   double getFval() const { return fval; }
   bool getBval() const { return bval; }
   std::string getSval() const { return sval; }

@@ -18,7 +18,7 @@ VarMemberLvalue::VarMemberLvalue(std::weak_ptr<Var> var, std::string field)
     : var(std::move(var)), field(std::move(field)) {}
 
 std::shared_ptr<types::Type> VarMemberLvalue::getType() {
-  return std::static_pointer_cast<types::MemberedType>(var.lock()->getType())
+  return std::static_pointer_cast<types::RecordType>(var.lock()->getType())
       ->getMemberType(field);
 }
 

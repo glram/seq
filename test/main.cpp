@@ -294,6 +294,7 @@ public:
     seq::ir::TryCatch::resetId();
     seq::ir::Var::resetId();
     seq::ir::BasicBlock::resetId();
+    seq::ir::types::Type::resetId();
 
     auto file = getFilename(get<0>(GetParam()));
 

@@ -176,7 +176,10 @@ set(SEQ_HPPFILES  compiler/lang/expr.h
                   compiler/sir/rvalue.h
                   compiler/sir/terminator.h
                   compiler/sir/trycatch.h
-                  compiler/sir/var.h)
+                  compiler/sir/var.h
+                  compiler/sir/codegen/codegen.h
+                  compiler/sir/codegen/context.h)
+
 set(SEQ_CPPFILES  compiler/lang/expr.cpp
                   compiler/lang/func.cpp
                   compiler/lang/lang.cpp
@@ -227,7 +230,10 @@ set(SEQ_CPPFILES  compiler/lang/expr.cpp
                   compiler/sir/rvalue.cpp
                   compiler/sir/terminator.cpp
                   compiler/sir/trycatch.cpp
-                  compiler/sir/var.cpp)
+                  compiler/sir/var.cpp
+                  compiler/sir/codegen/codegen.cpp
+                  compiler/sir/codegen/context.cpp)
+
 add_library(seq SHARED ${SEQ_HPPFILES})
 add_dependencies(seq seqparse_target)
 target_sources(seq PRIVATE ${LIB_SEQPARSE} ${SEQ_CPPFILES})

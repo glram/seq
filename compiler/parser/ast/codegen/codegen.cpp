@@ -214,7 +214,8 @@ void CodegenVisitor::visit(const BoolExpr *expr) {
 
 void CodegenVisitor::visit(const IntExpr *expr) {
   if (!expr->sign)
-    result = CodegenResult(make_shared<LiteralOperand>(uint64_t(expr->intValue)));
+    result =
+        CodegenResult(make_shared<LiteralOperand>(int64_t(uint64_t(expr->intValue))));
   else
     result = CodegenResult(make_shared<LiteralOperand>(expr->intValue));
 }
@@ -353,12 +354,12 @@ void CodegenVisitor::visit(const CallExpr *expr) {
     }
   }
   if (isPartial)
-    result = CodegenResult(make_shared<PartialCallRValue>(
+    result = CodegenResult(make_shared<PartialCallRvalue>(
         lhs, items,
         std::static_pointer_cast<ir::types::PartialFuncType>(
             realizeType(expr->getType()->getClass()))));
   else {
-    result = CodegenResult(make_shared<CallRValue>(lhs, items));
+    result = CodegenResult(make_shared<CallRvalue>(lhs, items));
     result.typeOverride = realizeType(expr->getType()->getClass());
   }
 }

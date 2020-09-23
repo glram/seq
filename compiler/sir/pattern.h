@@ -9,6 +9,8 @@
 #include "types/types.h"
 #include "util/common.h"
 
+#include "codegen/codegen.h"
+
 namespace seq {
 namespace ir {
 
@@ -19,6 +21,8 @@ class Pattern : public AttributeHolder<Pattern> {
 public:
   virtual ~Pattern() = default;
 
+  virtual void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
+
   std::string referenceString() const override { return "pattern"; }
 };
 
@@ -28,6 +32,10 @@ class WildcardPattern : public Pattern {
 public:
   explicit WildcardPattern(std::shared_ptr<types::Type> type);
   WildcardPattern();
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<WildcardPattern>(getShared()));
+  }
 
   std::shared_ptr<Var> getVar() { return var; };
 
@@ -42,6 +50,10 @@ private:
 public:
   explicit BoundPattern(std::shared_ptr<Pattern> p);
 
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<BoundPattern>(getShared()));
+  }
+
   std::shared_ptr<Var> getVar() { return var; };
 
   std::string textRepresentation() const override;
@@ -49,7 +61,11 @@ public:
 
 class StarPattern : public Pattern {
 public:
-  StarPattern() {}
+  StarPattern() = default;
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<StarPattern>(getShared()));
+  }
 
   std::string textRepresentation() const override;
 };
@@ -61,6 +77,10 @@ private:
 public:
   explicit IntPattern(seq_int_t value) : value(value) {}
 
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<IntPattern>(getShared()));
+  }
+
   std::string textRepresentation() const override;
 };
 
@@ -70,6 +90,10 @@ private:
 
 public:
   explicit BoolPattern(bool value) : value(value) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<BoolPattern>(getShared()));
+  }
 
   std::string textRepresentation() const override;
 };
@@ -81,6 +105,10 @@ private:
 public:
   explicit StrPattern(std::string value) : value(std::move(value)) {}
 
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<StrPattern>(getShared()));
+  }
+
   std::string textRepresentation() const override;
 };
 
@@ -90,6 +118,10 @@ private:
 
 public:
   explicit SeqPattern(std::string value) : value(std::move(value)) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<SeqPattern>(getShared()));
+  }
 
   std::string textRepresentation() const override;
 };
@@ -102,6 +134,10 @@ public:
   explicit RecordPattern(std::vector<std::shared_ptr<Pattern>> patterns)
       : patterns(std::move(patterns)) {}
 
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<RecordPattern>(getShared()));
+  }
+
   std::string textRepresentation() const override;
 };
 
@@ -112,6 +148,10 @@ private:
 public:
   explicit ArrayPattern(std::vector<std::shared_ptr<Pattern>> patterns)
       : patterns(std::move(patterns)) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<ArrayPattern>(getShared()));
+  }
 
   std::string textRepresentation() const override;
 };
@@ -124,6 +164,10 @@ public:
   explicit OptionalPattern(std::shared_ptr<Pattern> pattern)
       : pattern(std::move(pattern)) {}
 
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<OptionalPattern>(getShared()));
+  }
+
   std::string textRepresentation() const override;
 };
 
@@ -135,6 +179,10 @@ private:
 public:
   explicit RangePattern(seq_int_t a, seq_int_t b) : a(a), b(b) {}
 
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<RangePattern>(getShared()));
+  }
+
   std::string textRepresentation() const override;
 };
 
@@ -145,6 +193,10 @@ private:
 public:
   explicit OrPattern(std::vector<std::shared_ptr<Pattern>> patterns)
       : patterns(std::move(patterns)) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<OrPattern>(getShared()));
+  }
 
   std::string textRepresentation() const override;
 };
@@ -158,6 +210,10 @@ public:
   explicit GuardedPattern(std::shared_ptr<Pattern> pattern,
                           std::shared_ptr<Operand> operand)
       : pattern(std::move(pattern)), operand(std::move(operand)) {}
+
+  void accept(codegen::CodegenVisitor &v) override {
+    v.visit(std::static_pointer_cast<GuardedPattern>(getShared()));
+  }
 
   std::string textRepresentation() const override;
 };

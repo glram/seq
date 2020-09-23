@@ -6,6 +6,8 @@
 
 #include "base.h"
 
+#include "codegen/codegen.h"
+
 namespace seq {
 namespace ir {
 
@@ -36,6 +38,8 @@ public:
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;
+
+  void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
 };
 
 } // namespace ir

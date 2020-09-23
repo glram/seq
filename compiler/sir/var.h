@@ -9,6 +9,8 @@
 #include "types/types.h"
 #include "util/common.h"
 
+#include "codegen/codegen.h"
+
 namespace seq {
 namespace ir {
 
@@ -29,6 +31,8 @@ public:
   Var(std::string name, std::shared_ptr<types::Type> type)
       : name(std::move(name)), type(std::move(type)), id(currentId++){};
   explicit Var(std::shared_ptr<types::Type> type) : Var("", std::move(type)) {}
+
+  virtual void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
 
   static void resetId();
 
