@@ -124,6 +124,10 @@ IntNType::IntNType(unsigned int len, bool sign)
     : Type(fmt::format(FMT_STRING("{}Int{}"), sign ? "" : "U", len)), len(len),
       sign(sign) {}
 
+std::string IntNType::oppositeSignName() const {
+  return fmt::format(FMT_STRING("{}Int{}"), sign ? "U" : "", len);
+}
+
 } // namespace types
 } // namespace ir
 } // namespace seq

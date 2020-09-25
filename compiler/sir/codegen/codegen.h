@@ -84,6 +84,16 @@ private:
   llvm::Value *valResult;
   llvm::Type *typeResult;
 
+  llvm::Value *alloc(std::shared_ptr<types::Type> type, llvm::Value *count,
+                     llvm::IRBuilder<> &builder);
+  llvm::Value *callBuiltin(const std::string &signature,
+                           std::vector<llvm::Value *> args, llvm::IRBuilder<> &builder);
+  llvm::Value *callMagic(std::shared_ptr<types::Type> type,
+                         const std::string &signature, std::vector<llvm::Value *> args,
+                         llvm::IRBuilder<> &builder);
+  llvm::Value *codegenStr(llvm::Value *self, const std::string &name,
+                          llvm::BasicBlock *block);
+
 public:
   explicit CodegenVisitor(std::shared_ptr<Context> ctx)
       : ctx(std::move(ctx)), valResult(), typeResult() {}
@@ -99,15 +109,6 @@ public:
   llvm::Value *transform(std::shared_ptr<Terminator> term);
   llvm::Type *transform(std::shared_ptr<types::Type> typ);
 
-private:
-  llvm::Value *callMagic(std::shared_ptr<types::Type> type, const std::string &sig,
-                         std::vector<llvm::Value *> args, llvm::IRBuilder<> &builder);
-  llvm::Value *callBuiltin(const std::string &sig, std::vector<llvm::Value *> args,
-                           llvm::IRBuilder<> &builder);
-  llvm::Value *alloc(std::shared_ptr<types::Type> type, llvm::Value *count,
-                     llvm::IRBuilder<> &builder);
-
-public:
   NODE_VISIT(IRModule);
 
   NODE_VISIT(BasicBlock);

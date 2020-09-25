@@ -14,22 +14,7 @@
 #include "sir/trycatch.h"
 #include "sir/var.h"
 
-namespace {
-
-using namespace seq::ir;
-using namespace llvm;
-
-std::string getMagicSignature(const std::string &name,
-                              const std::vector<std::shared_ptr<types::Type>> &types) {
-  fmt::memory_buffer buf;
-  for (auto it = types.begin(); it != types.end(); ++it) {
-    fmt::format_to(buf, FMT_STRING("{}{}"), (*it)->getName(),
-                   it + 1 == types.end() ? "" : ", ");
-  }
-  return fmt::format(FMT_STRING("{}[{}]"), name, std::string(buf.begin(), buf.end()));
-}
-
-} // namespace
+#include "common.h"
 
 namespace seq {
 namespace ir {
@@ -218,7 +203,24 @@ void CodegenVisitor::visit(std::shared_ptr<types::FuncType> funcType) {
     return ConstantPointerNull::get(llvmType);
   };
 
-  // TODO: confirm magics not necessary for functions
+  auto callArgs = funcType->getArgTypes();
+  callArgs.insert(callArgs.begin(), funcType);
+
+  Context::InlineMagicFuncs inlineMagicFuncs = {
+      {"__new__[Pointer[byte]]",
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateBitCast(args[0], llvmType);
+       }},
+      {getMagicSignature("__str__", {funcType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return codegenStr(args[0], "generator", builder.GetInsertBlock());
+       }},
+      {getMagicSignature("__call__", callArgs),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateCall(args[0],
+                                   std::vector<Value *>(args.begin() + 1, args.end()));
+       }},
+  };
   ctx->registerType(funcType, llvmType, dfltBuilder, {}, {});
   typeResult = llvmType;
 }
@@ -245,7 +247,6 @@ void CodegenVisitor::visit(std::shared_ptr<types::PartialFuncType> partialFuncTy
     return self;
   };
 
-  // TODO: confirm magics not necessary for partial functions
   ctx->registerType(partialFuncType, llvmType, dfltBuilder, {}, {});
   typeResult = llvmType;
 }
@@ -318,7 +319,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
     Value *self = UndefValue::get(llvmType);
     self = builder.CreateInsertValue(self, zeroLLVM(context), 0);
     self = builder.CreateInsertValue(
-        self, ConstantPointerNull::get(PointerType::get(baseLLVMType, 0)), 1); // gubus
+        self, ConstantPointerNull::get(PointerType::get(baseLLVMType, 0)), 1);
     return self;
   };
 
@@ -519,58 +520,414 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
          return builder.CreateZExt(builder.CreateICmpSGE(args[0], args[1]),
                                    ctx->getLLVMType(types::kBoolType));
        }},
-      // prefetch // TODO
-      {getMagicSignature("__setitem__", {arrayType, types::kIntType, baseType}),
+      {getMagicSignature("__prefetch_r0__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return nullptr;
+         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
+         Function *prefetch =
+             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+         builder.CreateCall(prefetch, {self, builder.getInt32(0), builder.getInt32(0),
+                                       builder.getInt32(1)});
+         return (Value *)nullptr;
        }},
-      {getMagicSignature("__setitem__", {arrayType, types::kIntType, baseType}),
+
+      /*
+       * Prefetch magics are labeled [rw][0123] representing read/write and
+       * locality. Instruction cache prefetch is not supported.
+       * https://llvm.org/docs/LangRef.html#llvm-prefetch-intrinsic
+       */
+      {getMagicSignature("__prefetch_r1__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return nullptr;
+         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
+         Function *prefetch =
+             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+         builder.CreateCall(prefetch, {self, builder.getInt32(0), builder.getInt32(1),
+                                       builder.getInt32(1)});
+         return (Value *)nullptr;
        }},
-      {getMagicSignature("__setitem__", {arrayType, types::kIntType, baseType}),
+      {getMagicSignature("__prefetch_r2__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return nullptr;
+         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
+         Function *prefetch =
+             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+         builder.CreateCall(prefetch, {self, builder.getInt32(0), builder.getInt32(2),
+                                       builder.getInt32(1)});
+         return (Value *)nullptr;
        }},
-      {getMagicSignature("__setitem__", {arrayType, types::kIntType, baseType}),
+      {getMagicSignature("__prefetch_r3__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return nullptr;
+         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
+         Function *prefetch =
+             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+         builder.CreateCall(prefetch, {self, builder.getInt32(0), builder.getInt32(3),
+                                       builder.getInt32(1)});
+         return (Value *)nullptr;
        }},
-      {getMagicSignature("__setitem__", {arrayType, types::kIntType, baseType}),
+      {getMagicSignature("__prefetch_w0__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return nullptr;
+         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
+         Function *prefetch =
+             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+         builder.CreateCall(prefetch, {self, builder.getInt32(1), builder.getInt32(0),
+                                       builder.getInt32(1)});
+         return (Value *)nullptr;
        }},
-      {getMagicSignature("__setitem__", {arrayType, types::kIntType, baseType}),
+      {getMagicSignature("__prefetch_w1__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return nullptr;
+         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
+         Function *prefetch =
+             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+         builder.CreateCall(prefetch, {self, builder.getInt32(1), builder.getInt32(1),
+                                       builder.getInt32(1)});
+         return (Value *)nullptr;
        }},
-      {getMagicSignature("__setitem__", {arrayType, types::kIntType, baseType}),
+      {getMagicSignature("__prefetch_w2__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return nullptr;
+         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
+         Function *prefetch =
+             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+         builder.CreateCall(prefetch, {self, builder.getInt32(1), builder.getInt32(2),
+                                       builder.getInt32(1)});
+         return (Value *)nullptr;
+       }},
+      {getMagicSignature("__prefetch_w3__", {pointerType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
+         Function *prefetch =
+             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+         builder.CreateCall(prefetch, {self, builder.getInt32(1), builder.getInt32(3),
+                                       builder.getInt32(1)});
+         return (Value *)nullptr;
        }},
   };
+  ctx->registerType(pointerType, llvmType, dfltBuilder, inlineMagics, {});
+  typeResult = llvmType;
 }
 
-void CodegenVisitor::visit(std::shared_ptr<types::Generator> node) {}
-void CodegenVisitor::visit(std::shared_ptr<types::IntNType> node) {}
+void CodegenVisitor::visit(std::shared_ptr<types::Generator> genType) {
+  auto baseType = genType->getBase();
+  auto *baseLLVMType = transform(baseType);
 
-Value *CodegenVisitor::callMagic(std::shared_ptr<types::Type> type,
-                                 const std::string &sig, std::vector<Value *> args,
-                                 IRBuilder<> &builder) {
-  // TODO
-  return nullptr;
+  auto *llvmType = IntegerType::getInt8PtrTy(ctx->getLLVMContext());
+
+  auto dfltBuilder = [=](IRBuilder<> &builder) -> Value * {
+    return ConstantPointerNull::get(llvmType);
+  };
+
+  Context::InlineMagicFuncs inlineMagics = {
+      {getMagicSignature("__iter__", {genType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return args[0];
+       }},
+      {getMagicSignature("__raw__", {genType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return args[0];
+       }},
+      {getMagicSignature("__done__", {genType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateZExt(generatorDone(args[0], builder.GetInsertBlock()),
+                                   ctx->getLLVMType(types::kBoolType));
+       }},
+      {getMagicSignature("done", {genType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         generatorResume(args[0], builder.GetInsertBlock(), nullptr, nullptr);
+         return builder.CreateZExt(generatorDone(args[0], builder.GetInsertBlock()),
+                                   ctx->getLLVMType(types::kBoolType));
+       }},
+      {getMagicSignature("__promise__", {genType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return generatorPromise(args[0], builder.GetInsertBlock(), baseLLVMType, true);
+       }},
+      {getMagicSignature("__resume__", {genType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         generatorResume(args[0], builder.GetInsertBlock(), nullptr, nullptr);
+         return nullptr;
+       }},
+      {getMagicSignature("send", {genType, baseType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         generatorSend(args[0], args[1], builder.GetInsertBlock(), baseLLVMType);
+         generatorResume(args[0], builder.GetInsertBlock(), nullptr, nullptr);
+         return generatorPromise(args[0], builder.GetInsertBlock(), baseLLVMType);
+       }},
+      {getMagicSignature("__str__", {genType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return codegenStr(args[0], "generator", builder.GetInsertBlock());
+       }},
+      {getMagicSignature("destroy", {genType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         generatorDestroy(args[0], builder.GetInsertBlock());
+       }},
+  };
+
+  Context::NonInlineMagicFuncs nonInlineMagicFuncs = {};
+  {
+    auto llvmName =
+        fmt::format(FMT_STRING("seq.{}{}.next"), genType->getName(), genType->getId());
+    auto *module = ctx->getModule();
+    auto &context = ctx->getLLVMContext();
+    auto *func =
+        cast<Function>(module->getOrInsertFunction(llvmName, baseLLVMType, llvmType));
+    func->setLinkage(GlobalValue::PrivateLinkage);
+    func->setDoesNotThrow();
+    func->setPersonalityFn(makePersonalityFunc(module));
+    func->addFnAttr(llvm::Attribute::AlwaysInline);
+
+    Value *arg = func->arg_begin();
+    auto *entry = llvm::BasicBlock::Create(context, "entry", func);
+    auto *val = generatorPromise(arg, entry, baseLLVMType);
+    IRBuilder<> builder(entry);
+    builder.CreateRet(val);
+
+    auto name = getMagicSignature("next", {genType});
+    nonInlineMagicFuncs[name] = func;
+  }
+
+  ctx->registerType(genType, llvmType, dfltBuilder, inlineMagics, nonInlineMagicFuncs);
+  typeResult = llvmType;
 }
 
-Value *CodegenVisitor::callBuiltin(const std::string &sig, std::vector<Value *> args,
-                                   IRBuilder<> &builder) {
-  // TODO
-  return nullptr;
+void CodegenVisitor::visit(std::shared_ptr<types::IntNType> intNType) {
+  auto *llvmType = IntegerType::getIntNTy(ctx->getLLVMContext(), intNType->getLen());
+
+  auto dfltBuilder = [=](IRBuilder<> &builder) -> Value * {
+    return ConstantInt::get(llvmType, 0);
+  };
+
+  Context::InlineMagicFuncs inlineMagicFuncs = {
+      {"__new__[]",
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return dfltBuilder(builder);
+       }},
+      {"__new__[int]",
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return intNType->isSigned() ? builder.CreateSExtOrTrunc(args[0], llvmType)
+                                     : builder.CreateZExtOrTrunc(args[0], llvmType);
+       }},
+      {getMagicSignature("__new__", {intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return args[0];
+       }},
+      {fmt::format(FMT_STRING("__new__[{}]"), intNType->oppositeSignName()),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return args[0];
+       }},
+      {getMagicSignature("__int__", {intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return intNType->isSigned()
+                    ? builder.CreateSExtOrTrunc(args[0],
+                                                ctx->getLLVMType(types::kIntType))
+                    : builder.CreateZExtOrTrunc(args[0],
+                                                ctx->getLLVMType(types::kIntType));
+       }},
+      {getMagicSignature("__copy__", {intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return args[0];
+       }},
+      {getMagicSignature("__hash__", {intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return intNType->isSigned()
+                    ? builder.CreateSExtOrTrunc(args[0],
+                                                seqIntLLVM(ctx->getLLVMContext()))
+                    : builder.CreateZExtOrTrunc(args[0],
+                                                seqIntLLVM(ctx->getLLVMContext()));
+       }},
+      {getMagicSignature("__bool__", {intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateZExt(
+             builder.CreateICmpEQ(args[0], ConstantInt::get(llvmType, 0)),
+             ctx->getLLVMType(types::kBoolType));
+       }},
+      {getMagicSignature("__pos__", {intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return args[0];
+       }},
+      {getMagicSignature("__neg__", {intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateNeg(args[0]);
+       }},
+      {getMagicSignature("__invert__", {intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateNot(args[0]);
+       }},
+      // int-int binary
+      {getMagicSignature("__add__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateAdd(args[0], args[1]);
+       }},
+      {getMagicSignature("__sub__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateSub(args[0], args[1]);
+       }},
+      {getMagicSignature("__mul__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateMul(args[0], args[1]);
+       }},
+      {getMagicSignature("__truediv__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *floatType = ctx->getLLVMType(types::kFloatType);
+
+         args[0] = intNType->isSigned() ? builder.CreateSIToFP(args[0], floatType)
+                                        : builder.CreateUIToFP(args[0], floatType);
+         args[1] = intNType->isSigned() ? builder.CreateSIToFP(args[1], floatType)
+                                        : builder.CreateUIToFP(args[1], floatType);
+         return builder.CreateFDiv(args[0], args[1]);
+       }},
+      {getMagicSignature("__div__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateSDiv(args[0], args[1]);
+       }},
+      {getMagicSignature("__mod__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateSRem(args[0], args[1]);
+       }},
+      {getMagicSignature("__lshift__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateShl(args[0], args[1]);
+       }},
+      {getMagicSignature("__rshift__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return intNType->isSigned() ? builder.CreateAShr(args[0], args[1])
+                                     : builder.CreateLShr(args[0], args[1]);
+       }},
+      {getMagicSignature("__eq__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *boolType = ctx->getLLVMType(types::kBoolType);
+         return builder.CreateZExt(builder.CreateICmpEQ(args[0], args[1]), boolType);
+       }},
+      {getMagicSignature("__ne__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *boolType = ctx->getLLVMType(types::kBoolType);
+         return builder.CreateZExt(builder.CreateICmpNE(args[0], args[1]), boolType);
+       }},
+      {getMagicSignature("__lt__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *boolType = ctx->getLLVMType(types::kBoolType);
+         auto *value = intNType->isSigned() ? builder.CreateICmpSLT(args[0], args[1])
+                                            : builder.CreateICmpULT(args[0], args[1]);
+         return builder.CreateZExt(value, boolType);
+       }},
+      {getMagicSignature("__gt__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *boolType = ctx->getLLVMType(types::kBoolType);
+         auto *value = intNType->isSigned() ? builder.CreateICmpSGT(args[0], args[1])
+                                            : builder.CreateICmpUGT(args[0], args[1]);
+         return builder.CreateZExt(value, boolType);
+       }},
+      {getMagicSignature("__le__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *boolType = ctx->getLLVMType(types::kBoolType);
+         auto *value = intNType->isSigned() ? builder.CreateICmpSLE(args[0], args[1])
+                                            : builder.CreateICmpULE(args[0], args[1]);
+         return builder.CreateZExt(value, boolType);
+       }},
+      {getMagicSignature("__ge__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *boolType = ctx->getLLVMType(types::kBoolType);
+         auto *value = intNType->isSigned() ? builder.CreateICmpSLE(args[0], args[1])
+                                            : builder.CreateICmpULE(args[0], args[1]);
+         return builder.CreateZExt(value, boolType);
+       }},
+      {getMagicSignature("__and__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateAnd(args[0], args[1]);
+       }},
+      {getMagicSignature("__or__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateOr(args[0], args[1]);
+       }},
+      {getMagicSignature("__xor__", {intNType, intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return builder.CreateOr(args[0], args[1]);
+       }},
+      {fmt::format(FMT_STRING("__pickle__[{}, Pointer[byte]]"), intNType->getName()),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *gzWrite = cast<Function>(ctx->getModule()->getOrInsertFunction(
+             "gzwrite", IntegerType::getInt32Ty(ctx->getLLVMContext()),
+             IntegerType::getInt8PtrTy(ctx->getLLVMContext()),
+             IntegerType::getInt8PtrTy(ctx->getLLVMContext()),
+             IntegerType::getInt32Ty(ctx->getLLVMContext())));
+         gzWrite->setDoesNotThrow();
+         Value *buf = builder.CreateAlloca(llvmType);
+         builder.CreateStore(args[0], buf);
+         Value *ptr = builder.CreateBitCast(
+             buf, IntegerType::getInt8PtrTy(ctx->getLLVMContext()));
+         Value *size = ConstantExpr::getSizeOf(llvmType);
+         builder.CreateCall(gzWrite, {args[1], ptr, size});
+         return nullptr;
+       }},
+      {"__unpickle__[Pointer[byte]]",
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *gzRead = cast<Function>(ctx->getModule()->getOrInsertFunction(
+             "gzread", IntegerType::getInt32Ty(ctx->getLLVMContext()),
+             IntegerType::getInt8PtrTy(ctx->getLLVMContext()),
+             IntegerType::getInt8PtrTy(ctx->getLLVMContext()),
+             IntegerType::getInt32Ty(ctx->getLLVMContext())));
+         gzRead->setDoesNotThrow();
+         Value *buf = builder.CreateAlloca(llvmType);
+         Value *ptr = builder.CreateBitCast(
+             buf, IntegerType::getInt8PtrTy(ctx->getLLVMContext()));
+         Value *size = ConstantExpr::getSizeOf(llvmType);
+         builder.CreateCall(gzRead, {args[0], ptr, size});
+         return builder.CreateLoad(buf);
+       }},
+      {getMagicSignature("popcnt", {intNType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         Function *popcnt =
+             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::ctpop, {llvmType});
+         Value *count = builder.CreateCall(args[0]);
+         return builder.CreateZExtOrTrunc(count, seqIntLLVM(ctx->getLLVMContext()));
+       }},
+  };
+  if (intNType->getLen() <= 64) {
+    inlineMagicFuncs[getMagicSignature("__str__", {intNType})] =
+        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+      auto *self = callMagic(intNType, getMagicSignature("__int__", {intNType}),
+                             {args[0]}, builder);
+      return callMagic(types::kIntType, "__str__[int]", {self}, builder);
+    };
+  }
+  ctx->registerType(intNType, llvmType, dfltBuilder, inlineMagicFuncs, {});
 }
 
 Value *CodegenVisitor::alloc(std::shared_ptr<types::Type> type, Value *count,
                              IRBuilder<> &builder) {
   // TODO
   return nullptr;
+}
+
+Value *CodegenVisitor::callBuiltin(const std::string &signature,
+                                   std::vector<Value *> args,
+                                   llvm::IRBuilder<> &builder) {
+  // TODO
+  return nullptr;
+}
+
+llvm::Value *CodegenVisitor::callMagic(std::shared_ptr<types::Type> type,
+                                       const std::string &signature,
+                                       std::vector<llvm::Value *> args,
+                                       llvm::IRBuilder<> &builder) {
+  return nullptr;
+}
+
+Value *CodegenVisitor::codegenStr(Value *self, const std::string &name,
+                                  llvm::BasicBlock *block) {
+  LLVMContext &context = block->getContext();
+  IRBuilder<> builder(block);
+  Value *ptr = builder.CreateBitCast(self, builder.getInt8PtrTy());
+
+  auto *nameVar = new GlobalVariable(
+      *block->getModule(), llvm::ArrayType::get(builder.getInt8Ty(), name.length() + 1),
+      true, GlobalValue::PrivateLinkage, ConstantDataArray::getString(context, name),
+      "typename_literal");
+  nameVar->setAlignment(1);
+
+  Value *str = builder.CreateBitCast(nameVar, builder.getInt8PtrTy());
+  Value *len = ConstantInt::get(seqIntLLVM(context), name.length());
+
+  Value *nameVal = ctx->getDefaultValue(types::kStringType, builder);
+  nameVal = builder.CreateInsertValue(nameVal, len, 0);
+  nameVal = builder.CreateInsertValue(nameVal, str, 1);
+
+  return callBuiltin("_raw_type_str", {ptr, nameVal}, builder);
 }
 
 } // namespace codegen

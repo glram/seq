@@ -5,35 +5,7 @@
 #include "util/common.h"
 #include "util/fmt/format.h"
 
-namespace {
-using namespace llvm;
-
-GlobalVariable *getByteCompTable(Module *module,
-                                 const std::string &name = "seq.byte_comp_table") {
-  LLVMContext &context = module->getContext();
-  auto *ty = IntegerType::getInt8Ty(context);
-  GlobalVariable *table = module->getGlobalVariable(name);
-
-  if (!table) {
-    std::vector<Constant *> v(256, ConstantInt::get(ty, 0));
-
-    for (auto &a : v)
-      a = ConstantInt::get(ty, 'N');
-
-    std::string from = "ACBDGHKMNSRUTWVYacbdghkmnsrutwvy.-";
-    std::string to = "TGVHCDMKNSYAAWBRtgvhcdmknsyaawbr.-";
-
-    for (unsigned i = 0; i < from.size(); i++)
-      v[from[i]] = ConstantInt::get(ty, (uint64_t)to[i]);
-
-    auto *arrTy = llvm::ArrayType::get(ty, v.size());
-    table = new GlobalVariable(*module, arrTy, true, GlobalValue::PrivateLinkage,
-                               ConstantArray::get(arrTy, v), name);
-  }
-
-  return table;
-}
-} // namespace
+#include "common.h"
 
 namespace seq {
 namespace ir {
@@ -67,6 +39,16 @@ void Context::initTypeRealizations() {
 
   typeRealizations[types::kStringType->getId()] =
       StructType::get(seqIntLLVM(llvmCtx), IntegerType::getInt8PtrTy(llvmCtx));
+  defaultValueBuilders[types::kStringType->getId()] =
+      [this](IRBuilder<> &builder) -> Value * {
+    Value *self = UndefValue::get(typeRealizations[types::kStringType->getId()]);
+    self = builder.CreateInsertValue(
+        self, ConstantInt::get(seqIntLLVM(getLLVMContext()), 0), 0);
+    self = builder.CreateInsertValue(
+        self, ConstantPointerNull::get(IntegerType::getInt8PtrTy(getLLVMContext())), 1);
+    return self;
+  };
+
   typeRealizations[types::kBoolType->getId()] = IntegerType::getInt8Ty(llvmCtx);
   defaultValueBuilders[types::kBoolType->getId()] =
       [this](IRBuilder<> &builder) -> Value * {
@@ -90,6 +72,16 @@ void Context::initTypeRealizations() {
       [this](IRBuilder<> &builder) -> Value * {
     return ConstantInt::get(typeRealizations[types::kByteType->getId()], 0);
   };
+
+  typeRealizations[types::kByteType->getId()] = IntegerType::getInt8Ty(llvmCtx);
+  defaultValueBuilders[types::kByteType->getId()] =
+      [this](IRBuilder<> &builder) -> Value * {
+    return ConstantInt::get(typeRealizations[types::kByteType->getId()], 0);
+  };
+
+  typeRealizations[types::kSeqType->getId()] = nullptr;
+  typeRealizations[types::kAnyType->getId()] = nullptr;
+  typeRealizations[types::kVoidType->getId()] = nullptr;
 }
 
 void Context::initMagicFuncs() {

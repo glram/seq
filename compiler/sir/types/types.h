@@ -225,6 +225,8 @@ public:
     v.visit(std::static_pointer_cast<IntNType>(getShared()));
   }
 
+  std::string oppositeSignName() const;
+
   unsigned getLen() const { return len; }
   bool isSigned() const { return sign; }
 };

@@ -178,6 +178,7 @@ set(SEQ_HPPFILES  compiler/lang/expr.h
                   compiler/sir/trycatch.h
                   compiler/sir/var.h
                   compiler/sir/codegen/codegen.h
+                  compiler/sir/codegen/common.h
                   compiler/sir/codegen/context.h)
 
 set(SEQ_CPPFILES  compiler/lang/expr.cpp
@@ -232,6 +233,7 @@ set(SEQ_CPPFILES  compiler/lang/expr.cpp
                   compiler/sir/trycatch.cpp
                   compiler/sir/var.cpp
                   compiler/sir/codegen/codegen.cpp
+                  compiler/sir/codegen/common.cpp
                   compiler/sir/codegen/context.cpp)
 
 add_library(seq SHARED ${SEQ_HPPFILES})
