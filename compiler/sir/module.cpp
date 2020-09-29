@@ -18,6 +18,7 @@ IRModule::IRModule(std::string name)
 
 void IRModule::addGlobal(std::shared_ptr<Var> var) {
   var->setModule(getShared());
+  var->setGlobal();
   globals.push_back(var);
 }
 

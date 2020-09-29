@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <vector>
 #include <utility>
 
 #include "util/llvm.h"
@@ -9,11 +10,21 @@
 namespace seq {
 namespace ir {
 
+class Func;
+class BasicBlock;
+class Var;
+
 namespace types {
 class Type;
 }
 
 namespace codegen {
+
+struct Frame {
+  std::unordered_map<int, llvm::Value *> varRealizations;
+  std::unordered_map<int, llvm::BasicBlock *> blockRealizations;
+  llvm::BasicBlock *curBlock = nullptr;
+};
 
 class Context {
 public:
@@ -32,11 +43,16 @@ private:
   std::unordered_map<int, InlineMagicFuncs> inlineMagicBuilders;
   std::unordered_map<int, NonInlineMagicFuncs> nonInlineMagicFuncs;
 
+  std::vector<Frame> frames;
+
+  int seqMainId;
+
   void initTypeRealizations();
   void initMagicFuncs();
 
 public:
-  explicit Context(llvm::Module *module) : module(module) {
+  explicit Context(llvm::Module *module)
+      : module(module), seqMainId(-1) {
     initTypeRealizations();
     initMagicFuncs();
   }
@@ -44,6 +60,16 @@ public:
   void registerType(std::shared_ptr<types::Type> sirType, llvm::Type *llvmType,
                     DefaultValueBuilder dfltBuilder, InlineMagicFuncs inlineMagics = {},
                     NonInlineMagicFuncs nonInlineMagics = {});
+
+  void registerVar(std::shared_ptr<Var> sirVar, llvm::Value *val);
+  void registerBlock(std::shared_ptr<BasicBlock> sirBlock, llvm::BasicBlock *block);
+
+  void pushFrame() { frames.emplace_back(); }
+  Frame &getFrame() { return frames.back(); }
+  void popFrame() { frames.pop_back(); }
+
+  llvm::Value *getVar(std::shared_ptr<Var> sirVar);
+  llvm::BasicBlock *getBlock(std::shared_ptr<BasicBlock> sirBlock);
 
   llvm::Type *getLLVMType(std::shared_ptr<types::Type> type);
 

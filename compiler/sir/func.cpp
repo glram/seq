@@ -11,7 +11,7 @@ namespace ir {
 
 Func::Func(std::string name, std::vector<std::string> argNames,
            std::shared_ptr<types::Type> type)
-    : Var(std::move(name), type), argNames(argNames), external(), generator(),
+    : Var(std::move(name), type, true), argNames(argNames), external(), generator(),
       internal() {
 
   argVars = std::vector<std::shared_ptr<Var>>{};

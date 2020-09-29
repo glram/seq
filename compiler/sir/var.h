@@ -25,14 +25,16 @@ protected:
   std::shared_ptr<types::Type> type;
   std::weak_ptr<IRModule> module;
 
+  bool global;
+
   int id;
 
 public:
-  Var(std::string name, std::shared_ptr<types::Type> type)
-      : name(std::move(name)), type(std::move(type)), id(currentId++){};
+  Var(std::string name, std::shared_ptr<types::Type> type, bool global = false)
+      : name(std::move(name)), type(std::move(type)), global(global), id(currentId++){};
   explicit Var(std::shared_ptr<types::Type> type) : Var("", std::move(type)) {}
 
-  virtual void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
+  virtual void accept(codegen::CodegenVisitor &v, const std::string &nameOverride) { v.visit(getShared(), nameOverride); }
 
   static void resetId();
 
@@ -50,6 +52,11 @@ public:
 
   std::shared_ptr<types::Type> getType() { return type; }
   int getId() const { return id; }
+
+  void setGlobal() { global = true; }
+  bool isGlobal() const { return global; }
+
+  virtual bool isFunc() const { return false; }
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;

@@ -2,6 +2,7 @@
 
 #include "util/fmt/format.h"
 
+#include "sir/base.h"
 #include "sir/bblock.h"
 #include "sir/func.h"
 #include "sir/instr.h"
@@ -16,21 +17,67 @@
 
 #include "common.h"
 
+namespace {
+  std::string getLLVMFuncName(std::shared_ptr<seq::ir::Func> f) {
+    return fmt::format(FMT_STRING("seq.{}{}"), f->getName(), f->getId());
+  }
+}
+
 namespace seq {
 namespace ir {
 namespace codegen {
 
 using namespace llvm;
 
-Value *CodegenVisitor::transform(std::shared_ptr<IRModule> module) { return nullptr; }
-Value *CodegenVisitor::transform(std::shared_ptr<BasicBlock> block) { return nullptr; }
-Value *CodegenVisitor::transform(std::shared_ptr<Var> var) { return nullptr; }
-Value *CodegenVisitor::transform(std::shared_ptr<Instr> instr) { return nullptr; }
-Value *CodegenVisitor::transform(std::shared_ptr<Rvalue> rval) { return nullptr; }
-Value *CodegenVisitor::transform(std::shared_ptr<Lvalue> lval) { return nullptr; }
-Value *CodegenVisitor::transform(std::shared_ptr<Operand> op) { return nullptr; }
-Value *CodegenVisitor::transform(std::shared_ptr<Pattern> pat) { return nullptr; }
-Value *CodegenVisitor::transform(std::shared_ptr<Terminator> term) { return nullptr; }
+void CodegenVisitor::transform(std::shared_ptr<IRModule> module) {
+  CodegenVisitor v(ctx);
+  module->accept(v);
+}
+
+void CodegenVisitor::transform(std::shared_ptr<BasicBlock> block) {
+  CodegenVisitor v(ctx);
+  block->accept(v);
+}
+
+Value *CodegenVisitor::transform(std::shared_ptr<Var> var, const std::string &nameOverride) {
+  CodegenVisitor v(ctx);
+  var->accept(v, nameOverride);
+  return v.valResult;
+}
+
+void CodegenVisitor::transform(std::shared_ptr<Instr> instr) {
+  CodegenVisitor v(ctx);
+  instr->accept(v);
+}
+
+Value *CodegenVisitor::transform(std::shared_ptr<Rvalue> rval) {
+  CodegenVisitor v(ctx);
+  rval->accept(v);
+  return v.valResult;
+}
+
+Value *CodegenVisitor::transform(std::shared_ptr<Lvalue> lval) {
+  CodegenVisitor v(ctx);
+  lval->accept(v);
+  return v.valResult;
+}
+
+Value *CodegenVisitor::transform(std::shared_ptr<Operand> op) {
+  CodegenVisitor v(ctx);
+  op->accept(v);
+  return v.valResult;
+}
+
+Value *CodegenVisitor::transform(std::shared_ptr<Pattern> pat) {
+  CodegenVisitor v(ctx);
+  pat->accept(v);
+  return v.valResult;
+}
+void CodegenVisitor::transform(std::shared_ptr<Terminator> term) {
+  CodegenVisitor v(ctx);
+  term->accept(v);
+}
+
 Type *CodegenVisitor::transform(std::shared_ptr<types::Type> typ) {
   auto lookedUpType = ctx->getLLVMType(typ);
   if (lookedUpType)
@@ -41,12 +88,86 @@ Type *CodegenVisitor::transform(std::shared_ptr<types::Type> typ) {
   return v.typeResult;
 }
 
-void CodegenVisitor::visit(std::shared_ptr<IRModule> node) {}
+void CodegenVisitor::visit(std::shared_ptr<IRModule> module) {
+  // TODO deal with argvar
+  ctx->pushFrame();
+  for (auto &g : module->getGlobals())
+    transform(g);
+  transform(module->getBase(), "seq.main");
+  ctx->popFrame();
+}
 
 void CodegenVisitor::visit(std::shared_ptr<BasicBlock> node) {}
 
-void CodegenVisitor::visit(std::shared_ptr<Func> node) {}
-void CodegenVisitor::visit(std::shared_ptr<Var> node) {}
+void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc, const std::string &nameOverride) {
+  auto *funcPtrType = cast<PointerType>(transform(sirFunc->getType()));
+  auto name = nameOverride.empty()? getLLVMFuncName(sirFunc) : nameOverride;
+  auto *func = cast<Function>(ctx->getModule()->getOrInsertFunction(name, funcPtrType->getElementType()));
+  valResult = func;
+
+  if (sirFunc->isExternal())
+    return;
+
+  auto funcAttributes = std::static_pointer_cast<FuncAttribute>(sirFunc->getAttribute(kFuncAttribute));
+  auto srcInfoAttribute = std::static_pointer_cast<SrcInfoAttribute>(sirFunc->getAttribute(kSrcInfoAttribute));
+  auto srcInfo = srcInfoAttribute? srcInfoAttribute->info : seq::SrcInfo();
+
+  if (funcAttributes) {
+    if (funcAttributes->has("export")) {
+      if (sirFunc->getEnclosingFunc().lock())
+        throw exc::SeqException("can only export top-level functions", srcInfo);
+      func->setLinkage(GlobalValue::ExternalLinkage);
+    } else {
+      func->setLinkage(GlobalValue::PrivateLinkage);
+    }
+
+    if (funcAttributes->has("inline")) {
+      func->addFnAttr(llvm::Attribute::AlwaysInline);
+    }
+    if (funcAttributes->has("noinline")) {
+      func->addFnAttr(llvm::Attribute::NoInline);
+    }
+  } else {
+    func->setLinkage(GlobalValue::PrivateLinkage);
+  }
+
+  // TODO profiling
+  func->setPersonalityFn(makePersonalityFunc(ctx->getModule()));
+
+  ctx->pushFrame();
+  auto &frame = ctx->getFrame();
+
+  // Stub blocks
+  for (auto &b : sirFunc->getBlocks()) {
+    auto blockName = fmt::format(FMT_STRING("bb{}"), b->getId());
+    ctx->registerBlock(b, llvm::BasicBlock::Create(ctx->getLLVMContext(), blockName, func));
+  }
+
+  auto *preamble = llvm::BasicBlock::Create(ctx->getLLVMContext(), "preamble", func);
+  frame.curBlock = preamble;
+  IRBuilder<> builder(preamble);
+
+  // Register vars
+  for (auto &v : sirFunc->getVars())
+    ctx->registerVar(v, transform(v));
+
+  // Register arg vars
+  auto argIter = func->arg_begin();
+  for (auto &a : sirFunc->getArgVars()) {
+    auto *var = transform(a);
+    ctx->registerVar(a, var);
+    builder.CreateStore(var, argIter++);
+  }
+
+  for (auto &b : sirFunc->getBlocks())
+    transform(b);
+
+  builder.CreateBr(ctx->getBlock(sirFunc->getBlocks().front()));
+
+  ctx->popFrame();
+}
+
+void CodegenVisitor::visit(std::shared_ptr<Var> node, const std::string &nameOverride) {}
 
 void CodegenVisitor::visit(std::shared_ptr<AssignInstr> node) {}
 void CodegenVisitor::visit(std::shared_ptr<RvalueInstr> node) {}

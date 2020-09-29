@@ -98,23 +98,23 @@ public:
   explicit CodegenVisitor(std::shared_ptr<Context> ctx)
       : ctx(std::move(ctx)), valResult(), typeResult() {}
 
-  llvm::Value *transform(std::shared_ptr<IRModule> module);
-  llvm::Value *transform(std::shared_ptr<BasicBlock> block);
-  llvm::Value *transform(std::shared_ptr<Var> var);
-  llvm::Value *transform(std::shared_ptr<Instr> instr);
+  void transform(std::shared_ptr<IRModule> module);
+  void transform(std::shared_ptr<BasicBlock> block);
+  llvm::Value *transform(std::shared_ptr<Var> var, const std::string &nameOverride = "");
+  void transform(std::shared_ptr<Instr> instr);
   llvm::Value *transform(std::shared_ptr<Rvalue> rval);
   llvm::Value *transform(std::shared_ptr<Lvalue> lval);
   llvm::Value *transform(std::shared_ptr<Operand> op);
   llvm::Value *transform(std::shared_ptr<Pattern> pat);
-  llvm::Value *transform(std::shared_ptr<Terminator> term);
+  void transform(std::shared_ptr<Terminator> term);
   llvm::Type *transform(std::shared_ptr<types::Type> typ);
 
   NODE_VISIT(IRModule);
 
   NODE_VISIT(BasicBlock);
 
-  NODE_VISIT(Func);
-  NODE_VISIT(Var);
+  void visit(std::shared_ptr<Func>, const std::string &);
+  void visit(std::shared_ptr<Var>, const std::string &);
 
   DEFAULT_VISIT(Instr);
   NODE_VISIT(AssignInstr);

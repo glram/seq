@@ -74,6 +74,7 @@ struct FuncAttribute : public Attribute {
 
   explicit FuncAttribute(std::vector<std::string> attributes)
       : attributes(std::move(attributes)) {}
+  bool has(const std::string &val) const;
   std::string textRepresentation() const override;
 };
 

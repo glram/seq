@@ -2,6 +2,8 @@
 #include "bblock.h"
 #include "trycatch.h"
 
+#include <algorithm>
+
 #include "util/fmt/ostream.h"
 
 namespace seq {
@@ -32,6 +34,10 @@ std::string LoopAttribute::textRepresentation() const {
   auto endStr = end.lock() ? end.lock()->referenceString() : "none";
   return fmt::format(FMT_STRING("loop({}, {}, {}, {}, {})"), setupStr, condStr,
                      beginStr, updateStr, endStr);
+}
+
+bool FuncAttribute::has(const std::string &val) const {
+  return std::find(attributes.begin(), attributes.end(), val) != attributes.end();
 }
 
 std::string FuncAttribute::textRepresentation() const {

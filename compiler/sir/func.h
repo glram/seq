@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "types/types.h"
@@ -45,11 +46,13 @@ public:
   std::shared_ptr<Var> getArgVar(const std::string &name);
 
   void addVar(std::shared_ptr<Var> var) { vars.push_back(var); }
+  std::vector<std::shared_ptr<Var>> getVars() { return vars; }
 
   std::vector<std::shared_ptr<BasicBlock>> getBlocks() { return blocks; }
   void addBlock(std::shared_ptr<BasicBlock> block) { blocks.push_back(block); }
 
-  void setEnclosingFunc(std::weak_ptr<Func> f) { enclosing = f; }
+  void setEnclosingFunc(std::weak_ptr<Func> f) { enclosing = std::move(f); }
+  std::weak_ptr<Func> getEnclosingFunc() { return enclosing; }
 
   void setExternal() { external = true; }
   bool isExternal() const { return external; }
@@ -66,8 +69,10 @@ public:
   std::string referenceString() const override;
   std::string textRepresentation() const override;
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<Func>(getShared()));
+  bool isFunc() const override { return true; }
+
+  void accept(codegen::CodegenVisitor &v, const std::string &nameOverride) override {
+    v.visit(std::static_pointer_cast<Func>(getShared()), nameOverride);
   }
 };
 

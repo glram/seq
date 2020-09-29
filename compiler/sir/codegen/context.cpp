@@ -1,5 +1,7 @@
 #include "context.h"
 
+#include "sir/bblock.h"
+#include "sir/var.h"
 #include "sir/types/types.h"
 
 #include "util/common.h"
@@ -13,6 +15,39 @@ namespace codegen {
 
 using namespace llvm;
 
+void Context::registerType(std::shared_ptr<types::Type> sirType, llvm::Type *llvmType,
+                           DefaultValueBuilder dfltBuilder,
+                           InlineMagicFuncs inlineMagics,
+                           NonInlineMagicFuncs nonInlineMagics) {
+  typeRealizations[sirType->getId()] = llvmType;
+  defaultValueBuilders[sirType->getId()] = std::move(dfltBuilder);
+  inlineMagicBuilders[sirType->getId()] = std::move(inlineMagics);
+  nonInlineMagicFuncs[sirType->getId()] = std::move(nonInlineMagics);
+}
+
+void Context::registerVar(std::shared_ptr<Var> sirVar, llvm::Value *val) {
+  auto &frame = getFrame();
+  frame.varRealizations[sirVar->getId()] = val;
+}
+
+void Context::registerBlock(std::shared_ptr<BasicBlock> sirBlock,
+                            llvm::BasicBlock *block) {
+  auto &frame = getFrame();
+  frame.blockRealizations[sirBlock->getId()] = block;
+}
+
+llvm::Value *Context::getVar(std::shared_ptr<Var> sirVar) {
+  auto &frame = getFrame();
+  auto it = frame.varRealizations.find(sirVar->getId());
+  return it == frame.varRealizations.end() ? nullptr : it->second;
+}
+
+llvm::BasicBlock *Context::getBlock(std::shared_ptr<BasicBlock> sirBlock) {
+  auto &frame = getFrame();
+  auto it = frame.blockRealizations.find(sirBlock->getId());
+  return it == frame.blockRealizations.end() ? nullptr : it->second;
+}
+
 llvm::Type *Context::getLLVMType(std::shared_ptr<types::Type> type) {
   auto it = typeRealizations.find(type->getId());
   return it == typeRealizations.end() ? nullptr : it->second;
@@ -22,16 +57,6 @@ llvm::Value *Context::getDefaultValue(std::shared_ptr<types::Type> type,
                                       llvm::IRBuilder<> &builder) {
   auto it = defaultValueBuilders.find(type->getId());
   return it == defaultValueBuilders.end() ? nullptr : it->second(builder);
-}
-
-void Context::registerType(std::shared_ptr<types::Type> sirType, llvm::Type *llvmType,
-                           DefaultValueBuilder dfltBuilder,
-                           InlineMagicFuncs inlineMagics,
-                           NonInlineMagicFuncs nonInlineMagics) {
-  typeRealizations[sirType->getId()] = llvmType;
-  defaultValueBuilders[sirType->getId()] = std::move(dfltBuilder);
-  inlineMagicBuilders[sirType->getId()] = std::move(inlineMagics);
-  nonInlineMagicFuncs[sirType->getId()] = std::move(nonInlineMagics);
 }
 
 void Context::initTypeRealizations() {
