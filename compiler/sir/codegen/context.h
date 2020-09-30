@@ -2,8 +2,8 @@
 
 #include <memory>
 #include <unordered_map>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "util/llvm.h"
 
@@ -20,10 +20,32 @@ class Type;
 
 namespace codegen {
 
+struct FuncMetadata {
+  llvm::Function *func;
+
+  bool isGenerator;
+  /// Storage for this coroutine's promise, or null if none
+  llvm::Value *promise;
+
+  /// Coroutine handle, or null if none
+  llvm::Value *handle;
+
+  /// Coroutine cleanup block, or null if none
+  llvm::BasicBlock *cleanup;
+
+  /// Coroutine suspend block, or null if none
+  llvm::BasicBlock *suspend;
+
+  /// Coroutine exit block, or null if none
+  llvm::BasicBlock *exit;
+};
+
 struct Frame {
   std::unordered_map<int, llvm::Value *> varRealizations;
   std::unordered_map<int, llvm::BasicBlock *> blockRealizations;
   llvm::BasicBlock *curBlock = nullptr;
+  FuncMetadata funcMetadata = {nullptr, false,   nullptr, nullptr,
+                               nullptr, nullptr, nullptr};
 };
 
 class Context {
@@ -34,7 +56,8 @@ public:
       std::function<llvm::Value *(std::vector<llvm::Value *>, llvm::IRBuilder<> &)>;
   using InlineMagicFuncs = std::unordered_map<std::string, LLVMValueBuilder>;
 
-  using NonInlineMagicFuncs = std::unordered_map<std::string, llvm::Function *>;
+  using LLVMFuncBuilder = std::function<void(llvm::Function *)>;
+  using NonInlineMagicFuncs = std::unordered_map<std::string, LLVMFuncBuilder>;
 
 private:
   llvm::Module *module;
@@ -51,8 +74,7 @@ private:
   void initMagicFuncs();
 
 public:
-  explicit Context(llvm::Module *module)
-      : module(module), seqMainId(-1) {
+  explicit Context(llvm::Module *module) : module(module), seqMainId(-1) {
     initTypeRealizations();
     initMagicFuncs();
   }
@@ -78,6 +100,9 @@ public:
 
   llvm::Module *getModule() { return module; }
   llvm::LLVMContext &getLLVMContext() { return module->getContext(); }
+
+  LLVMFuncBuilder getMagicBuilder(std::shared_ptr<types::Type> type,
+                                  const std::string &sig);
 };
 
 } // namespace codegen

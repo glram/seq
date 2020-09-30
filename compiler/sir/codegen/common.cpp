@@ -74,10 +74,9 @@ Value *generatorPromise(Value *self, llvm::BasicBlock *block, Type *outType,
   Function *promFn =
       Intrinsic::getDeclaration(block->getModule(), Intrinsic::coro_promise);
 
-  Value *aln =
-      ConstantInt::get(IntegerType::getInt32Ty(context),
-                       block->getModule()->getDataLayout().getPrefTypeAlignment(
-                           outType);
+  Value *aln = ConstantInt::get(
+      IntegerType::getInt32Ty(context),
+      block->getModule()->getDataLayout().getPrefTypeAlignment(outType));
   Value *from = ConstantInt::get(IntegerType::getInt1Ty(context), 0);
 
   Value *ptr = builder.CreateCall(promFn, {self, aln, from});
@@ -98,6 +97,51 @@ void generatorDestroy(Value *self, llvm::BasicBlock *block) {
       Intrinsic::getDeclaration(block->getModule(), Intrinsic::coro_destroy);
   IRBuilder<> builder(block);
   builder.CreateCall(destFn, self);
+}
+void funcReturn(FuncMetadata &meta, llvm::Value *val, llvm::BasicBlock *block) {
+  IRBuilder<> builder(block);
+  if (meta.isGenerator) {
+    builder.CreateBr(meta.exit);
+  } else {
+    if (val) {
+      builder.CreateRet(val);
+    } else {
+      builder.CreateRetVoid();
+    }
+  }
+}
+
+void funcYield(FuncMetadata &meta, llvm::Value *val, llvm::BasicBlock *block,
+               llvm::BasicBlock *dst) {
+  LLVMContext &context = block->getContext();
+  auto *module = block->getModule();
+  IRBuilder<> builder(block);
+
+  if (val) {
+    assert(meta.promise);
+    builder.CreateStore(val, meta.promise);
+  }
+
+  Function *suspFn = Intrinsic::getDeclaration(module, Intrinsic::coro_suspend);
+  Value *tok = ConstantTokenNone::get(context);
+  Value *final = ConstantInt::get(IntegerType::getInt1Ty(context), dst == nullptr);
+  Value *susp = builder.CreateCall(suspFn, {tok, final});
+
+  if (!dst) {
+    dst = llvm::BasicBlock::Create(block->getContext(), "", block->getParent());
+    builder.SetInsertPoint(dst);
+    builder.CreateUnreachable();
+    builder.SetInsertPoint(block);
+  }
+
+  /*
+   * Can't have anything after the `ret` instruction we just added,
+   * so make a new block and return that to the caller.
+   */
+
+  SwitchInst *inst = builder.CreateSwitch(susp, meta.suspend, 2);
+  inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 0), dst);
+  inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 1), meta.cleanup);
 }
 
 } // namespace codegen

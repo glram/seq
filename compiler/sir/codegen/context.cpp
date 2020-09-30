@@ -1,8 +1,8 @@
 #include "context.h"
 
 #include "sir/bblock.h"
-#include "sir/var.h"
 #include "sir/types/types.h"
+#include "sir/var.h"
 
 #include "util/common.h"
 #include "util/fmt/format.h"
@@ -710,100 +710,105 @@ void Context::initMagicFuncs() {
     };
   }
 
-  auto &llvmCtx = getLLVMContext();
-  nonInlineMagicFuncs[types::kStringType->getId()] = {};
-  {
-    const auto llvmName =
-        fmt::format(FMT_STRING("seq.{}{}.memmove"), types::kStringType->getName(),
-                    types::kStringType->getId());
-    auto *func = cast<Function>(module->getOrInsertFunction(
-        llvmName, llvm::Type::getVoidTy(llvmCtx), IntegerType::getInt8PtrTy(llvmCtx),
-        IntegerType::getInt8PtrTy(llvmCtx), seqIntLLVM(llvmCtx)));
-    func->setDoesNotThrow();
-    func->setLinkage(GlobalValue::PrivateLinkage);
-    func->addFnAttr(llvm::Attribute::AlwaysInline);
-    auto iter = func->arg_begin();
-    Value *dst = iter++;
-    Value *src = iter++;
-    Value *len = iter;
-    llvm::BasicBlock *block = llvm::BasicBlock::Create(llvmCtx, "entry", func);
-    makeMemMove(dst, src, len, block);
-    IRBuilder<> builder(block);
-    builder.CreateRetVoid();
-
-    nonInlineMagicFuncs[types::kStringType->getId()]
-                       ["memmove[Pointer[byte], Pointer[byte], int]"] = func;
-  }
-  {
-    const auto llvmName =
-        fmt::format(FMT_STRING("seq.{}{}.memcpy"), types::kStringType->getName(),
-                    types::kStringType->getId());
-    auto *func = cast<Function>(module->getOrInsertFunction(
-        llvmName, llvm::Type::getVoidTy(llvmCtx), IntegerType::getInt8PtrTy(llvmCtx),
-        IntegerType::getInt8PtrTy(llvmCtx), seqIntLLVM(llvmCtx)));
-    func->setDoesNotThrow();
-    func->setLinkage(GlobalValue::PrivateLinkage);
-    func->addFnAttr(llvm::Attribute::AlwaysInline);
-    auto iter = func->arg_begin();
-    Value *dst = iter++;
-    Value *src = iter++;
-    Value *len = iter;
-    llvm::BasicBlock *block = llvm::BasicBlock::Create(llvmCtx, "entry", func);
-    makeMemCpy(dst, src, len, block);
-    IRBuilder<> builder(block);
-    builder.CreateRetVoid();
-
-    nonInlineMagicFuncs[types::kStringType->getId()]
-                       ["memcpy[Pointer[byte], Pointer[byte], int]"] = func;
-  }
-  {
-    const auto llvmName =
-        fmt::format(FMT_STRING("seq.{}{}.memset"), types::kStringType->getName(),
-                    types::kStringType->getId());
-    auto *func = cast<Function>(module->getOrInsertFunction(
-        llvmName, llvm::Type::getVoidTy(llvmCtx), IntegerType::getInt8PtrTy(llvmCtx),
-        IntegerType::getInt8PtrTy(llvmCtx), seqIntLLVM(llvmCtx)));
-    func->setDoesNotThrow();
-    func->setLinkage(GlobalValue::PrivateLinkage);
-    func->addFnAttr(llvm::Attribute::AlwaysInline);
-    auto iter = func->arg_begin();
-    Value *dst = iter++;
-    Value *val = iter++;
-    Value *len = iter;
-    llvm::BasicBlock *block = llvm::BasicBlock::Create(llvmCtx, "entry", func);
-    IRBuilder<> builder(block);
-    builder.CreateMemSet(dst, val, len, 0);
-    builder.CreateRetVoid();
-
-    nonInlineMagicFuncs[types::kStringType->getId()]
-                       ["memset[Pointer[byte], byte, int]"] = func;
-  }
+  nonInlineMagicFuncs[types::kStringType->getId()] = {
+      {"memmove[Pointer[byte], Pointer[byte], int]",
+       [this](llvm::Function *func) {
+         auto &llvmCtx = getLLVMContext();
+         func->setDoesNotThrow();
+         func->setLinkage(GlobalValue::PrivateLinkage);
+         func->addFnAttr(llvm::Attribute::AlwaysInline);
+         auto iter = func->arg_begin();
+         Value *dst = iter++;
+         Value *src = iter++;
+         Value *len = iter;
+         llvm::BasicBlock *block = llvm::BasicBlock::Create(llvmCtx, "entry", func);
+         makeMemMove(dst, src, len, block);
+         IRBuilder<> builder(block);
+         builder.CreateRetVoid();
+       }},
+      {"memcpy[Pointer[byte], Pointer[byte], int]",
+       [this](llvm::Function *func) {
+         auto &llvmCtx = getLLVMContext();
+         func->setDoesNotThrow();
+         func->setLinkage(GlobalValue::PrivateLinkage);
+         func->addFnAttr(llvm::Attribute::AlwaysInline);
+         auto iter = func->arg_begin();
+         Value *dst = iter++;
+         Value *src = iter++;
+         Value *len = iter;
+         llvm::BasicBlock *block = llvm::BasicBlock::Create(llvmCtx, "entry", func);
+         makeMemCpy(dst, src, len, block);
+         IRBuilder<> builder(block);
+         builder.CreateRetVoid();
+       }},
+      {"memset[Pointer[byte], byte, int]",
+       [this](llvm::Function *func) {
+         auto &llvmCtx = getLLVMContext();
+         func->setDoesNotThrow();
+         func->setLinkage(GlobalValue::PrivateLinkage);
+         func->addFnAttr(llvm::Attribute::AlwaysInline);
+         auto iter = func->arg_begin();
+         Value *dst = iter++;
+         Value *val = iter++;
+         Value *len = iter;
+         llvm::BasicBlock *block = llvm::BasicBlock::Create(llvmCtx, "entry", func);
+         IRBuilder<> builder(block);
+         builder.CreateMemSet(dst, val, len, 0);
+         builder.CreateRetVoid();
+       }},
+  };
 
   nonInlineMagicFuncs[types::kBoolType->getId()] = {};
   nonInlineMagicFuncs[types::kFloatType->getId()] = {};
   nonInlineMagicFuncs[types::kIntType->getId()] = {};
-  nonInlineMagicFuncs[types::kByteType->getId()] = {};
-  {
-    const auto name =
-        fmt::format(FMT_STRING("seq.{}{}.byte_comp"), types::kByteType->getName(),
-                    types::kByteType->getId());
-    GlobalVariable *table = getByteCompTable(module);
+  nonInlineMagicFuncs[types::kByteType->getId()] = {
+      {"comp[byte, byte]", [this](llvm::Function *func) {
+         auto &llvmCtx = getLLVMContext();
+         GlobalVariable *table = getByteCompTable(module);
 
-    auto *func = cast<Function>(
-        module->getOrInsertFunction(name, typeRealizations[types::kByteType->getId()],
-                                    typeRealizations[types::kByteType->getId()]));
-    func->setDoesNotThrow();
-    func->setLinkage(GlobalValue::PrivateLinkage);
-    func->addFnAttr(llvm::Attribute::AlwaysInline);
-    Value *arg = func->arg_begin();
-    llvm::BasicBlock *block = llvm::BasicBlock::Create(llvmCtx, "entry", func);
-    IRBuilder<> builder(block);
-    arg = builder.CreateZExt(arg, builder.getInt64Ty());
-    arg = builder.CreateInBoundsGEP(table, {builder.getInt64(0), arg});
-    arg = builder.CreateLoad(arg);
-    builder.CreateRet(arg);
-    nonInlineMagicFuncs[types::kStringType->getId()]["comp[byte, byte]"] = func;
+         func->setDoesNotThrow();
+         func->setLinkage(GlobalValue::PrivateLinkage);
+         func->addFnAttr(llvm::Attribute::AlwaysInline);
+         Value *arg = func->arg_begin();
+         llvm::BasicBlock *block = llvm::BasicBlock::Create(llvmCtx, "entry", func);
+         IRBuilder<> builder(block);
+         arg = builder.CreateZExt(arg, builder.getInt64Ty());
+         arg = builder.CreateInBoundsGEP(table, {builder.getInt64(0), arg});
+         arg = builder.CreateLoad(arg);
+         builder.CreateRet(arg);
+       }}};
+}
+
+Context::LLVMFuncBuilder Context::getMagicBuilder(std::shared_ptr<types::Type> type,
+                                                  const std::string &sig) {
+  auto id = type->getId();
+  auto inlineMagicIt = inlineMagicBuilders.find(id);
+  if (inlineMagicIt != inlineMagicBuilders.end()) {
+    auto inlineMagicIt2 = inlineMagicIt->second.find(sig);
+    if (inlineMagicIt2 != inlineMagicIt->second.end())
+      return [this, id, sig](llvm::Function *func) {
+        func->setDoesNotThrow();
+        func->setLinkage(GlobalValue::PrivateLinkage);
+        func->addFnAttr(llvm::Attribute::AlwaysInline);
+
+        llvm::BasicBlock *entry =
+            llvm::BasicBlock::Create(getLLVMContext(), "entry", func);
+        llvm::IRBuilder<> b(entry);
+        std::vector<llvm::Value *> args(func->arg_begin(), func->arg_end());
+        auto inner = inlineMagicBuilders[id][sig];
+        return b.CreateRet(inner(args, b));
+      };
   }
+
+  auto nonInlineMagicIt = nonInlineMagicFuncs.find(id);
+  if (nonInlineMagicIt != nonInlineMagicFuncs.end()) {
+    auto nonInlineMagicIt2 = nonInlineMagicIt->second.find(sig);
+    return nonInlineMagicIt2 != nonInlineMagicIt->second.end()
+               ? nonInlineMagicIt2->second
+               : nullptr;
+  }
+
+  return nullptr;
 }
 
 } // namespace codegen

@@ -16,6 +16,8 @@ class Generator;
 
 namespace codegen {
 
+struct FuncMetadata;
+
 std::string getMagicSignature(const std::string &name,
                               std::vector<std::shared_ptr<types::Type>> types);
 
@@ -30,6 +32,10 @@ llvm::Value *generatorPromise(llvm::Value *self, llvm::BasicBlock *block,
 void generatorSend(llvm::Value *self, llvm::Value *val, llvm::BasicBlock *block,
                    llvm::Type *outType);
 void generatorDestroy(llvm::Value *self, llvm::BasicBlock *block);
+
+void funcReturn(FuncMetadata &meta, llvm::Value *val, llvm::BasicBlock *block);
+void funcYield(FuncMetadata &meta, llvm::Value *val, llvm::BasicBlock *block,
+               llvm::BasicBlock *dst);
 
 } // namespace codegen
 } // namespace ir

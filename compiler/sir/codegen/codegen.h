@@ -100,7 +100,8 @@ public:
 
   void transform(std::shared_ptr<IRModule> module);
   void transform(std::shared_ptr<BasicBlock> block);
-  llvm::Value *transform(std::shared_ptr<Var> var, const std::string &nameOverride = "");
+  llvm::Value *transform(std::shared_ptr<Var> var,
+                         const std::string &nameOverride = "");
   void transform(std::shared_ptr<Instr> instr);
   llvm::Value *transform(std::shared_ptr<Rvalue> rval);
   llvm::Value *transform(std::shared_ptr<Lvalue> lval);

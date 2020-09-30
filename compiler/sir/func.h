@@ -65,6 +65,9 @@ public:
     parent = std::move(p);
     magicName = std::move(n);
   }
+  bool isInternal() const { return internal; }
+  std::shared_ptr<types::Type> getParentType() { return parent; }
+  std::string getMagicName() const { return magicName; }
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;

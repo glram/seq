@@ -1,5 +1,9 @@
 #include "codegen.h"
 
+#include <algorithm>
+
+#include "common.h"
+
 #include "util/fmt/format.h"
 
 #include "sir/base.h"
@@ -15,13 +19,11 @@
 #include "sir/trycatch.h"
 #include "sir/var.h"
 
-#include "common.h"
-
 namespace {
-  std::string getLLVMFuncName(std::shared_ptr<seq::ir::Func> f) {
-    return fmt::format(FMT_STRING("seq.{}{}"), f->getName(), f->getId());
-  }
+std::string getLLVMFuncName(std::shared_ptr<seq::ir::Func> f) {
+  return fmt::format(FMT_STRING("seq.{}{}"), f->getName(), f->getId());
 }
+} // namespace
 
 namespace seq {
 namespace ir {
@@ -39,7 +41,20 @@ void CodegenVisitor::transform(std::shared_ptr<BasicBlock> block) {
   block->accept(v);
 }
 
-Value *CodegenVisitor::transform(std::shared_ptr<Var> var, const std::string &nameOverride) {
+Value *CodegenVisitor::transform(std::shared_ptr<Var> var,
+                                 const std::string &nameOverride) {
+  if (var->isFunc()) {
+    auto name = nameOverride.empty()
+                    ? getLLVMFuncName(std::static_pointer_cast<Func>(var))
+                    : nameOverride;
+    auto *llvmFunc = ctx->getModule()->getFunction(name);
+    if (llvmFunc)
+      return llvmFunc;
+  } else {
+    auto *val = ctx->getVar(var);
+    if (val)
+      return val;
+  }
   CodegenVisitor v(ctx);
   var->accept(v, nameOverride);
   return v.valResult;
@@ -97,20 +112,48 @@ void CodegenVisitor::visit(std::shared_ptr<IRModule> module) {
   ctx->popFrame();
 }
 
-void CodegenVisitor::visit(std::shared_ptr<BasicBlock> node) {}
+void CodegenVisitor::visit(std::shared_ptr<BasicBlock> block) {
+  auto *llvmBlock = ctx->getBlock(block);
+  ctx->getFrame().curBlock = llvmBlock;
 
-void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc, const std::string &nameOverride) {
-  auto *funcPtrType = cast<PointerType>(transform(sirFunc->getType()));
-  auto name = nameOverride.empty()? getLLVMFuncName(sirFunc) : nameOverride;
-  auto *func = cast<Function>(ctx->getModule()->getOrInsertFunction(name, funcPtrType->getElementType()));
-  valResult = func;
+  for (auto &inst : block->getInstructions())
+    transform(inst);
 
+  if (block->getTerminator())
+    transform(block->getTerminator());
+  else {
+    // TODO implicit return/yield
+  }
+}
+
+void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc,
+                           const std::string &nameOverride) {
   if (sirFunc->isExternal())
     return;
 
-  auto funcAttributes = std::static_pointer_cast<FuncAttribute>(sirFunc->getAttribute(kFuncAttribute));
-  auto srcInfoAttribute = std::static_pointer_cast<SrcInfoAttribute>(sirFunc->getAttribute(kSrcInfoAttribute));
-  auto srcInfo = srcInfoAttribute? srcInfoAttribute->info : seq::SrcInfo();
+  auto *module = ctx->getModule();
+  auto sirFuncType = std::static_pointer_cast<types::FuncType>(sirFunc->getType());
+
+  auto *funcPtrType = cast<PointerType>(transform(sirFunc->getType()));
+  auto name = nameOverride.empty() ? getLLVMFuncName(sirFunc) : nameOverride;
+  auto *func =
+      cast<Function>(module->getOrInsertFunction(name, funcPtrType->getElementType()));
+  auto *outLLVMType = transform(sirFuncType->getRType());
+
+  valResult = func;
+
+  if (sirFunc->isInternal()) {
+    ctx->getMagicBuilder(
+        sirFunc->getParentType(),
+        getMagicSignature(sirFunc->getMagicName(), sirFuncType->getArgTypes()))(func);
+    return;
+  }
+
+  auto funcAttributes =
+      std::static_pointer_cast<FuncAttribute>(sirFunc->getAttribute(kFuncAttribute));
+  auto srcInfoAttribute = std::static_pointer_cast<SrcInfoAttribute>(
+      sirFunc->getAttribute(kSrcInfoAttribute));
+  auto srcInfo = srcInfoAttribute ? srcInfoAttribute->info : seq::SrcInfo();
 
   if (funcAttributes) {
     if (funcAttributes->has("export")) {
@@ -132,20 +175,47 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc, const std::string &nam
   }
 
   // TODO profiling
-  func->setPersonalityFn(makePersonalityFunc(ctx->getModule()));
+  func->setPersonalityFn(makePersonalityFunc(module));
+
+  auto &context = ctx->getLLVMContext();
 
   ctx->pushFrame();
   auto &frame = ctx->getFrame();
+  frame.funcMetadata.func = func;
+  frame.funcMetadata.isGenerator = sirFunc->isGenerator();
 
   // Stub blocks
   for (auto &b : sirFunc->getBlocks()) {
     auto blockName = fmt::format(FMT_STRING("bb{}"), b->getId());
-    ctx->registerBlock(b, llvm::BasicBlock::Create(ctx->getLLVMContext(), blockName, func));
+    ctx->registerBlock(b, llvm::BasicBlock::Create(context, blockName, func));
   }
 
-  auto *preamble = llvm::BasicBlock::Create(ctx->getLLVMContext(), "preamble", func);
+  auto *preamble = llvm::BasicBlock::Create(context, "preamble", func);
+
   frame.curBlock = preamble;
   IRBuilder<> builder(preamble);
+
+  // General generator primitives
+  Value *id = nullptr;
+  if (sirFunc->isGenerator()) {
+    Function *idFn = Intrinsic::getDeclaration(module, Intrinsic::coro_id);
+    Value *nullPtr = ConstantPointerNull::get(IntegerType::getInt8PtrTy(context));
+
+    if (sirFuncType->getRType()->getId() != types::kVoidType->getId()) {
+      auto *promise = makeAlloca(outLLVMType, preamble);
+      promise->setName("promise");
+      Value *promiseRaw =
+          builder.CreateBitCast(promise, IntegerType::getInt8PtrTy(context));
+      id = builder.CreateCall(idFn,
+                              {ConstantInt::get(IntegerType::getInt32Ty(context), 0),
+                               promiseRaw, nullPtr, nullPtr});
+    } else {
+      id = builder.CreateCall(idFn,
+                              {ConstantInt::get(IntegerType::getInt32Ty(context), 0),
+                               nullPtr, nullPtr, nullPtr});
+    }
+    id->setName("id");
+  }
 
   // Register vars
   for (auto &v : sirFunc->getVars())
@@ -159,21 +229,144 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc, const std::string &nam
     builder.CreateStore(var, argIter++);
   }
 
+  llvm::BasicBlock *allocBlock = nullptr;
+  Value *alloc = nullptr;
+  if (sirFunc->isGenerator()) {
+    allocBlock = llvm::BasicBlock::Create(context, "alloc", func);
+    builder.SetInsertPoint(allocBlock);
+    Function *sizeFn =
+        Intrinsic::getDeclaration(module, Intrinsic::coro_size, {seqIntLLVM(context)});
+    Value *size = builder.CreateCall(sizeFn);
+    auto *allocFunc = makeAllocFunc(module, false);
+    alloc = builder.CreateCall(allocFunc, size);
+  }
+
+  llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", func);
+  llvm::BasicBlock *entryActual = entry;
+  llvm::BasicBlock *dynFree = nullptr;
+
+  if (sirFunc->isGenerator()) {
+    builder.CreateBr(entry);
+    builder.SetInsertPoint(entry);
+    PHINode *phi = builder.CreatePHI(IntegerType::getInt8PtrTy(context), 2);
+    phi->addIncoming(ConstantPointerNull::get(IntegerType::getInt8PtrTy(context)),
+                     preamble);
+    phi->addIncoming(alloc, allocBlock);
+
+    Function *beginFn = Intrinsic::getDeclaration(module, Intrinsic::coro_begin);
+    auto *handle = builder.CreateCall(beginFn, {id, phi});
+    handle->setName("hdl");
+
+    frame.funcMetadata.handle = handle;
+
+    /*
+     * Cleanup code
+     */
+    auto *cleanup = llvm::BasicBlock::Create(context, "cleanup", func);
+    frame.funcMetadata.cleanup = cleanup;
+
+    dynFree = llvm::BasicBlock::Create(context, "dyn_free", func);
+    builder.SetInsertPoint(cleanup);
+    Function *freeFn = Intrinsic::getDeclaration(module, Intrinsic::coro_free);
+    Value *mem = builder.CreateCall(freeFn, {id, handle});
+    Value *needDynFree = builder.CreateIsNotNull(mem);
+
+    auto *suspend = llvm::BasicBlock::Create(context, "suspend", func);
+    frame.funcMetadata.suspend = suspend;
+    builder.CreateCondBr(needDynFree, dynFree, suspend);
+
+    builder.SetInsertPoint(dynFree);
+    builder.CreateBr(suspend);
+
+    builder.SetInsertPoint(suspend);
+    Function *endFn = Intrinsic::getDeclaration(module, Intrinsic::coro_end);
+    builder.CreateCall(endFn,
+                       {handle, ConstantInt::get(IntegerType::getInt1Ty(context), 0)});
+    builder.CreateRet(handle);
+
+    frame.funcMetadata.exit = llvm::BasicBlock::Create(context, "final", func);
+    funcYield(frame.funcMetadata, nullptr, frame.funcMetadata.exit, nullptr);
+  }
+
+  if (sirFunc->isGenerator()) {
+    auto *newEntry = llvm::BasicBlock::Create(context, "actualEntry", func);
+    funcYield(frame.funcMetadata, nullptr, entry, newEntry);
+    entry = newEntry;
+  }
+
   for (auto &b : sirFunc->getBlocks())
     transform(b);
 
+  builder.SetInsertPoint(entry);
   builder.CreateBr(ctx->getBlock(sirFunc->getBlocks().front()));
+
+  builder.SetInsertPoint(preamble);
+  if (sirFunc->isGenerator()) {
+    Function *allocFn = Intrinsic::getDeclaration(module, Intrinsic::coro_alloc);
+    Value *needAlloc = builder.CreateCall(allocFn, id);
+    builder.CreateCondBr(needAlloc, allocBlock, entryActual);
+
+    frame.funcMetadata.exit->moveAfter(&func->getBasicBlockList().back());
+    frame.funcMetadata.cleanup->moveAfter(frame.funcMetadata.exit);
+    dynFree->moveAfter(frame.funcMetadata.cleanup);
+    frame.funcMetadata.suspend->moveAfter(dynFree);
+  } else {
+    builder.CreateBr(entry);
+  }
 
   ctx->popFrame();
 }
 
-void CodegenVisitor::visit(std::shared_ptr<Var> node, const std::string &nameOverride) {}
+void CodegenVisitor::visit(std::shared_ptr<Var> var, const std::string &) {
+  // TODO: repl!
+  auto *llvmType = transform(var->getType());
+  Value *val;
+  if (var->isGlobal()) {
+    val = new GlobalVariable(*ctx->getModule(), llvmType, false,
+                             GlobalValue::PrivateLinkage,
+                             Constant::getNullValue(llvmType), var->getName());
+  } else {
+    IRBuilder<> builder(ctx->getFrame().curBlock);
+    val = builder.CreateAlloca(
+        llvmType, llvm::ConstantInt::get(seqIntLLVM(ctx->getLLVMContext()), 1));
+  }
+  ctx->registerVar(var, val);
+}
 
-void CodegenVisitor::visit(std::shared_ptr<AssignInstr> node) {}
-void CodegenVisitor::visit(std::shared_ptr<RvalueInstr> node) {}
+void CodegenVisitor::visit(std::shared_ptr<AssignInstr> assignInstr) {
+  IRBuilder<> builder(ctx->getFrame().curBlock);
+  builder.CreateStore(transform(assignInstr->getLhs()),
+                      transform(assignInstr->getRhs()));
+}
 
-void CodegenVisitor::visit(std::shared_ptr<MemberRvalue> node) {}
+void CodegenVisitor::visit(std::shared_ptr<RvalueInstr> rvalInstr) {
+  transform(rvalInstr->getRvalue());
+}
+
+void CodegenVisitor::visit(std::shared_ptr<MemberRvalue> memberRval) {
+  auto aggType =
+      std::static_pointer_cast<types::MemberedType>(memberRval->getVar()->getType());
+  auto aggLLVMType = transform(aggType);
+
+  auto memberNames = aggType->getMemberNames();
+  auto fieldIndex =
+      std::find(memberNames.begin(), memberNames.end(), memberRval->getField()) -
+      memberNames.begin();
+
+  IRBuilder<> builder(ctx->getFrame().curBlock);
+  auto *val = transform(memberRval->getVar());
+  if (aggType->isRef()) {
+    auto contentType = std::static_pointer_cast<types::RefType>(aggType)->getContents();
+    aggLLVMType = transform(contentType);
+    val = builder.CreateBitCast(val, aggLLVMType->getPointerTo());
+    val = builder.CreateLoad(val);
+  }
+
+  valResult = builder.CreateExtractValue(val, fieldIndex);
+}
+
 void CodegenVisitor::visit(std::shared_ptr<CallRvalue> node) {}
+
 void CodegenVisitor::visit(std::shared_ptr<PartialCallRvalue> node) {}
 void CodegenVisitor::visit(std::shared_ptr<OperandRvalue> node) {}
 void CodegenVisitor::visit(std::shared_ptr<MatchRvalue> node) {}
@@ -248,21 +441,16 @@ void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
   }
 
   if (!heterogeneous) {
-    {
-      auto llvmName = fmt::format(FMT_STRING("seq.{}{}.__getitem__"),
-                                  memberedType->getName(), memberedType->getId());
-      auto *module = ctx->getModule();
-      auto &context = ctx->getLLVMContext();
-
+    nonInlineMagicFuncs[getMagicSignature(
+        "__getitem__", {memberedType, types::kIntType})] = [=](Function *func) {
+      func->setLinkage(GlobalValue::PrivateLinkage);
       llvm::Type *baseType = body[0];
-      auto *getitem = cast<Function>(module->getOrInsertFunction(
-          llvmName, baseType, llvmType, seqIntLLVM(context)));
-      getitem->setLinkage(GlobalValue::PrivateLinkage);
 
-      auto iter = getitem->arg_begin();
+      auto iter = func->arg_begin();
       Value *self = iter++;
       Value *idx = iter;
-      llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", getitem);
+      llvm::BasicBlock *entry =
+          llvm::BasicBlock::Create(ctx->getLLVMContext(), "entry", func);
 
       IRBuilder<> b(entry);
       b.SetInsertPoint(entry);
@@ -271,11 +459,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
       ptr = b.CreateBitCast(ptr, baseType->getPointerTo());
       ptr = b.CreateGEP(ptr, idx);
       b.CreateRet(b.CreateLoad(ptr));
-
-      auto name =
-          fmt::format(FMT_STRING("__getitem__[{}, int]"), memberedType->getName());
-      nonInlineMagicFuncs[name] = getitem;
-    }
+    };
   }
 
   ctx->registerType(memberedType, llvmType, dfltBuilder, inlineMagics,
@@ -779,28 +963,19 @@ void CodegenVisitor::visit(std::shared_ptr<types::Generator> genType) {
        }},
   };
 
-  Context::NonInlineMagicFuncs nonInlineMagicFuncs = {};
-  {
-    auto llvmName =
-        fmt::format(FMT_STRING("seq.{}{}.next"), genType->getName(), genType->getId());
-    auto *module = ctx->getModule();
-    auto &context = ctx->getLLVMContext();
-    auto *func =
-        cast<Function>(module->getOrInsertFunction(llvmName, baseLLVMType, llvmType));
-    func->setLinkage(GlobalValue::PrivateLinkage);
-    func->setDoesNotThrow();
-    func->setPersonalityFn(makePersonalityFunc(module));
-    func->addFnAttr(llvm::Attribute::AlwaysInline);
+  Context::NonInlineMagicFuncs nonInlineMagicFuncs = {
+      {getMagicSignature("next", {genType}), [=](Function *func) {
+         func->setLinkage(GlobalValue::PrivateLinkage);
+         func->setDoesNotThrow();
+         func->setPersonalityFn(makePersonalityFunc(ctx->getModule()));
+         func->addFnAttr(llvm::Attribute::AlwaysInline);
 
-    Value *arg = func->arg_begin();
-    auto *entry = llvm::BasicBlock::Create(context, "entry", func);
-    auto *val = generatorPromise(arg, entry, baseLLVMType);
-    IRBuilder<> builder(entry);
-    builder.CreateRet(val);
-
-    auto name = getMagicSignature("next", {genType});
-    nonInlineMagicFuncs[name] = func;
-  }
+         Value *arg = func->arg_begin();
+         auto *entry = llvm::BasicBlock::Create(ctx->getLLVMContext(), "entry", func);
+         auto *val = generatorPromise(arg, entry, baseLLVMType);
+         IRBuilder<> builder(entry);
+         builder.CreateRet(val);
+       }}};
 
   ctx->registerType(genType, llvmType, dfltBuilder, inlineMagics, nonInlineMagicFuncs);
   typeResult = llvmType;

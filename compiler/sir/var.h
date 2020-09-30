@@ -34,7 +34,9 @@ public:
       : name(std::move(name)), type(std::move(type)), global(global), id(currentId++){};
   explicit Var(std::shared_ptr<types::Type> type) : Var("", std::move(type)) {}
 
-  virtual void accept(codegen::CodegenVisitor &v, const std::string &nameOverride) { v.visit(getShared(), nameOverride); }
+  virtual void accept(codegen::CodegenVisitor &v, const std::string &nameOverride) {
+    v.visit(getShared(), nameOverride);
+  }
 
   static void resetId();
 
