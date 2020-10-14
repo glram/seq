@@ -1,14 +1,17 @@
 #pragma once
 
-#include "base.h"
 #include <memory>
 #include <string>
 #include <utility>
 
-#include "codegen/codegen.h"
+#include "base.h"
 
 namespace seq {
 namespace ir {
+
+namespace common {
+class IRVisitor;
+}
 
 class BasicBlock;
 class Operand;
@@ -18,7 +21,7 @@ class Terminator : public AttributeHolder<Terminator> {
 public:
   virtual ~Terminator() = default;
 
-  virtual void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
+  virtual void accept(common::IRVisitor &v);
 
   std::string referenceString() const override { return "terminator"; }
 };
@@ -32,9 +35,7 @@ public:
 
   std::weak_ptr<BasicBlock> getDst() { return dst; }
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<JumpTerminator>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::string textRepresentation() const override;
 };
@@ -54,9 +55,7 @@ public:
   std::weak_ptr<BasicBlock> getTDst() { return tDst; }
   std::weak_ptr<BasicBlock> getFDst() { return fDst; }
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<CondJumpTerminator>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::string textRepresentation() const override;
 };
@@ -71,9 +70,7 @@ public:
 
   std::shared_ptr<Operand> getOperand() { return operand; }
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<ReturnTerminator>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::string textRepresentation() const override;
 };
@@ -89,9 +86,7 @@ public:
                   std::weak_ptr<Var> inVar)
       : dst(std::move(dst)), res(std::move(result)), inVar(std::move(inVar)) {}
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<YieldTerminator>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::weak_ptr<BasicBlock> getDst() { return dst; }
   std::shared_ptr<Operand> getResult() { return res; }
@@ -108,9 +103,7 @@ public:
   explicit ThrowTerminator(std::shared_ptr<Operand> operand)
       : operand(std::move(operand)){};
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<ThrowTerminator>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::shared_ptr<Operand> getOperand() { return operand; }
 
@@ -127,9 +120,7 @@ public:
                             std::weak_ptr<BasicBlock> dst)
       : operand(std::move(operand)), dst(std::move(dst)){};
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<AssertTerminator>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::shared_ptr<Operand> getOperand() { return operand; }
 

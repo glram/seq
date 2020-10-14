@@ -6,13 +6,16 @@
 
 #include "base.h"
 
-#include "codegen/codegen.h"
-
 namespace seq {
 namespace ir {
 
+namespace common {
+class IRVisitor;
+}
+
 class Instr;
 class Terminator;
+class TryCatch;
 
 class BasicBlock : public AttributeHolder<BasicBlock> {
 private:
@@ -23,8 +26,11 @@ private:
 
   int id;
 
+  std::shared_ptr<TryCatch> tc;
+
 public:
-  BasicBlock() : id(currentId++) {}
+  explicit BasicBlock(std::shared_ptr<TryCatch> tc = nullptr)
+      : id(currentId++), tc(std::move(tc)) {}
 
   static void resetId();
 
@@ -36,10 +42,13 @@ public:
 
   int getId() const { return id; }
 
+  void setTryCatch(std::shared_ptr<TryCatch> newTc) { tc = std::move(newTc); }
+  std::shared_ptr<TryCatch> getTryCatch() { return tc; }
+
   std::string referenceString() const override;
   std::string textRepresentation() const override;
 
-  void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
+  void accept(common::IRVisitor &v);
 };
 
 } // namespace ir

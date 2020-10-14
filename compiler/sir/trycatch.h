@@ -1,12 +1,18 @@
 #pragma once
 
-#include "base.h"
-#include "types/types.h"
 #include <utility>
 #include <vector>
 
+#include "base.h"
+
+#include "types/types.h"
+
 namespace seq {
 namespace ir {
+
+namespace common {
+class IRVisitor;
+}
 
 class BasicBlock;
 class Var;
@@ -29,6 +35,8 @@ public:
 
   static void resetId();
 
+  void accept(common::IRVisitor &v);
+
   std::vector<std::shared_ptr<TryCatch>> getChildren() { return children; }
   void addChild(std::shared_ptr<TryCatch> child) {
     children.push_back(child);
@@ -46,7 +54,7 @@ public:
   }
 
   std::weak_ptr<TryCatch> getParent() { return parent; }
-  int getId() { return id; }
+  int getId() const { return id; }
 
   std::shared_ptr<Var> getVar(int i) { return catchVars[i]; }
 

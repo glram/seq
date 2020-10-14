@@ -1,8 +1,11 @@
 #include "util/fmt/format.h"
 
+#include "common/visitor.h"
+
 #include "bblock.h"
 #include "instr.h"
 #include "terminator.h"
+#include "trycatch.h"
 
 namespace seq {
 namespace ir {
@@ -15,9 +18,15 @@ std::string BasicBlock::referenceString() const {
   return fmt::format(FMT_STRING("bb#{}"), id);
 }
 
+void BasicBlock::accept(common::IRVisitor &v) { v.visit(getShared()); }
+
 std::string BasicBlock::textRepresentation() const {
   fmt::memory_buffer buf;
-  fmt::format_to(buf, FMT_STRING("{} {{\n"), referenceString());
+  fmt::format_to(buf, FMT_STRING("{}"), referenceString());
+  if (tc)
+    fmt::format_to(buf, FMT_STRING("({})"), tc->referenceString());
+  buf.push_back('\n');
+  buf.push_back('{');
   for (const auto &instrPtr : instructions) {
     fmt::format_to(buf, FMT_STRING("{};\n"), instrPtr->textRepresentation());
   }

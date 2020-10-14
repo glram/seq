@@ -15,7 +15,6 @@ class TryCatch;
 class BasicBlock;
 
 extern const std::string kSrcInfoAttribute;
-extern const std::string kTryCatchAttribute;
 extern const std::string kLoopAttribute;
 extern const std::string kFuncAttribute;
 
@@ -36,14 +35,6 @@ struct BoolAttribute : public Attribute {
   bool value;
 
   explicit BoolAttribute(bool value) : value(value) {}
-  std::string textRepresentation() const override;
-};
-
-struct TryCatchAttribute : public Attribute {
-  std::shared_ptr<TryCatch> handler;
-
-  explicit TryCatchAttribute(std::shared_ptr<TryCatch> handler)
-      : handler(std::move(handler)) {}
   std::string textRepresentation() const override;
 };
 

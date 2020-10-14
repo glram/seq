@@ -1,22 +1,39 @@
+#include "terminator.h"
+
 #include "util/fmt/format.h"
 
 #include "bblock.h"
 #include "operand.h"
-#include "terminator.h"
 #include "var.h"
+
+#include "common/visitor.h"
 
 namespace seq {
 namespace ir {
+
+void Terminator::accept(common::IRVisitor &v) { v.visit(getShared()); }
+
+void JumpTerminator::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<JumpTerminator>(getShared()));
+}
 
 std::string JumpTerminator::textRepresentation() const {
   return fmt::format(FMT_STRING("jmp {}; {}"), dst.lock()->referenceString(),
                      attributeString());
 }
 
+void CondJumpTerminator::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<CondJumpTerminator>(getShared()));
+}
+
 std::string CondJumpTerminator::textRepresentation() const {
   return fmt::format(FMT_STRING("condjump ({}) {} {}; {}"), cond->textRepresentation(),
                      tDst.lock()->referenceString(), fDst.lock()->referenceString(),
                      attributeString());
+}
+
+void ReturnTerminator::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<ReturnTerminator>(getShared()));
 }
 
 std::string ReturnTerminator::textRepresentation() const {
@@ -28,6 +45,10 @@ std::string ReturnTerminator::textRepresentation() const {
   }
   fmt::format_to(buf, FMT_STRING("; {}"), attributeString());
   return std::string(buf.data(), buf.size());
+}
+
+void YieldTerminator::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<YieldTerminator>(getShared()));
 }
 
 std::string YieldTerminator::textRepresentation() const {
@@ -47,9 +68,17 @@ std::string YieldTerminator::textRepresentation() const {
   return std::string(buf.data(), buf.size());
 }
 
+void ThrowTerminator::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<ThrowTerminator>(getShared()));
+}
+
 std::string ThrowTerminator::textRepresentation() const {
   return fmt::format(FMT_STRING("throw ({}); {}"), operand->textRepresentation(),
                      attributeString());
+}
+
+void AssertTerminator::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<AssertTerminator>(getShared()));
 }
 
 std::string AssertTerminator::textRepresentation() const {

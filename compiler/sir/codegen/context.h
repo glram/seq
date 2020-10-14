@@ -5,6 +5,8 @@
 #include <utility>
 #include <vector>
 
+#include "sir/common/context.h"
+
 #include "util/llvm.h"
 
 namespace seq {
@@ -13,6 +15,7 @@ namespace ir {
 class Func;
 class BasicBlock;
 class Var;
+class Pattern;
 
 namespace types {
 class Type;
@@ -20,89 +23,151 @@ class Type;
 
 namespace codegen {
 
-struct FuncMetadata {
-  llvm::Function *func;
-
-  bool isGenerator;
-  /// Storage for this coroutine's promise, or null if none
-  llvm::Value *promise;
-
-  /// Coroutine handle, or null if none
-  llvm::Value *handle;
-
-  /// Coroutine cleanup block, or null if none
-  llvm::BasicBlock *cleanup;
-
-  /// Coroutine suspend block, or null if none
-  llvm::BasicBlock *suspend;
-
-  /// Coroutine exit block, or null if none
-  llvm::BasicBlock *exit;
+struct TryCatchMetadata {
+  llvm::BasicBlock *exceptionBlock = nullptr;
+  llvm::BasicBlock *exceptionRouteBlock = nullptr;
+  llvm::BasicBlock *finallyStart = nullptr;
+  std::vector<llvm::BasicBlock *> handlers;
+  llvm::Value *excFlag = nullptr;
+  llvm::Value *catchStore = nullptr;
+  llvm::Value *delegateDepth = nullptr;
+  llvm::Value *retStore = nullptr;
 };
 
-struct Frame {
+struct CodegenFrame {
   std::unordered_map<int, llvm::Value *> varRealizations;
   std::unordered_map<int, llvm::BasicBlock *> blockRealizations;
+
   llvm::BasicBlock *curBlock = nullptr;
-  FuncMetadata funcMetadata = {nullptr, false,   nullptr, nullptr,
-                               nullptr, nullptr, nullptr};
+  std::shared_ptr<BasicBlock> curIRBlock;
+
+  llvm::Function *func = nullptr;
+  std::unordered_map<int, TryCatchMetadata> tryCatchMeta;
+
+  bool isGenerator = false;
+
+  llvm::Value *rValPtr = nullptr;
+
+  /// Storage for this coroutine's promise, or null if none
+  llvm::Value *promise = nullptr;
+
+  /// Coroutine handle, or null if none
+  llvm::Value *handle = nullptr;
+
+  /// Coroutine cleanup block, or null if none
+  llvm::BasicBlock *cleanup = nullptr;
+
+  /// Coroutine suspend block, or null if none
+  llvm::BasicBlock *suspend = nullptr;
+
+  /// Coroutine exit block, or null if none
+  llvm::BasicBlock *exit = nullptr;
 };
 
-class Context {
+struct TypeRealization {
 public:
-  using DefaultValueBuilder = std::function<llvm::Value *(llvm::IRBuilder<> &)>;
+  std::shared_ptr<seq::ir::types::Type> irType;
+  llvm::Type *llvmType;
 
-  using LLVMValueBuilder =
+  using Fields = std::unordered_map<std::string, int>;
+  Fields fields;
+
+  using CustomGetterFunc =
+      std::function<llvm::Value *(llvm::Value *, llvm::IRBuilder<> &)>;
+  using CustomGetters = std::unordered_map<std::string, CustomGetterFunc>;
+  CustomGetters customGetters;
+
+  using MemberPointerFunc =
+      std::function<llvm::Value *(llvm::Value *, int, llvm::IRBuilder<> &)>;
+  MemberPointerFunc memberPointerFunc;
+
+  using DefaultBuilder = std::function<llvm::Value *(llvm::IRBuilder<> &)>;
+  DefaultBuilder dfltBuilder;
+
+  using InlineMagicBuilder =
       std::function<llvm::Value *(std::vector<llvm::Value *>, llvm::IRBuilder<> &)>;
-  using InlineMagicFuncs = std::unordered_map<std::string, LLVMValueBuilder>;
+  using InlineMagics = std::unordered_map<std::string, InlineMagicBuilder>;
+  InlineMagics inlineMagicFuncs;
 
-  using LLVMFuncBuilder = std::function<void(llvm::Function *)>;
-  using NonInlineMagicFuncs = std::unordered_map<std::string, LLVMFuncBuilder>;
+  using NonInlineMagicBuilder = std::function<void(llvm::Function *)>;
+  using NonInlineMagics = std::unordered_map<std::string, NonInlineMagicBuilder>;
+  NonInlineMagics nonInlineMagicFuncs;
 
+  using ReverseMagicStubs = std::unordered_map<std::string, llvm::Function *>;
+  ReverseMagicStubs reverseMagicStubs;
+
+  InlineMagicBuilder maker;
+
+  using CustomLoader = std::function<llvm::Value *(llvm::Value *, llvm::IRBuilder<> &)>;
+  CustomLoader customLoader;
+
+public:
+  TypeRealization(std::shared_ptr<seq::ir::types::Type> irType, llvm::Type *llvmType)
+      : irType(std::move(irType)), llvmType(llvmType) {}
+  TypeRealization(std::shared_ptr<seq::ir::types::Type> irType, llvm::Type *llvmType,
+                  DefaultBuilder dfltBuilder, InlineMagics inlineMagicFuncs = {},
+                  const std::string &newSig = "",
+                  NonInlineMagics nonInlineMagicFuncs = {},
+                  ReverseMagicStubs reverseMagicStubs = {}, Fields fields = {},
+                  CustomGetters customGetters = {},
+                  MemberPointerFunc memberPointerFunc = nullptr,
+                  CustomLoader customLoader = nullptr)
+      : irType(std::move(irType)), llvmType(llvmType), fields(std::move(fields)),
+        customGetters(std::move(customGetters)),
+        memberPointerFunc(std::move(memberPointerFunc)),
+        dfltBuilder(std::move(dfltBuilder)),
+        inlineMagicFuncs(std::move(inlineMagicFuncs)),
+        nonInlineMagicFuncs(std::move(nonInlineMagicFuncs)),
+        reverseMagicStubs(std::move(reverseMagicStubs)),
+        maker(newSig.empty() ? nullptr : inlineMagicFuncs[newSig]),
+        customLoader(std::move(customLoader)) {}
+
+  llvm::Value *extractMember(llvm::Value *self, const std::string &field,
+                             llvm::IRBuilder<> &builder) const;
+  llvm::Value *getMemberPointer(llvm::Value *ptr, const std::string &field,
+                                llvm::IRBuilder<> &builder) const;
+  llvm::Value *getDefaultValue(llvm::IRBuilder<> &builder) const;
+  llvm::Value *getUndefValue() const;
+  llvm::Value *callMagic(const std::string &sig, std::vector<llvm::Value *> args,
+                         llvm::IRBuilder<> &builder);
+  NonInlineMagicBuilder getMagicBuilder(const std::string &sig) const;
+  llvm::Function *getStub(const std::string &sig) const;
+  llvm::Value *makeNew(std::vector<llvm::Value *> args,
+                       llvm::IRBuilder<> &builder) const;
+  llvm::Value *load(llvm::Value *ptr, llvm::IRBuilder<> &builder) const;
+  llvm::Value *alloc(llvm::Value *count, llvm::IRBuilder<> &builder,
+                     bool stack = false) const;
+};
+
+class Context : public seq::ir::common::IRContext<CodegenFrame> {
 private:
   llvm::Module *module;
-  std::unordered_map<int, llvm::Type *> typeRealizations;
-  std::unordered_map<int, DefaultValueBuilder> defaultValueBuilders;
-  std::unordered_map<int, InlineMagicFuncs> inlineMagicBuilders;
-  std::unordered_map<int, NonInlineMagicFuncs> nonInlineMagicFuncs;
-
-  std::vector<Frame> frames;
-
-  int seqMainId;
+  std::unordered_map<int, std::shared_ptr<TypeRealization>> typeRealizations;
 
   void initTypeRealizations();
-  void initMagicFuncs();
 
 public:
-  explicit Context(llvm::Module *module) : module(module), seqMainId(-1) {
-    initTypeRealizations();
-    initMagicFuncs();
-  }
+  explicit Context(llvm::Module *module) : module(module) { initTypeRealizations(); }
 
-  void registerType(std::shared_ptr<types::Type> sirType, llvm::Type *llvmType,
-                    DefaultValueBuilder dfltBuilder, InlineMagicFuncs inlineMagics = {},
-                    NonInlineMagicFuncs nonInlineMagics = {});
+  void registerType(std::shared_ptr<types::Type> sirType,
+                    std::shared_ptr<TypeRealization> t);
+  std::shared_ptr<TypeRealization>
+  getTypeRealization(std::shared_ptr<types::Type> sirType);
 
   void registerVar(std::shared_ptr<Var> sirVar, llvm::Value *val);
   void registerBlock(std::shared_ptr<BasicBlock> sirBlock, llvm::BasicBlock *block);
 
-  void pushFrame() { frames.emplace_back(); }
-  Frame &getFrame() { return frames.back(); }
-  void popFrame() { frames.pop_back(); }
-
   llvm::Value *getVar(std::shared_ptr<Var> sirVar);
   llvm::BasicBlock *getBlock(std::shared_ptr<BasicBlock> sirBlock);
-
-  llvm::Type *getLLVMType(std::shared_ptr<types::Type> type);
-
-  llvm::Value *getDefaultValue(std::shared_ptr<types::Type> type,
-                               llvm::IRBuilder<> &builder);
 
   llvm::Module *getModule() { return module; }
   llvm::LLVMContext &getLLVMContext() { return module->getContext(); }
 
-  LLVMFuncBuilder getMagicBuilder(std::shared_ptr<types::Type> type,
-                                  const std::string &sig);
+  llvm::Value *callBuiltin(const std::string &signature,
+                           std::vector<llvm::Value *> args, llvm::IRBuilder<> &builder);
+
+  llvm::Value *codegenStr(llvm::Value *self, const std::string &name,
+                          llvm::BasicBlock *block);
 };
 
 } // namespace codegen

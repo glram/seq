@@ -8,13 +8,16 @@
 #include "types/types.h"
 #include "var.h"
 
-#include "codegen/codegen.h"
-
 namespace seq {
 namespace ir {
 
+namespace common {
+class IRVisitor;
+}
+
 class IRModule;
 class BasicBlock;
+class TryCatch;
 
 class Func : public Var {
 private:
@@ -25,12 +28,15 @@ private:
   std::vector<std::shared_ptr<BasicBlock>> blocks;
 
   std::weak_ptr<IRModule> module;
-  std::weak_ptr<Func> enclosing;
+  std::shared_ptr<Func> enclosing;
+
+  std::shared_ptr<TryCatch> tc;
 
   bool external;
   bool generator;
 
   bool internal;
+  bool llvmOnly;
   std::shared_ptr<types::Type> parent;
   std::string magicName;
 
@@ -51,8 +57,11 @@ public:
   std::vector<std::shared_ptr<BasicBlock>> getBlocks() { return blocks; }
   void addBlock(std::shared_ptr<BasicBlock> block) { blocks.push_back(block); }
 
-  void setEnclosingFunc(std::weak_ptr<Func> f) { enclosing = std::move(f); }
-  std::weak_ptr<Func> getEnclosingFunc() { return enclosing; }
+  void setEnclosingFunc(std::shared_ptr<Func> f) { enclosing = std::move(f); }
+  std::shared_ptr<Func> getEnclosingFunc() { return enclosing; }
+
+  void setTryCatch(std::shared_ptr<TryCatch> tryCatch) { tc = std::move(tryCatch); }
+  std::shared_ptr<TryCatch> getTryCatch() { return tc; }
 
   void setExternal() { external = true; }
   bool isExternal() const { return external; }
@@ -60,12 +69,16 @@ public:
   void setGenerator() { generator = true; }
   bool isGenerator() const { return generator; }
 
-  void setInternal(std::shared_ptr<types::Type> p, std::string n) {
+  void setInternal(std::shared_ptr<types::Type> p, std::string n,
+                   bool isLLVMOnly = true) {
     internal = true;
     parent = std::move(p);
     magicName = std::move(n);
+    llvmOnly = isLLVMOnly;
   }
   bool isInternal() const { return internal; }
+  bool isLLVMOnly() const { return llvmOnly; }
+
   std::shared_ptr<types::Type> getParentType() { return parent; }
   std::string getMagicName() const { return magicName; }
 
@@ -74,9 +87,7 @@ public:
 
   bool isFunc() const override { return true; }
 
-  void accept(codegen::CodegenVisitor &v, const std::string &nameOverride) override {
-    v.visit(std::static_pointer_cast<Func>(getShared()), nameOverride);
-  }
+  void accept(common::IRVisitor &v) override;
 };
 
 } // namespace ir

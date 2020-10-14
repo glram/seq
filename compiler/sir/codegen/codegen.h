@@ -4,179 +4,90 @@
 
 #include "context.h"
 
-#define NODE_VISIT(x) void visit(std::shared_ptr<x>)
-#define DEFAULT_VISIT(x)                                                               \
-  void visit(std::shared_ptr<x>) {}
+#include "sir/common/visitor.h"
+
+#define OVERRIDE_VISIT(x) void visit(std::shared_ptr<x>) override
 
 namespace seq {
 namespace ir {
-
-class IRModule;
-
-class BasicBlock;
-
-class Func;
-class Var;
-
-class Instr;
-class AssignInstr;
-class RvalueInstr;
-
-class Rvalue;
-class MemberRvalue;
-class CallRvalue;
-class PartialCallRvalue;
-class OperandRvalue;
-class MatchRvalue;
-class PipelineRvalue;
-class StackAllocRvalue;
-
-class Lvalue;
-class VarLvalue;
-class VarMemberLvalue;
-
-class Operand;
-class VarOperand;
-class VarPointerOperand;
-class LiteralOperand;
-
-class Pattern;
-class WildcardPattern;
-class BoundPattern;
-class StarPattern;
-class IntPattern;
-class BoolPattern;
-class StrPattern;
-class SeqPattern;
-class RecordPattern;
-class ArrayPattern;
-class OptionalPattern;
-class RangePattern;
-class OrPattern;
-class GuardedPattern;
-
-class Terminator;
-class JumpTerminator;
-class CondJumpTerminator;
-class ReturnTerminator;
-class YieldTerminator;
-class ThrowTerminator;
-class AssertTerminator;
-
-namespace types {
-class Type;
-class RecordType;
-class RefType;
-class FuncType;
-class PartialFuncType;
-class Optional;
-class Array;
-class Pointer;
-class Generator;
-class IntNType;
-} // namespace types
-
 namespace codegen {
 
-class CodegenVisitor {
-private:
-  std::shared_ptr<Context> ctx;
-  llvm::Value *valResult;
-  llvm::Type *typeResult;
+class CodegenVisitor;
 
-  llvm::Value *alloc(std::shared_ptr<types::Type> type, llvm::Value *count,
-                     llvm::IRBuilder<> &builder);
-  llvm::Value *callBuiltin(const std::string &signature,
-                           std::vector<llvm::Value *> args, llvm::IRBuilder<> &builder);
-  llvm::Value *callMagic(std::shared_ptr<types::Type> type,
-                         const std::string &signature, std::vector<llvm::Value *> args,
-                         llvm::IRBuilder<> &builder);
-  llvm::Value *codegenStr(llvm::Value *self, const std::string &name,
-                          llvm::BasicBlock *block);
+using InlinePatternCheckFunc = std::function<llvm::Value *(llvm::Value *)>;
+using Parent = common::CallbackIRVisitor<
+    CodegenVisitor, Context, llvm::Module *, llvm::BasicBlock *, llvm::BasicBlock *,
+    llvm::Value *, llvm::Instruction *, llvm::Value *, llvm::Value *, llvm::Value *,
+    InlinePatternCheckFunc, llvm::Instruction *, std::shared_ptr<TypeRealization>>;
+
+class CodegenVisitor : public Parent {
+private:
+  std::string nameOverride;
 
 public:
-  explicit CodegenVisitor(std::shared_ptr<Context> ctx)
-      : ctx(std::move(ctx)), valResult(), typeResult() {}
+  explicit CodegenVisitor(std::shared_ptr<Context> ctx, std::string nameOverride = "")
+      : Parent(std::move(ctx)), nameOverride(std::move(nameOverride)) {}
 
-  void transform(std::shared_ptr<IRModule> module);
-  void transform(std::shared_ptr<BasicBlock> block);
-  llvm::Value *transform(std::shared_ptr<Var> var,
-                         const std::string &nameOverride = "");
-  void transform(std::shared_ptr<Instr> instr);
-  llvm::Value *transform(std::shared_ptr<Rvalue> rval);
-  llvm::Value *transform(std::shared_ptr<Lvalue> lval);
-  llvm::Value *transform(std::shared_ptr<Operand> op);
-  llvm::Value *transform(std::shared_ptr<Pattern> pat);
-  void transform(std::shared_ptr<Terminator> term);
-  llvm::Type *transform(std::shared_ptr<types::Type> typ);
+  OVERRIDE_VISIT(IRModule);
 
-  NODE_VISIT(IRModule);
+  OVERRIDE_VISIT(BasicBlock);
 
-  NODE_VISIT(BasicBlock);
+  OVERRIDE_VISIT(TryCatch);
 
-  void visit(std::shared_ptr<Func>, const std::string &);
-  void visit(std::shared_ptr<Var>, const std::string &);
+  OVERRIDE_VISIT(Func);
+  OVERRIDE_VISIT(Var);
 
-  DEFAULT_VISIT(Instr);
-  NODE_VISIT(AssignInstr);
-  NODE_VISIT(RvalueInstr);
+  OVERRIDE_VISIT(AssignInstr);
+  OVERRIDE_VISIT(RvalueInstr);
 
-  DEFAULT_VISIT(Rvalue);
-  NODE_VISIT(MemberRvalue);
-  NODE_VISIT(CallRvalue);
-  NODE_VISIT(PartialCallRvalue);
-  NODE_VISIT(OperandRvalue);
-  NODE_VISIT(MatchRvalue);
-  NODE_VISIT(PipelineRvalue);
-  NODE_VISIT(StackAllocRvalue);
+  OVERRIDE_VISIT(MemberRvalue);
+  OVERRIDE_VISIT(CallRvalue);
+  OVERRIDE_VISIT(PartialCallRvalue);
+  OVERRIDE_VISIT(OperandRvalue);
+  OVERRIDE_VISIT(MatchRvalue);
+  OVERRIDE_VISIT(PipelineRvalue);
+  OVERRIDE_VISIT(StackAllocRvalue);
 
-  DEFAULT_VISIT(Lvalue);
-  NODE_VISIT(VarLvalue);
-  NODE_VISIT(VarMemberLvalue);
+  OVERRIDE_VISIT(VarLvalue);
+  OVERRIDE_VISIT(VarMemberLvalue);
 
-  DEFAULT_VISIT(Operand);
-  NODE_VISIT(VarOperand);
-  NODE_VISIT(VarPointerOperand);
-  NODE_VISIT(LiteralOperand);
+  OVERRIDE_VISIT(VarOperand);
+  OVERRIDE_VISIT(VarPointerOperand);
+  OVERRIDE_VISIT(LiteralOperand);
 
-  DEFAULT_VISIT(Pattern);
-  NODE_VISIT(WildcardPattern);
-  NODE_VISIT(BoundPattern);
-  NODE_VISIT(StarPattern);
-  NODE_VISIT(IntPattern);
-  NODE_VISIT(BoolPattern);
-  NODE_VISIT(StrPattern);
-  NODE_VISIT(SeqPattern);
-  NODE_VISIT(RecordPattern);
-  NODE_VISIT(ArrayPattern);
-  NODE_VISIT(OptionalPattern);
-  NODE_VISIT(RangePattern);
-  NODE_VISIT(OrPattern);
-  NODE_VISIT(GuardedPattern);
+  OVERRIDE_VISIT(WildcardPattern);
+  OVERRIDE_VISIT(BoundPattern);
+  OVERRIDE_VISIT(StarPattern);
+  OVERRIDE_VISIT(IntPattern);
+  OVERRIDE_VISIT(BoolPattern);
+  OVERRIDE_VISIT(StrPattern);
+  OVERRIDE_VISIT(SeqPattern);
+  OVERRIDE_VISIT(RecordPattern);
+  OVERRIDE_VISIT(ArrayPattern);
+  OVERRIDE_VISIT(RangePattern);
+  OVERRIDE_VISIT(OrPattern);
+  OVERRIDE_VISIT(GuardedPattern);
 
-  DEFAULT_VISIT(Terminator);
-  NODE_VISIT(JumpTerminator);
-  NODE_VISIT(CondJumpTerminator);
-  NODE_VISIT(ReturnTerminator);
-  NODE_VISIT(YieldTerminator);
-  NODE_VISIT(ThrowTerminator);
-  NODE_VISIT(AssertTerminator);
+  OVERRIDE_VISIT(JumpTerminator);
+  OVERRIDE_VISIT(CondJumpTerminator);
+  OVERRIDE_VISIT(ReturnTerminator);
+  OVERRIDE_VISIT(YieldTerminator);
+  OVERRIDE_VISIT(ThrowTerminator);
+  OVERRIDE_VISIT(AssertTerminator);
 
-  DEFAULT_VISIT(types::Type);
-  NODE_VISIT(types::RecordType);
-  NODE_VISIT(types::RefType);
-  NODE_VISIT(types::FuncType);
-  NODE_VISIT(types::PartialFuncType);
-  NODE_VISIT(types::Optional);
-  NODE_VISIT(types::Array);
-  NODE_VISIT(types::Pointer);
-  NODE_VISIT(types::Generator);
-  NODE_VISIT(types::IntNType);
+  OVERRIDE_VISIT(types::RecordType);
+  OVERRIDE_VISIT(types::RefType);
+  OVERRIDE_VISIT(types::FuncType);
+  OVERRIDE_VISIT(types::PartialFuncType);
+  OVERRIDE_VISIT(types::Optional);
+  OVERRIDE_VISIT(types::Array);
+  OVERRIDE_VISIT(types::Pointer);
+  OVERRIDE_VISIT(types::Generator);
+  OVERRIDE_VISIT(types::IntNType);
 };
 
 } // namespace codegen
 } // namespace ir
 } // namespace seq
 
-#undef DEFAULT_VISIT
-#undef NODE_VISIT
+#undef OVERRIDE_VISIT

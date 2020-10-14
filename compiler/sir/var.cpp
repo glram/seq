@@ -1,6 +1,8 @@
+#include "var.h"
+
 #include "util/fmt/format.h"
 
-#include "var.h"
+#include "common/visitor.h"
 
 namespace seq {
 namespace ir {
@@ -8,6 +10,8 @@ namespace ir {
 int Var::currentId = 0;
 
 void Var::resetId() { currentId = 0; }
+
+void Var::accept(common::IRVisitor &v) { v.visit(getShared()); }
 
 std::string Var::textRepresentation() const {
   return fmt::format(FMT_STRING("{}: {}; {};"), referenceString(),

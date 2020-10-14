@@ -125,7 +125,10 @@ public:
 
   std::shared_ptr<T> find(const std::string &name) const {
     auto it = map.find(name);
-    return it != map.end() ? it->second.front() : nullptr;
+    if (it != map.end()) {
+      return it->second.front();
+    }
+    return nullptr;
   }
   void add(const std::string &name, std::shared_ptr<T> var) {
     assert(!name.empty());

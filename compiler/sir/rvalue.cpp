@@ -1,19 +1,32 @@
-#include "util/fmt/format.h"
+#include "rvalue.h"
+
+#include <utility>
 
 #include "operand.h"
 #include "pattern.h"
-#include "rvalue.h"
-
 #include "var.h"
-#include <utility>
+
+#include "common/visitor.h"
 
 namespace seq {
 namespace ir {
 
+void Rvalue::accept(common::IRVisitor &v) { v.visit(getShared()); }
+
 MemberRvalue::MemberRvalue(std::shared_ptr<Operand> var, std::string field)
     : var(std::move(var)), field(std::move(field)) {}
 
-std::shared_ptr<types::Type> MemberRvalue::getType() { return var->getType(); }
+void MemberRvalue::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<MemberRvalue>(getShared()));
+}
+
+std::shared_ptr<types::Type> MemberRvalue::getType() {
+  if (field == "len")
+    ;
+  auto type = std::static_pointer_cast<types::MemberedType>(var->getType())
+                  ->getMemberType(field);
+  return type;
+}
 
 std::string MemberRvalue::textRepresentation() const {
   return fmt::format(FMT_STRING("{}.{}"), var->textRepresentation(), field);
@@ -25,25 +38,12 @@ CallRvalue::CallRvalue(std::shared_ptr<Operand> func,
                        std::vector<std::shared_ptr<Operand>> args)
     : func(std::move(func)), args(std::move(args)) {}
 
-std::shared_ptr<types::Type> CallRvalue::getType() {
-  return std::static_pointer_cast<types::FuncType>(func->getType())->getRType();
+void CallRvalue::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<CallRvalue>(getShared()));
 }
 
-PartialCallRvalue::PartialCallRvalue(std::shared_ptr<Operand> func,
-                                     std::vector<std::shared_ptr<Operand>> args,
-                                     std::shared_ptr<types::PartialFuncType> tval)
-    : func(std::move(func)), args(std::move(args)), tval(std::move(tval)) {}
-
-std::string PartialCallRvalue::textRepresentation() const {
-  fmt::memory_buffer buf;
-  fmt::format_to(buf, FMT_STRING("{}("), func->textRepresentation());
-  for (auto it = args.begin(); it != args.end(); it++) {
-    fmt::format_to(buf, FMT_STRING("{}"), *it ? (*it)->textRepresentation() : "...");
-    if (it + 1 != args.end())
-      fmt::format_to(buf, FMT_STRING(", "));
-  }
-  buf.push_back(')');
-  return std::string(buf.data(), buf.size());
+std::shared_ptr<types::Type> CallRvalue::getType() {
+  return std::static_pointer_cast<types::FuncType>(func->getType())->getRType();
 }
 
 std::string CallRvalue::textRepresentation() const {
@@ -58,13 +58,42 @@ std::string CallRvalue::textRepresentation() const {
   return std::string(buf.data(), buf.size());
 }
 
+PartialCallRvalue::PartialCallRvalue(std::shared_ptr<Operand> func,
+                                     std::vector<std::shared_ptr<Operand>> args,
+                                     std::shared_ptr<types::PartialFuncType> tval)
+    : func(std::move(func)), args(std::move(args)), tval(std::move(tval)) {}
+
+void PartialCallRvalue::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<PartialCallRvalue>(getShared()));
+}
+
+std::string PartialCallRvalue::textRepresentation() const {
+  fmt::memory_buffer buf;
+  fmt::format_to(buf, FMT_STRING("{}("), func->textRepresentation());
+  for (auto it = args.begin(); it != args.end(); it++) {
+    fmt::format_to(buf, FMT_STRING("{}"), *it ? (*it)->textRepresentation() : "...");
+    if (it + 1 != args.end())
+      fmt::format_to(buf, FMT_STRING(", "));
+  }
+  buf.push_back(')');
+  return std::string(buf.data(), buf.size());
+}
+
 OperandRvalue::OperandRvalue(std::shared_ptr<Operand> operand)
     : operand(std::move(operand)) {}
+
+void OperandRvalue::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<OperandRvalue>(getShared()));
+}
 
 std::shared_ptr<types::Type> OperandRvalue::getType() { return operand->getType(); }
 
 std::string OperandRvalue::textRepresentation() const {
   return operand->textRepresentation();
+}
+
+void MatchRvalue::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<MatchRvalue>(getShared()));
 }
 
 std::string MatchRvalue::textRepresentation() const {
@@ -75,6 +104,10 @@ std::string MatchRvalue::textRepresentation() const {
 PipelineRvalue::PipelineRvalue(std::vector<std::shared_ptr<Operand>> stages,
                                std::vector<bool> parallel)
     : stages(std::move(stages)), parallel(std::move(parallel)) {}
+
+void PipelineRvalue::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<PipelineRvalue>(getShared()));
+}
 
 std::shared_ptr<types::Type> PipelineRvalue::getType() {
   return !stages.empty() ? stages[stages.size() - 1]->getType() : types::kVoidType;
@@ -91,9 +124,12 @@ std::string PipelineRvalue::textRepresentation() const {
   return std::string(buf.data(), buf.size());
 }
 
+void StackAllocRvalue::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<StackAllocRvalue>(getShared()));
+}
+
 std::string StackAllocRvalue::textRepresentation() const {
-  return fmt::format(FMT_STRING("new({}, {})"), tval->textRepresentation(),
-                     count->textRepresentation());
+  return fmt::format(FMT_STRING("new({}, {})"), tval->textRepresentation(), count);
 }
 
 } // namespace ir

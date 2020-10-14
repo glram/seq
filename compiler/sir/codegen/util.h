@@ -12,11 +12,12 @@ namespace ir {
 namespace types {
 class Type;
 class Generator;
+class MemberedType;
 } // namespace types
 
 namespace codegen {
 
-struct FuncMetadata;
+struct CodegenFrame;
 
 std::string getMagicSignature(const std::string &name,
                               std::vector<std::shared_ptr<types::Type>> types);
@@ -33,8 +34,8 @@ void generatorSend(llvm::Value *self, llvm::Value *val, llvm::BasicBlock *block,
                    llvm::Type *outType);
 void generatorDestroy(llvm::Value *self, llvm::BasicBlock *block);
 
-void funcReturn(FuncMetadata &meta, llvm::Value *val, llvm::BasicBlock *block);
-void funcYield(FuncMetadata &meta, llvm::Value *val, llvm::BasicBlock *block,
+void funcReturn(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block);
+void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
                llvm::BasicBlock *dst);
 
 } // namespace codegen

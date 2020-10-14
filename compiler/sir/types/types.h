@@ -6,10 +6,13 @@
 #include <vector>
 
 #include "sir/base.h"
-#include "sir/codegen/codegen.h"
 
 namespace seq {
 namespace ir {
+
+namespace common {
+class IRVisitor;
+}
 
 class Func;
 
@@ -17,14 +20,17 @@ namespace types {
 
 class Type;
 
-extern std::shared_ptr<Type> kStringType;
 extern std::shared_ptr<Type> kBoolType;
-extern std::shared_ptr<Type> kSeqType;
 extern std::shared_ptr<Type> kFloatType;
 extern std::shared_ptr<Type> kIntType;
 extern std::shared_ptr<Type> kAnyType;
 extern std::shared_ptr<Type> kVoidType;
 extern std::shared_ptr<Type> kByteType;
+
+extern std::shared_ptr<Type> kBytePointerType;
+
+extern std::shared_ptr<Type> kStringType;
+extern std::shared_ptr<Type> kSeqType;
 
 extern std::shared_ptr<Type> kNoArgVoidFuncType;
 
@@ -33,6 +39,7 @@ private:
   static int currentId;
 
   std::string name;
+
   int id;
 
   bool atomic;
@@ -42,7 +49,7 @@ public:
       : name(std::move(name)), id(currentId++), atomic(atomic) {}
   virtual ~Type() = default;
 
-  virtual void accept(seq::ir::codegen::CodegenVisitor &v) { v.visit(getShared()); }
+  virtual void accept(common::IRVisitor &v);
 
   static void resetId();
 
@@ -77,9 +84,7 @@ public:
       : MemberedType(std::move(name)), memberNames(std::move(mNames)),
         memberTypes(std::move(mTypes)) {}
 
-  void accept(seq::ir::codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<RecordType>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::vector<std::string> getMemberNames() override { return memberNames; }
   std::vector<std::shared_ptr<Type>> getMemberTypes() override { return memberTypes; }
@@ -94,11 +99,9 @@ private:
 
 public:
   RefType(std::string name, std::shared_ptr<RecordType> contents)
-      : MemberedType(name), contents(std::move(contents)) {}
+      : MemberedType(std::move(name)), contents(std::move(contents)) {}
 
-  void accept(seq::ir::codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<RefType>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::shared_ptr<RecordType> getContents() { return contents; }
   std::vector<std::string> getMemberNames() override {
@@ -126,9 +129,9 @@ public:
            std::vector<std::shared_ptr<Type>> argTypes)
       : Type(std::move(name)), rType(std::move(rType)), argTypes(std::move(argTypes)) {}
 
-  void accept(seq::ir::codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<FuncType>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
+
+  virtual bool isPartial() const { return false; }
 
   std::shared_ptr<Type> getRType() { return rType; }
   std::vector<std::shared_ptr<Type>> getArgTypes() { return argTypes; }
@@ -145,42 +148,14 @@ public:
   PartialFuncType(std::string name, std::shared_ptr<FuncType> callee,
                   std::vector<std::shared_ptr<Type>> callTypes);
 
-  void accept(seq::ir::codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<PartialFuncType>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
+
+  bool isPartial() const override { return true; }
 
   std::shared_ptr<Type> getCallee() { return callee; }
   std::vector<std::shared_ptr<Type>> getCallTypes() { return callTypes; };
 
   std::string textRepresentation() const override;
-};
-
-class Optional : public Type {
-private:
-  std::shared_ptr<Type> base;
-
-public:
-  explicit Optional(std::shared_ptr<Type> base);
-
-  void accept(seq::ir::codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<Optional>(getShared()));
-  }
-
-  std::shared_ptr<Type> getBase() { return base; }
-};
-
-class Array : public Type {
-private:
-  std::shared_ptr<Type> base;
-
-public:
-  explicit Array(std::shared_ptr<Type> base);
-
-  void accept(seq::ir::codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<Array>(getShared()));
-  }
-
-  std::shared_ptr<Type> getBase() { return base; }
 };
 
 class Pointer : public Type {
@@ -190,9 +165,31 @@ private:
 public:
   explicit Pointer(std::shared_ptr<Type> base);
 
-  void accept(seq::ir::codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<Pointer>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
+
+  std::shared_ptr<Type> getBase() { return base; }
+};
+
+class Optional : public RecordType {
+private:
+  std::shared_ptr<Type> base;
+
+public:
+  explicit Optional(std::shared_ptr<Pointer> pointerBase);
+
+  void accept(common::IRVisitor &v) override;
+
+  std::shared_ptr<Type> getBase() { return base; }
+};
+
+class Array : public RecordType {
+private:
+  std::shared_ptr<Type> base;
+
+public:
+  explicit Array(std::shared_ptr<Pointer> pointerType);
+
+  void accept(common::IRVisitor &v) override;
 
   std::shared_ptr<Type> getBase() { return base; }
 };
@@ -204,9 +201,7 @@ private:
 public:
   explicit Generator(std::shared_ptr<Type> base);
 
-  void accept(seq::ir::codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<Generator>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::shared_ptr<Type> getBase() { return base; }
 };
@@ -221,9 +216,7 @@ public:
 
   IntNType(unsigned len, bool sign);
 
-  void accept(seq::ir::codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<IntNType>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::string oppositeSignName() const;
 

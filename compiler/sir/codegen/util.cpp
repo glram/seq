@@ -1,4 +1,6 @@
-#include "common.h"
+#include "util.h"
+
+#include "context.h"
 
 #include "sir/types/types.h"
 
@@ -98,7 +100,7 @@ void generatorDestroy(Value *self, llvm::BasicBlock *block) {
   IRBuilder<> builder(block);
   builder.CreateCall(destFn, self);
 }
-void funcReturn(FuncMetadata &meta, llvm::Value *val, llvm::BasicBlock *block) {
+void funcReturn(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block) {
   IRBuilder<> builder(block);
   if (meta.isGenerator) {
     builder.CreateBr(meta.exit);
@@ -111,7 +113,7 @@ void funcReturn(FuncMetadata &meta, llvm::Value *val, llvm::BasicBlock *block) {
   }
 }
 
-void funcYield(FuncMetadata &meta, llvm::Value *val, llvm::BasicBlock *block,
+void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
                llvm::BasicBlock *dst) {
   LLVMContext &context = block->getContext();
   auto *module = block->getModule();

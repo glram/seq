@@ -3,27 +3,37 @@
 #include "lvalue.h"
 #include "var.h"
 
+#include "common/visitor.h"
+
 namespace seq {
 namespace ir {
 
-VarLvalue::VarLvalue(std::weak_ptr<Var> var) : var(var) {}
+void Lvalue::accept(common::IRVisitor &v) { v.visit(getShared()); }
 
-std::shared_ptr<types::Type> VarLvalue::getType() { return var.lock()->getType(); }
+VarLvalue::VarLvalue(std::shared_ptr<Var> var) : var(std::move(var)) {}
 
-std::string VarLvalue::textRepresentation() const {
-  return var.lock()->referenceString();
+void VarLvalue::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<VarLvalue>(getShared()));
 }
 
-VarMemberLvalue::VarMemberLvalue(std::weak_ptr<Var> var, std::string field)
+std::shared_ptr<types::Type> VarLvalue::getType() { return var->getType(); }
+
+std::string VarLvalue::textRepresentation() const { return var->referenceString(); }
+
+VarMemberLvalue::VarMemberLvalue(std::shared_ptr<Var> var, std::string field)
     : var(std::move(var)), field(std::move(field)) {}
 
+void VarMemberLvalue::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<VarMemberLvalue>(getShared()));
+}
+
 std::shared_ptr<types::Type> VarMemberLvalue::getType() {
-  return std::static_pointer_cast<types::RecordType>(var.lock()->getType())
+  return std::static_pointer_cast<types::RecordType>(var->getType())
       ->getMemberType(field);
 }
 
 std::string VarMemberLvalue::textRepresentation() const {
-  return fmt::format(FMT_STRING("{}.{}"), var.lock()->referenceString(), field);
+  return fmt::format(FMT_STRING("{}.{}"), var->referenceString(), field);
 }
 
 } // namespace ir

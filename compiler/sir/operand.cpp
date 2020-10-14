@@ -3,17 +3,31 @@
 #include "operand.h"
 #include "var.h"
 
+#include "common/visitor.h"
+
 namespace seq {
 namespace ir {
 
-std::shared_ptr<types::Type> VarOperand::getType() { return var.lock()->getType(); }
+void Operand::accept(common::IRVisitor &v) { v.visit(getShared()); }
 
-std::string VarOperand::textRepresentation() const {
-  return var.lock()->referenceString();
-};
+void VarOperand::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<VarOperand>(getShared()));
+}
+
+std::shared_ptr<types::Type> VarOperand::getType() { return var->getType(); }
+
+std::string VarOperand::textRepresentation() const { return var->referenceString(); }
+
+void VarPointerOperand::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<VarPointerOperand>(getShared()));
+}
 
 std::string VarPointerOperand::textRepresentation() const {
-  return fmt::format(FMT_STRING("&{}"), var.lock()->referenceString());
+  return fmt::format(FMT_STRING("&{}"), var->referenceString());
+}
+
+void LiteralOperand::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<LiteralOperand>(getShared()));
 }
 
 std::string LiteralOperand::textRepresentation() const {

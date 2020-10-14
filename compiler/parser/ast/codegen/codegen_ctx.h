@@ -114,6 +114,9 @@ public:
       return val->getType();
     return nullptr;
   }
+
+private:
+  std::shared_ptr<seq::ir::types::Pointer> getPointer(types::ClassTypePtr t);
 };
 
 } // namespace ast

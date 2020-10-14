@@ -5,10 +5,12 @@
 #include "base.h"
 #include "types/types.h"
 
-#include "codegen/codegen.h"
-
 namespace seq {
 namespace ir {
+
+namespace common {
+class IRVisitor;
+}
 
 class Var;
 
@@ -16,7 +18,7 @@ class Operand : public AttributeHolder<Operand> {
 public:
   virtual ~Operand() = default;
 
-  virtual void accept(codegen::CodegenVisitor &v) { v.visit(getShared()); }
+  virtual void accept(common::IRVisitor &v);
 
   virtual std::shared_ptr<types::Type> getType() = 0;
   std::string referenceString() const override { return "operand"; };
@@ -24,38 +26,35 @@ public:
 
 class VarOperand : public Operand {
 private:
-  std::weak_ptr<Var> var;
+  std::shared_ptr<Var> var;
 
 public:
-  explicit VarOperand(std::weak_ptr<Var> var) : var(std::move(var)) {}
+  explicit VarOperand(std::shared_ptr<Var> var) : var(std::move(var)) {}
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<VarOperand>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::shared_ptr<types::Type> getType() override;
 
-  std::weak_ptr<Var> getVar() { return var; }
+  std::shared_ptr<Var> getVar() { return var; }
 
   std::string textRepresentation() const override;
 };
 
 class VarPointerOperand : public Operand {
 private:
-  std::weak_ptr<Var> var;
+  std::shared_ptr<Var> var;
   std::shared_ptr<types::Type> type;
 
 public:
-  explicit VarPointerOperand(std::shared_ptr<types::Type> type, std::weak_ptr<Var> var)
+  explicit VarPointerOperand(std::shared_ptr<types::Type> type,
+                             std::shared_ptr<Var> var)
       : var(std::move(var)), type(std::move(type)) {}
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<VarPointerOperand>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::shared_ptr<types::Type> getType() override { return type; }
 
-  std::weak_ptr<Var> getVar() { return var; }
+  std::shared_ptr<Var> getVar() { return var; }
 
   std::string textRepresentation() const override;
 };
@@ -88,9 +87,7 @@ public:
       : literalType(seq ? LiteralType::SEQ : LiteralType::STR), ival(0), fval(0.0),
         bval(false), sval(std::move(sval)), isSeq(seq) {}
 
-  void accept(codegen::CodegenVisitor &v) override {
-    v.visit(std::static_pointer_cast<LiteralOperand>(getShared()));
-  }
+  void accept(common::IRVisitor &v) override;
 
   std::shared_ptr<types::Type> getType() override {
     switch (literalType) {

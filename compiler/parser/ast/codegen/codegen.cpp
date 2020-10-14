@@ -56,20 +56,15 @@ void CodegenVisitor::defaultVisit(const Pattern *n) {
 }
 
 shared_ptr<BasicBlock> CodegenVisitor::newBlock() {
-  auto ret = make_shared<BasicBlock>();
+  auto templ = ctx->getBlock();
+  auto ret = make_shared<BasicBlock>(templ->getTryCatch());
 
   ctx->getBase()->addBlock(ret);
 
-  auto templ = ctx->getBlock();
   if (templ->getAttribute(kLoopAttribute))
     ret->setAttribute(kLoopAttribute, make_shared<LoopAttribute>(
                                           *std::static_pointer_cast<LoopAttribute>(
                                               templ->getAttribute(kLoopAttribute))));
-  if (templ->getAttribute(kTryCatchAttribute))
-    ret->setAttribute(
-        kTryCatchAttribute,
-        make_shared<TryCatchAttribute>(*std::static_pointer_cast<TryCatchAttribute>(
-            templ->getAttribute(kTryCatchAttribute))));
   return ret;
 }
 
@@ -176,7 +171,7 @@ shared_ptr<seq::ir::IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache,
         auto ast = (FunctionStmt *)(cache->asts[ff.first].get());
         auto names = split(ast->name, '.');
         auto name = names.back();
-        if (in(ast->attributes, "internal")) {
+        if (in(ast->attributes, "internal") || in(ast->attributes, "rev_internal")) {
           vector<shared_ptr<ir::types::Type>> types;
           auto p = t->codegenParent ? t->codegenParent : t->parent;
           seqassert(p && p->getClass(), "parent must be set ({})",
@@ -192,7 +187,7 @@ shared_ptr<seq::ir::IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache,
           LOG7("[codegen] generating internal fn {} -> {}", ast->name, name);
           auto fn = make_shared<ir::Func>(names.back(), std::vector<std::string>(),
                                           ir::types::kNoArgVoidFuncType);
-          fn->setInternal(typ, name);
+          fn->setInternal(typ, name, in(ast->attributes, "internal"));
           // ctx->functions[f.first] = {typ->findMagic(name, types), true};
           ctx->functions[f.first] = {fn, false};
           ctx->getModule()->addGlobal(fn);
@@ -205,6 +200,8 @@ shared_ptr<seq::ir::IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache,
         ctx->addFunc(f.first, ctx->functions[f.first].first);
       }
   CodegenVisitor(ctx).transform(stmts);
+  if (!ctx->getBlock()->getTerminator())
+    ctx->getBlock()->setTerminator(make_shared<ReturnTerminator>(nullptr));
   return module;
 }
 
@@ -367,8 +364,8 @@ void CodegenVisitor::visit(const CallExpr *expr) {
 void CodegenVisitor::visit(const StackAllocExpr *expr) {
   auto arrayType = std::static_pointer_cast<ir::types::Array>(
       realizeType(expr->getType()->getClass()));
-  result = CodegenResult(
-      std::make_shared<StackAllocRvalue>(arrayType, toOperand(transform(expr->expr))));
+  auto e = CAST(expr->expr, IntExpr);
+  result = CodegenResult(std::make_shared<StackAllocRvalue>(arrayType, e->intValue));
 }
 void CodegenVisitor::visit(const DotExpr *expr) {
   result = CodegenResult(
@@ -449,6 +446,7 @@ void CodegenVisitor::visit(const AssignStmt *stmt) {
     else
       ctx->getBase()->addVar(v);
     ctx->addVar(var, v);
+    auto val = ctx->find(var);
     auto rval = toRvalue(transform(stmt->rhs));
     ctx->getBlock()->add(make_shared<AssignInstr>(make_shared<VarLvalue>(v), rval));
   }
@@ -512,6 +510,8 @@ void CodegenVisitor::visit(const WhileStmt *stmt) {
                       make_shared<LoopAttribute>(weak_ptr<BasicBlock>(), cond, begin,
                                                  weak_ptr<BasicBlock>(), end));
 
+  ctx->addLevel();
+
   ctx->addBlock(cond);
   auto condOp = toOperand(transform(stmt->cond));
   ctx->getBlock()->setTerminator(make_shared<CondJumpTerminator>(begin, end, condOp));
@@ -524,6 +524,7 @@ void CodegenVisitor::visit(const WhileStmt *stmt) {
 
   ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(cond));
 
+  ctx->removeLevel();
   ctx->replaceBlock(end);
 }
 
@@ -535,6 +536,8 @@ void CodegenVisitor::visit(const ForStmt *stmt) {
   begin->setAttribute(
       kLoopAttribute,
       make_shared<LoopAttribute>(setup, cond, begin, weak_ptr<BasicBlock>(), end));
+
+  ctx->addLevel();
 
   auto doneVar = make_shared<ir::Var>(temporaryName("for_done"), ir::types::kBoolType);
   ctx->getBase()->addVar(doneVar);
@@ -570,6 +573,7 @@ void CodegenVisitor::visit(const ForStmt *stmt) {
 
   ctx->getBlock()->setTerminator(make_shared<JumpTerminator>(setup));
 
+  ctx->removeLevel();
   ctx->replaceBlock(end);
 }
 
@@ -581,6 +585,7 @@ void CodegenVisitor::visit(const IfStmt *stmt) {
   bool elseEncountered = false;
 
   for (auto &i : stmt->ifs) {
+    ctx->addLevel();
     if (i.cond) {
       auto newCheck = newBlock();
       auto body = newBlock();
@@ -606,6 +611,7 @@ void CodegenVisitor::visit(const IfStmt *stmt) {
       condSetTerminator(make_shared<JumpTerminator>(end));
       ctx->popBlock();
     }
+    ctx->removeLevel();
   }
 
   if (!elseEncountered) {
@@ -624,6 +630,8 @@ void CodegenVisitor::visit(const MatchStmt *stmt) {
   auto check = firstCond;
 
   for (auto ci = 0; ci < stmt->cases.size(); ci++) {
+    ctx->addLevel();
+
     string varName;
     shared_ptr<ir::Var> var;
     shared_ptr<ir::Pattern> pat;
@@ -635,8 +643,10 @@ void CodegenVisitor::visit(const MatchStmt *stmt) {
     if (auto p = CAST(stmt->patterns[ci], BoundPattern)) {
       ctx->addBlock(check);
       auto boundPat =
-          make_shared<ir::BoundPattern>(transform(p->pattern).patternResult);
+          make_shared<ir::BoundPattern>(transform(p->pattern).patternResult,
+                                        realizeType(p->pattern->getType()->getClass()));
       var = boundPat->getVar();
+      ctx->getBase()->addVar(var);
       varName = p->var;
       pat = std::static_pointer_cast<ir::Pattern>(boundPat);
     } else {
@@ -661,6 +671,7 @@ void CodegenVisitor::visit(const MatchStmt *stmt) {
     ctx->popBlock();
 
     check = newCheck;
+    ctx->removeLevel();
   }
 
   ctx->addBlock(check);
@@ -673,23 +684,24 @@ void CodegenVisitor::visit(const MatchStmt *stmt) {
 }
 
 void CodegenVisitor::visit(const TryStmt *stmt) {
-  auto parentTc = ctx->getBlock()->getAttribute(kTryCatchAttribute)
-                      ? std::static_pointer_cast<TryCatchAttribute>(
-                            ctx->getBlock()->getAttribute(kTryCatchAttribute))
-                            ->handler
-                      : ctx->getModule()->getTryCatch();
+  auto parentTc = ctx->getBlock()->getTryCatch() ? ctx->getBlock()->getTryCatch()
+                                                 : ctx->getBase()->getTryCatch();
   auto newTc = make_shared<ir::TryCatch>();
   if (parentTc)
     parentTc->addChild(newTc);
+  else
+    ctx->getBase()->setTryCatch(newTc);
 
   auto end = newBlock();
   auto body = newBlock();
-  body->setAttribute(kTryCatchAttribute, make_shared<TryCatchAttribute>(newTc));
+  body->setTryCatch(newTc);
 
+  ctx->addLevel();
   ctx->addBlock(body);
   transform(stmt->suite);
   condSetTerminator(make_shared<JumpTerminator>(end));
   ctx->popBlock();
+  ctx->removeLevel();
 
   int varIdx = 0;
   for (auto &c : stmt->catches) {
@@ -698,6 +710,7 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
                                      : nullptr,
                     c.var, cBlock);
     ctx->addLevel();
+    ctx->getBase()->addVar(newTc->getVar(varIdx));
     ctx->addVar(c.var, newTc->getVar(varIdx));
     ctx->addBlock(cBlock);
     transform(c.suite);
@@ -706,11 +719,13 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
     ctx->removeLevel();
   }
   if (stmt->finally) {
+    ctx->addLevel();
     auto fBlock = newBlock();
     ctx->addBlock(fBlock);
     transform(stmt->finally);
     ctx->popBlock();
     newTc->setFinallyBlock(fBlock);
+    ctx->removeLevel();
   }
   ctx->replaceBlock(end);
 }
@@ -759,6 +774,9 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
       f->setName(newName);
       f->setExternal();
     } else if (!in(ast->attributes, "internal")) {
+      if (stmt->name == ".dict.__setitem__")
+        printf("foo");
+
       for (auto &arg : names)
         ctx->addVar(arg, f->getArgVar(arg));
       transform(ast->suite);
@@ -810,14 +828,16 @@ void CodegenVisitor::visit(const TuplePattern *pat) {
   vector<shared_ptr<ir::Pattern>> pp;
   for (auto &p : pat->patterns)
     pp.push_back(transform(p).patternResult);
-  result = CodegenResult(make_shared<ir::RecordPattern>(move(pp)));
+  result = CodegenResult(make_shared<ir::RecordPattern>(
+      move(pp), realizeType(pat->getType()->getClass())));
 }
 
 void CodegenVisitor::visit(const ListPattern *pat) {
   vector<shared_ptr<ir::Pattern>> pp;
   for (auto &p : pat->patterns)
     pp.push_back(transform(p).patternResult);
-  result = CodegenResult(make_shared<ir::ArrayPattern>(move(pp)));
+  result = CodegenResult(
+      make_shared<ir::ArrayPattern>(move(pp), realizeType(pat->getType()->getClass())));
 }
 
 void CodegenVisitor::visit(const OrPattern *pat) {
@@ -828,8 +848,9 @@ void CodegenVisitor::visit(const OrPattern *pat) {
 }
 
 void CodegenVisitor::visit(const WildcardPattern *pat) {
-  auto p = make_shared<ir::WildcardPattern>();
+  auto p = make_shared<ir::WildcardPattern>(realizeType(pat->getType()->getClass()));
   ctx->addVar(pat->var, p->getVar());
+  ctx->getBase()->addVar(p->getVar());
   result = CodegenResult(p);
 }
 
