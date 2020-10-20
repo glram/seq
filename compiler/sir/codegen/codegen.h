@@ -15,10 +15,12 @@ namespace codegen {
 class CodegenVisitor;
 
 using InlinePatternCheckFunc = std::function<llvm::Value *(llvm::Value *)>;
-using Parent = common::CallbackIRVisitor<
-    CodegenVisitor, Context, llvm::Module *, llvm::BasicBlock *, llvm::BasicBlock *,
-    llvm::Value *, llvm::Instruction *, llvm::Value *, llvm::Value *, llvm::Value *,
-    InlinePatternCheckFunc, llvm::Instruction *, std::shared_ptr<TypeRealization>>;
+using Parent =
+    common::CallbackIRVisitor<CodegenVisitor, Context, llvm::Module *,
+                              llvm::BasicBlock *, std::shared_ptr<TryCatchMetadata>,
+                              llvm::Value *, llvm::Instruction *, llvm::Value *,
+                              llvm::Value *, llvm::Value *, InlinePatternCheckFunc,
+                              llvm::Instruction *, std::shared_ptr<TypeRealization>>;
 
 class CodegenVisitor : public Parent {
 private:
@@ -84,6 +86,10 @@ public:
   OVERRIDE_VISIT(types::Pointer);
   OVERRIDE_VISIT(types::Generator);
   OVERRIDE_VISIT(types::IntNType);
+
+private:
+  void codegenTcJump(llvm::BasicBlock *dst,
+                     std::vector<std::shared_ptr<TryCatch>> tcPath);
 };
 
 } // namespace codegen

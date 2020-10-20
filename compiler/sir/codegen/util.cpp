@@ -100,21 +100,12 @@ void generatorDestroy(Value *self, llvm::BasicBlock *block) {
   IRBuilder<> builder(block);
   builder.CreateCall(destFn, self);
 }
-void funcReturn(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block) {
-  IRBuilder<> builder(block);
-  if (meta.isGenerator) {
-    builder.CreateBr(meta.exit);
-  } else {
-    if (val) {
-      builder.CreateRet(val);
-    } else {
-      builder.CreateRetVoid();
-    }
-  }
-}
 
 void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
                llvm::BasicBlock *dst) {
+  if (!meta.isGenerator) {
+    throw std::runtime_error("can only yield from generators");
+  }
   LLVMContext &context = block->getContext();
   auto *module = block->getModule();
   IRBuilder<> builder(block);
@@ -130,7 +121,7 @@ void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
   Value *susp = builder.CreateCall(suspFn, {tok, final});
 
   if (!dst) {
-    dst = llvm::BasicBlock::Create(block->getContext(), "", block->getParent());
+    dst = llvm::BasicBlock::Create(context, "", meta.func);
     builder.SetInsertPoint(dst);
     builder.CreateUnreachable();
     builder.SetInsertPoint(block);
@@ -144,6 +135,18 @@ void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
   SwitchInst *inst = builder.CreateSwitch(susp, meta.suspend, 2);
   inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 0), dst);
   inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 1), meta.cleanup);
+}
+
+void funcYieldIn(CodegenFrame &meta, llvm::Value *ptr, llvm::BasicBlock *block,
+                 llvm::BasicBlock *dst) {
+  auto *newDst =
+      llvm::BasicBlock::Create(block->getContext(), "loadPromise", meta.func);
+  funcYield(meta, nullptr, block, newDst);
+
+  IRBuilder<> builder(newDst);
+  builder.SetInsertPoint(newDst);
+  builder.CreateStore(builder.CreateLoad(meta.promise), ptr);
+  builder.CreateBr(dst);
 }
 
 } // namespace codegen

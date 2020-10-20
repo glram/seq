@@ -37,7 +37,8 @@ void generatorDestroy(llvm::Value *self, llvm::BasicBlock *block);
 void funcReturn(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block);
 void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
                llvm::BasicBlock *dst);
-
+void funcYieldIn(CodegenFrame &meta, llvm::Value *ptr, llvm::BasicBlock *block,
+                 llvm::BasicBlock *dst);
 } // namespace codegen
 } // namespace ir
 } // namespace seq

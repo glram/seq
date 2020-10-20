@@ -16,6 +16,29 @@ void TryCatch::resetId() { currentId = 0; }
 
 void TryCatch::accept(common::IRVisitor &v) { v.visit(getShared()); }
 
+void TryCatch::addCatch(std::shared_ptr<types::Type> catchType, std::string name,
+                        std::weak_ptr<BasicBlock> handler) {
+  catchTypes.push_back(catchType);
+  catchBlocks.push_back(handler);
+  catchVars.push_back(std::make_shared<Var>(name, catchType));
+  catchVarNames.push_back(name);
+}
+
+std::vector<std::shared_ptr<TryCatch>>
+TryCatch::getPath(std::shared_ptr<TryCatch> dst) {
+  auto cur = getShared();
+  std::vector<std::shared_ptr<TryCatch>> ret = {cur};
+  for (; cur; cur = cur->getParent().lock()) {
+    ret.push_back(cur);
+    if (dst && cur->getId() == dst->getId())
+      return ret;
+  }
+  if (!dst)
+    return ret;
+
+  return {};
+}
+
 std::string TryCatch::referenceString() const {
   return fmt::format(FMT_STRING("try#{}"), id);
 }
@@ -42,13 +65,6 @@ std::string TryCatch::textRepresentation() const {
   fmt::format_to(buf, FMT_STRING("; {}"), attributeString());
 
   return std::string(buf.data(), buf.size());
-}
-void TryCatch::addCatch(std::shared_ptr<types::Type> catchType, std::string name,
-                        std::weak_ptr<BasicBlock> handler) {
-  catchTypes.push_back(catchType);
-  catchBlocks.push_back(handler);
-  catchVars.push_back(std::make_shared<Var>(name, catchType));
-  catchVarNames.push_back(name);
 }
 
 } // namespace ir

@@ -83,6 +83,7 @@ public:
              std::vector<std::string> mNames)
       : MemberedType(std::move(name)), memberNames(std::move(mNames)),
         memberTypes(std::move(mTypes)) {}
+  RecordType(std::string name, std::vector<std::shared_ptr<Type>> mTypes);
 
   void accept(common::IRVisitor &v) override;
 

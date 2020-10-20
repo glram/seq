@@ -58,6 +58,8 @@ public:
 
   std::shared_ptr<Var> getVar(int i) { return catchVars[i]; }
 
+  std::vector<std::shared_ptr<TryCatch>> getPath(std::shared_ptr<TryCatch> dst);
+
   std::string referenceString() const override;
   std::string textRepresentation() const override;
 };

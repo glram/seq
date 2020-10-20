@@ -109,6 +109,7 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   auto *funcPtrType = cast<PointerType>(typeRealization->llvmType);
   auto *funcType = cast<FunctionType>(funcPtrType->getElementType());
 
+  auto rTypeRealization = transform(sirFuncType->getRType());
   auto *func = cast<Function>(module->getOrInsertFunction(name, funcType));
   auto *outLLVMType = funcType->getReturnType();
 
@@ -196,6 +197,12 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   for (auto &v : sirFunc->getVars())
     transform(v);
 
+  if (!funcType->getReturnType()->isVoidTy()) {
+    builder.SetInsertPoint(frame.curBlock);
+    frame.rValPtr =
+        rTypeRealization->alloc(ConstantInt::get(seqIntLLVM(context), 1), builder);
+  }
+
   // Register arg vars
   auto argIter = func->arg_begin();
   for (auto &a : sirFunc->getArgVars()) {
@@ -261,6 +268,13 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
 
     frame.exit = llvm::BasicBlock::Create(context, "final", func);
     funcYield(frame, nullptr, frame.exit, nullptr);
+  } else {
+    frame.exit = llvm::BasicBlock::Create(context, "final", func);
+    builder.SetInsertPoint(frame.exit);
+    if (funcType->getReturnType()->isVoidTy())
+      builder.CreateRetVoid();
+    else
+      builder.CreateRet(builder.CreateLoad(frame.rValPtr));
   }
 
   if (sirFunc->isGenerator()) {
@@ -308,8 +322,8 @@ void CodegenVisitor::visit(std::shared_ptr<Var> var) {
                              Constant::getNullValue(llvmType), var->getName());
   } else {
     IRBuilder<> builder(ctx->getFrame().curBlock);
-    val = builder.CreateAlloca(
-        llvmType, llvm::ConstantInt::get(seqIntLLVM(ctx->getLLVMContext()), 1));
+    val = typeRealization->alloc(
+        llvm::ConstantInt::get(seqIntLLVM(ctx->getLLVMContext()), 1), builder, true);
   }
   ctx->registerVar(var, val);
   varResult = val;
@@ -358,7 +372,7 @@ void CodegenVisitor::visit(std::shared_ptr<CallRvalue> callRval) {
   IRBuilder<> builder(ctx->getFrame().curBlock);
   if (tc) {
     auto &context = ctx->getLLVMContext();
-    auto *unwind = ctx->getFrame().tryCatchMeta[tc->getId()].exceptionBlock;
+    auto *unwind = ctx->getFrame().tryCatchMeta[tc->getId()]->exceptionBlock;
     auto *parent = ctx->getFrame().func;
     auto *normal = llvm::BasicBlock::Create(context, "normal", parent);
     ctx->getFrame().curBlock = normal;
@@ -440,6 +454,7 @@ void CodegenVisitor::visit(std::shared_ptr<VarOperand> varOperand) {
 void CodegenVisitor::visit(std::shared_ptr<VarPointerOperand> varPtrOperand) {
   opResult = transform(varPtrOperand->getVar());
 }
+
 void CodegenVisitor::visit(std::shared_ptr<LiteralOperand> literalOperand) {
   auto typeRealization = transform(literalOperand->getType());
   auto *literalType = typeRealization->llvmType;
@@ -706,6 +721,7 @@ void CodegenVisitor::visit(std::shared_ptr<OrPattern> orPattern) {
     return result;
   };
 }
+
 void CodegenVisitor::visit(std::shared_ptr<GuardedPattern> guardedPattern) {
   auto pattern = guardedPattern->getPattern();
   auto op = guardedPattern->getOperand();
@@ -745,14 +761,145 @@ void CodegenVisitor::visit(std::shared_ptr<GuardedPattern> guardedPattern) {
   };
 }
 
-void CodegenVisitor::visit(std::shared_ptr<JumpTerminator> jumpTerminator) {}
+void CodegenVisitor::visit(std::shared_ptr<JumpTerminator> jumpTerminator) {
+  auto dstIRBlock = jumpTerminator->getDst().lock();
+  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
+  auto tcPath = curTc ? curTc->getPath(dstIRBlock->getTryCatch())
+                      : std::vector<std::shared_ptr<TryCatch>>();
+  auto *dst = ctx->getBlock(dstIRBlock);
+  codegenTcJump(dst, tcPath);
+}
 
-void CodegenVisitor::visit(std::shared_ptr<CondJumpTerminator> condJumpTerminator) {}
+void CodegenVisitor::visit(std::shared_ptr<CondJumpTerminator> condJumpTerminator) {
+  auto tDstIRBlock = condJumpTerminator->getTDst().lock();
+  auto fDstIRBlock = condJumpTerminator->getFDst().lock();
+  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
 
-void CodegenVisitor::visit(std::shared_ptr<ReturnTerminator> returnTerminator) {}
+  auto tTcPath = curTc ? curTc->getPath(tDstIRBlock->getTryCatch())
+                       : std::vector<std::shared_ptr<TryCatch>>();
+  auto fTcPath = curTc ? curTc->getPath(fDstIRBlock->getTryCatch())
+                       : std::vector<std::shared_ptr<TryCatch>>();
 
-void CodegenVisitor::visit(std::shared_ptr<YieldTerminator> node) {}
-void CodegenVisitor::visit(std::shared_ptr<ThrowTerminator> node) {}
+  auto *tDst = ctx->getBlock(tDstIRBlock);
+  auto *fDst = ctx->getBlock(fDstIRBlock);
+
+  auto *opVal = transform(condJumpTerminator->getCond());
+
+  IRBuilder<> builder(ctx->getFrame().curBlock);
+  if (tTcPath.empty() && fTcPath.empty()) {
+    builder.CreateCondBr(opVal, tDst, fDst);
+  } else {
+    auto &context = ctx->getLLVMContext();
+    auto *tBlock = llvm::BasicBlock::Create(context, "tDst", ctx->getFrame().func);
+    auto *fBlock = llvm::BasicBlock::Create(context, "fDst", ctx->getFrame().func);
+
+    builder.CreateCondBr(opVal, tBlock, fBlock);
+
+    ctx->getFrame().curBlock = tBlock;
+    codegenTcJump(tDst, tTcPath);
+
+    ctx->getFrame().curBlock = fBlock;
+    codegenTcJump(fDst, fTcPath);
+  }
+}
+
+void CodegenVisitor::visit(std::shared_ptr<ReturnTerminator> returnTerminator) {
+  if (returnTerminator->getOperand()) {
+    auto *opVal = transform(returnTerminator->getOperand());
+
+    IRBuilder<> builder(ctx->getFrame().curBlock);
+    builder.CreateStore(opVal, ctx->getFrame().rValPtr);
+  }
+
+  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
+  auto tcPath =
+      curTc ? curTc->getPath(nullptr) : std::vector<std::shared_ptr<TryCatch>>();
+  codegenTcJump(ctx->getFrame().exit, tcPath);
+}
+
+void CodegenVisitor::visit(std::shared_ptr<YieldTerminator> yieldTerminator) {
+  auto dstIRBlock = yieldTerminator->getDst().lock();
+  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
+  auto tcPath = curTc ? curTc->getPath(dstIRBlock->getTryCatch())
+                      : std::vector<std::shared_ptr<TryCatch>>();
+  auto *dst = ctx->getBlock(dstIRBlock);
+
+  assert(tcPath.empty());
+
+  if (yieldTerminator->getInVar()) {
+    auto *ptr = transform(yieldTerminator->getInVar());
+    funcYieldIn(ctx->getFrame(), ptr, ctx->getFrame().curBlock, dst);
+  } else {
+    auto *op = transform(yieldTerminator->getResult());
+    funcYieldIn(ctx->getFrame(), op, ctx->getFrame().curBlock, dst);
+  }
+}
+
+void CodegenVisitor::visit(std::shared_ptr<ThrowTerminator> throwTerminator) {
+  static auto excHeaderType = std::make_shared<types::RecordType>(
+      "ExcHeader", std::vector<std::shared_ptr<types::Type>>{
+                       types::kStringType, types::kStringType, types::kStringType,
+                       types::kStringType, types::kIntType, types::kIntType});
+
+  auto excHeaderRealization = transform(excHeaderType);
+
+  if (!throwTerminator->getOperand()->getType()->isRef())
+    throw std::runtime_error("cannot throw non-reference type");
+
+  auto excIRType = throwTerminator->getOperand()->getType();
+  auto *op = transform(throwTerminator->getOperand());
+
+  auto srcInfoAttr = std::static_pointer_cast<SrcInfoAttribute>(
+      throwTerminator->getAttribute(kSrcInfoAttribute));
+  auto srcInfo = srcInfoAttr ? srcInfoAttr->info : SrcInfo();
+
+  LLVMContext &context = ctx->getLLVMContext();
+  Module *module = ctx->getModule();
+  Function *excAllocFunc = makeExcAllocFunc(module);
+  Function *throwFunc = makeThrowFunc(module);
+
+  IRBuilder<> builder(ctx->getFrame().curBlock);
+  auto *hdrType = excHeaderRealization->llvmType;
+  auto *hdrPtr = builder.CreateBitCast(op, hdrType->getPointerTo());
+
+  auto funcNameStr = ctx->getFrame().func->getName();
+  auto fileNameStr = srcInfo.file;
+  auto fileLine = srcInfo.line;
+  auto fileCol = srcInfo.col;
+
+  auto *funcNameVal = transform(std::make_shared<LiteralOperand>(funcNameStr));
+  auto *fileNameVal = transform(std::make_shared<LiteralOperand>(fileNameStr));
+
+  builder.SetInsertPoint(ctx->getFrame().curBlock);
+  Value *fileLineVal = ConstantInt::get(seqIntLLVM(context), fileLine, true);
+  Value *fileColVal = ConstantInt::get(seqIntLLVM(context), fileCol, true);
+
+  builder.CreateStore(funcNameVal,
+                      excHeaderRealization->getMemberPointer(hdrPtr, "3", builder));
+  builder.CreateStore(fileNameVal,
+                      excHeaderRealization->getMemberPointer(hdrPtr, "4", builder));
+  builder.CreateStore(fileLineVal,
+                      excHeaderRealization->getMemberPointer(hdrPtr, "5", builder));
+  builder.CreateStore(fileColVal,
+                      excHeaderRealization->getMemberPointer(hdrPtr, "6", builder));
+
+  auto *exc = builder.CreateCall(excAllocFunc,
+                                 {ConstantInt::get(IntegerType::getInt32Ty(context),
+                                                   (uint64_t)excIRType->getId(), true),
+                                  op});
+
+  auto tc = ctx->getFrame().curIRBlock->getTryCatch();
+  if (tc) {
+    auto *unwind = ctx->getFrame().tryCatchMeta[tc->getId()]->exceptionBlock;
+    auto *parent = ctx->getFrame().func;
+    auto *normal = llvm::BasicBlock::Create(context, "normal", parent);
+    ctx->getFrame().curBlock = normal;
+    rvalResult = builder.CreateInvoke(throwFunc, normal, unwind, exc);
+  } else {
+    rvalResult = builder.CreateCall(throwFunc, exc);
+  }
+}
+
 void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> node) {}
 
 void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
@@ -1677,6 +1824,34 @@ void CodegenVisitor::visit(std::shared_ptr<types::IntNType> intNType) {
   }
   ctx->registerType(intNType, typeRealization);
   typeResult = typeRealization;
+}
+
+void CodegenVisitor::codegenTcJump(llvm::BasicBlock *dst,
+                                   std::vector<std::shared_ptr<TryCatch>> tcPath) {
+  IRBuilder<> builder(ctx->getFrame().curBlock);
+  if (tcPath.empty()) {
+    builder.CreateBr(dst);
+    return;
+  }
+
+  auto firstMeta = transform(tcPath.front());
+  auto curMeta = firstMeta;
+
+  for (auto it = tcPath.begin() + 1; it != tcPath.end(); ++it) {
+    auto nextMeta = transform(*it);
+    if (!nextMeta->finallyStart)
+      continue;
+
+    builder.SetInsertPoint(ctx->getFrame().curBlock);
+    curMeta->storeDstValue(nextMeta->finallyStart, builder);
+
+    curMeta = nextMeta;
+  }
+
+  builder.SetInsertPoint(ctx->getFrame().curBlock);
+  curMeta->storeDstValue(dst, builder);
+
+  builder.CreateBr(firstMeta->finallyStart);
 }
 
 } // namespace codegen

@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "sir/base.h"
 #include "sir/lvalue.h"
 #include "sir/module.h"
 #include "sir/operand.h"
@@ -32,11 +33,12 @@ namespace seq {
 namespace ast {
 
 struct CodegenResult {
-  enum { OP, RVALUE, LVALUE, PATTERN, TYPE, NONE } tag;
+  enum { OP, RVALUE, LVALUE, PATTERN, TYPE, INSTR, NONE } tag;
   std::shared_ptr<seq::ir::Operand> operandResult;
   std::shared_ptr<seq::ir::Rvalue> rvalueResult;
   std::shared_ptr<seq::ir::Lvalue> lvalueResult;
   std::shared_ptr<seq::ir::Pattern> patternResult;
+  std::shared_ptr<seq::ir::Instr> instrResult;
   std::shared_ptr<seq::ir::types::Type> typeResult;
 
   std::shared_ptr<seq::ir::types::Type> typeOverride;
@@ -52,6 +54,8 @@ struct CodegenResult {
       : tag(PATTERN), patternResult(std::move(pattern)){};
   explicit CodegenResult(std::shared_ptr<seq::ir::types::Type> type)
       : tag(TYPE), typeResult(std::move(type)){};
+  explicit CodegenResult(std::shared_ptr<seq::ir::Instr> instrResult)
+      : tag(INSTR), instrResult(std::move(instrResult)){};
 
   void addAttribute(std::string key, std::shared_ptr<seq::ir::Attribute> att) {
     switch (tag) {
@@ -67,6 +71,8 @@ struct CodegenResult {
     case PATTERN:
       patternResult->setAttribute(key, att);
       break;
+    case INSTR:
+      instrResult->setAttribute(key, att);
     default:
       break;
     }
@@ -87,8 +93,8 @@ class CodegenVisitor
   std::shared_ptr<CodegenItem> processIdentifier(std::shared_ptr<CodegenContext> tctx,
                                                  const std::string &id);
 
-  std::shared_ptr<seq::ir::Operand> toOperand(const CodegenResult res);
-  std::shared_ptr<seq::ir::Rvalue> toRvalue(const CodegenResult res);
+  std::shared_ptr<seq::ir::Operand> toOperand(CodegenResult res);
+  std::shared_ptr<seq::ir::Rvalue> toRvalue(CodegenResult res);
   std::shared_ptr<seq::ir::BasicBlock> newBlock();
   void condSetTerminator(std::shared_ptr<seq::ir::Terminator> term);
 
@@ -152,6 +158,14 @@ public:
   void visit(const WildcardPattern *) override;
   void visit(const GuardedPattern *) override;
 };
+
+template <typename Type, typename... Args>
+std::shared_ptr<Type> Ns(SrcInfo info, Args... args) {
+  auto ret = std::make_shared<Type>(args...);
+  ret->setAttribute(seq::ir::kSrcInfoAttribute,
+                    std::make_shared<seq::ir::SrcInfoAttribute>(info));
+  return ret;
+}
 
 } // namespace ast
 } // namespace seq

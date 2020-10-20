@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -16,6 +17,7 @@ class Func;
 class BasicBlock;
 class Var;
 class Pattern;
+class TryCatch;
 
 namespace types {
 class Type;
@@ -24,14 +26,18 @@ class Type;
 namespace codegen {
 
 struct TryCatchMetadata {
+private:
+  llvm::SwitchInst *finallyBr = nullptr;
+
+public:
   llvm::BasicBlock *exceptionBlock = nullptr;
   llvm::BasicBlock *exceptionRouteBlock = nullptr;
   llvm::BasicBlock *finallyStart = nullptr;
   std::vector<llvm::BasicBlock *> handlers;
   llvm::Value *excFlag = nullptr;
   llvm::Value *catchStore = nullptr;
-  llvm::Value *delegateDepth = nullptr;
-  llvm::Value *retStore = nullptr;
+
+  void storeDstValue(llvm::BasicBlock *dst, llvm::IRBuilder<> &builder);
 };
 
 struct CodegenFrame {
@@ -42,25 +48,26 @@ struct CodegenFrame {
   std::shared_ptr<BasicBlock> curIRBlock;
 
   llvm::Function *func = nullptr;
-  std::unordered_map<int, TryCatchMetadata> tryCatchMeta;
+  std::unordered_map<int, std::shared_ptr<TryCatchMetadata>> tryCatchMeta;
 
   bool isGenerator = false;
 
   llvm::Value *rValPtr = nullptr;
 
-  /// Storage for this coroutine's promise, or null if none
+  // Storage for this coroutine's promise, or null if none
   llvm::Value *promise = nullptr;
 
-  /// Coroutine handle, or null if none
+  // Coroutine handle, or null if none
   llvm::Value *handle = nullptr;
 
-  /// Coroutine cleanup block, or null if none
+  // Coroutine cleanup block, or null if none
   llvm::BasicBlock *cleanup = nullptr;
 
-  /// Coroutine suspend block, or null if none
+  // Coroutine suspend block, or null if none
   llvm::BasicBlock *suspend = nullptr;
 
-  /// Coroutine exit block, or null if none
+  // Coroutine exit block, or null if none
+  // If not a coroutine, this is the return block
   llvm::BasicBlock *exit = nullptr;
 };
 
@@ -153,6 +160,10 @@ public:
                     std::shared_ptr<TypeRealization> t);
   std::shared_ptr<TypeRealization>
   getTypeRealization(std::shared_ptr<types::Type> sirType);
+
+  void registerTryCatch(std::shared_ptr<TryCatch> tc,
+                        std::shared_ptr<TryCatchMetadata> meta);
+  std::shared_ptr<TryCatchMetadata> getTryCatchMeta(std::shared_ptr<TryCatch> tc);
 
   void registerVar(std::shared_ptr<Var> sirVar, llvm::Value *val);
   void registerBlock(std::shared_ptr<BasicBlock> sirBlock, llvm::BasicBlock *block);

@@ -79,18 +79,18 @@ class YieldTerminator : public Terminator {
 private:
   std::weak_ptr<BasicBlock> dst;
   std::shared_ptr<Operand> res;
-  std::weak_ptr<Var> inVar;
+  std::shared_ptr<Var> inVar;
 
 public:
   YieldTerminator(std::weak_ptr<BasicBlock> dst, std::shared_ptr<Operand> result,
-                  std::weak_ptr<Var> inVar)
+                  std::shared_ptr<Var> inVar)
       : dst(std::move(dst)), res(std::move(result)), inVar(std::move(inVar)) {}
 
   void accept(common::IRVisitor &v) override;
 
   std::weak_ptr<BasicBlock> getDst() { return dst; }
   std::shared_ptr<Operand> getResult() { return res; }
-  std::weak_ptr<Var> getInVar() { return inVar; }
+  std::shared_ptr<Var> getInVar() { return inVar; }
 
   std::string textRepresentation() const override;
 };

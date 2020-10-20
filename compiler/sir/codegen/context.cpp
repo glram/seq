@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "sir/bblock.h"
+#include "sir/trycatch.h"
 #include "sir/types/types.h"
 #include "sir/var.h"
 
@@ -16,6 +17,18 @@ namespace ir {
 namespace codegen {
 
 using namespace llvm;
+
+void TryCatchMetadata::storeDstValue(llvm::BasicBlock *dst, IRBuilder<> &builder) {
+  ConstantInt *val;
+  val = finallyBr->findCaseDest(dst);
+
+  if (!val) {
+    val = ConstantInt::get(seqIntLLVM(builder.getContext()), finallyBr->getNumCases());
+    finallyBr->addCase(val, dst);
+  }
+
+  builder.CreateStore(val, excFlag);
+}
 
 Value *TypeRealization::extractMember(Value *self, const std::string &field,
                                       IRBuilder<> &builder) const {
@@ -126,6 +139,18 @@ Context::getTypeRealization(std::shared_ptr<types::Type> sirType) {
   if (typeRealizations.find(id) == typeRealizations.end())
     return nullptr;
   return typeRealizations[id];
+}
+
+void Context::registerTryCatch(std::shared_ptr<TryCatch> tc,
+                               std::shared_ptr<TryCatchMetadata> meta) {
+  auto &frame = getFrame();
+  frame.tryCatchMeta[tc->getId()] = std::move(meta);
+}
+std::shared_ptr<TryCatchMetadata>
+Context::getTryCatchMeta(std::shared_ptr<TryCatch> tc) {
+  auto &frame = getFrame();
+  auto it = frame.tryCatchMeta.find(tc->getId());
+  return it == frame.tryCatchMeta.end() ? nullptr : it->second;
 }
 
 void Context::registerVar(std::shared_ptr<Var> sirVar, llvm::Value *val) {
@@ -764,6 +789,12 @@ void Context::initTypeRealizations() {
     registerType(types::kByteType, std::make_shared<TypeRealization>(
                                        types::kByteType, byteType, dfltBuilder,
                                        inlineMagicFuncs, "", nonInlineMagicFuncs));
+  }
+  {
+    registerType(types::kVoidType,
+                 std::make_shared<TypeRealization>(
+                     types::kVoidType, Type::getVoidTy(getLLVMContext()), nullptr,
+                     TypeRealization::InlineMagics()));
   }
 }
 
