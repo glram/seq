@@ -60,6 +60,10 @@ namespace codegen {
 
 using namespace llvm;
 
+void LLVMOperand::accept(CodegenVisitor &v) {
+  v.visit(std::static_pointer_cast<LLVMOperand>(getShared()));
+}
+
 void CodegenVisitor::visit(std::shared_ptr<IRModule> module) {
   // TODO deal with argvar
   ctx->pushFrame();
@@ -155,6 +159,7 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   ctx->pushFrame();
   auto &frame = ctx->getFrame();
   frame.func = func;
+  frame.irFunc = sirFunc;
   frame.isGenerator = sirFunc->isGenerator();
 
   // Stub blocks
@@ -488,6 +493,10 @@ void CodegenVisitor::visit(std::shared_ptr<LiteralOperand> literalOperand) {
   }
 }
 
+void CodegenVisitor::visit(std::shared_ptr<LLVMOperand> llvmOperand) {
+  opResult = llvmOperand->getValue();
+}
+
 void CodegenVisitor::visit(std::shared_ptr<WildcardPattern> wildcardPattern) {
   auto *var = transform(wildcardPattern->getVar());
   patResult = [=](llvm::Value *val) -> llvm::Value * {
@@ -786,6 +795,8 @@ void CodegenVisitor::visit(std::shared_ptr<CondJumpTerminator> condJumpTerminato
   auto *opVal = transform(condJumpTerminator->getCond());
 
   IRBuilder<> builder(ctx->getFrame().curBlock);
+  opVal = builder.CreateTrunc(opVal, builder.getInt1Ty());
+
   if (tTcPath.empty() && fTcPath.empty()) {
     builder.CreateCondBr(opVal, tDst, fDst);
   } else {
@@ -898,9 +909,65 @@ void CodegenVisitor::visit(std::shared_ptr<ThrowTerminator> throwTerminator) {
   } else {
     rvalResult = builder.CreateCall(throwFunc, exc);
   }
+  builder.CreateUnreachable();
 }
 
-void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> node) {}
+void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> assertTerminator) {
+  auto dstIRBlock = assertTerminator->getDst().lock();
+  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
+  auto tcPath = curTc ? curTc->getPath(dstIRBlock->getTryCatch())
+                      : std::vector<std::shared_ptr<TryCatch>>();
+  auto *dst = ctx->getBlock(dstIRBlock);
+
+  assert(tcPath.empty());
+
+  auto &context = ctx->getLLVMContext();
+  auto *module = ctx->getModule();
+  auto *func = ctx->getFrame().func;
+  const auto test = ctx->getFrame()
+                        .curIRBlock->getAttribute<FuncAttribute>(kFuncAttribute)
+                        ->has("test");
+
+  auto *check = transform(assertTerminator->getOperand());
+  auto *msgVal =
+      transform(std::make_shared<LiteralOperand>(assertTerminator->getMsg()));
+
+  auto *fail = llvm::BasicBlock::Create(context, "assert_fail", func);
+
+  IRBuilder<> builder(ctx->getFrame().curBlock);
+  check = builder.CreateTrunc(check, builder.getInt1Ty());
+  builder.CreateCondBr(check, dst, fail);
+
+  ctx->getFrame().curBlock = fail;
+  builder.SetInsertPoint(fail);
+
+  if (test) {
+    auto srcInfoAttr = std::static_pointer_cast<SrcInfoAttribute>(
+        assertTerminator->getAttribute(kSrcInfoAttribute));
+    auto srcInfo = srcInfoAttr ? srcInfoAttr->info : SrcInfo();
+
+    auto *file = transform(std::make_shared<LiteralOperand>(srcInfo.file));
+    auto *line = ConstantInt::get(seqIntLLVM(context), srcInfo.line);
+    builder.SetInsertPoint(ctx->getFrame().curBlock);
+
+    ctx->getBuiltin("_test_failed")->call({file, line, msgVal}, builder);
+  } else {
+    auto builtin = ctx->getBuiltin("_make_assert_error");
+    auto *excVal = builtin->call({msgVal}, builder);
+
+    auto excType =
+        std::static_pointer_cast<types::FuncType>(builtin->sirFunc->getType())
+            ->getRType();
+    auto exc = std::make_shared<LLVMOperand>(excType, excVal);
+
+    auto term = std::make_shared<ThrowTerminator>(exc);
+    term->setAttribute(
+        kSrcInfoAttribute,
+        std::make_shared<SrcInfoAttribute>(
+            term->getAttribute<SrcInfoAttribute>(kSrcInfoAttribute)->info));
+    transform(term);
+  }
+}
 
 void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
   if (auto real = ctx->getTypeRealization(memberedType)) {

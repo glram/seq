@@ -128,6 +128,12 @@ Value *TypeRealization::alloc(Value *count, llvm::IRBuilder<> &builder,
   return nullptr;
 }
 
+llvm::Value *BuiltinRealization::call(std::vector<llvm::Value *> args,
+                                      IRBuilder<> &builder) {
+  // TODO
+  return nullptr;
+}
+
 void Context::registerType(std::shared_ptr<types::Type> sirType,
                            std::shared_ptr<TypeRealization> t) {
   typeRealizations[sirType->getId()] = std::move(t);
@@ -816,13 +822,11 @@ Value *Context::codegenStr(Value *self, const std::string &name,
   auto strTypeRealization = getTypeRealization(types::kStringType);
   Value *nameVal = strTypeRealization->makeNew({len, str}, builder);
 
-  return callBuiltin("_raw_type_str", {ptr, nameVal}, builder);
+  return getBuiltin("_raw_type_str")->call({ptr, nameVal}, builder);
 }
 
-llvm::Value *Context::callBuiltin(const std::string &signature,
-                                  std::vector<llvm::Value *> args,
-                                  IRBuilder<> &builder) {
-  return nullptr;
+std::shared_ptr<BuiltinRealization> Context::getBuiltin(const std::string &name) {
+  return std::shared_ptr<BuiltinRealization>();
 }
 
 } // namespace codegen

@@ -82,8 +82,9 @@ void AssertTerminator::accept(common::IRVisitor &v) {
 }
 
 std::string AssertTerminator::textRepresentation() const {
-  return fmt::format(FMT_STRING("assert ({}) {}; {}"), operand->textRepresentation(),
-                     dst.lock()->referenceString(), attributeString());
+  return fmt::format(FMT_STRING("assert ({}, \"{}\") {}; {}"),
+                     operand->textRepresentation(), msg, dst.lock()->referenceString(),
+                     attributeString());
 }
 
 } // namespace ir

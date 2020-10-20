@@ -54,9 +54,9 @@ shared_ptr<BasicBlock> CodegenVisitor::newBlock() {
   ctx->getBase()->addBlock(ret);
 
   if (templ->getAttribute(kLoopAttribute))
-    ret->setAttribute(kLoopAttribute, make_shared<LoopAttribute>(
-                                          *std::static_pointer_cast<LoopAttribute>(
-                                              templ->getAttribute(kLoopAttribute))));
+    ret->setAttribute(kLoopAttribute,
+                      make_shared<LoopAttribute>(
+                          *templ->getAttribute<LoopAttribute>(kLoopAttribute)));
 
   return ret;
 }
@@ -74,10 +74,9 @@ shared_ptr<Operand> CodegenVisitor::toOperand(CodegenResult res) {
     seqassert(false, "cannot convert lvalue to operand.");
     return nullptr;
   case CodegenResult::RVALUE: {
-    auto srcInfoAttr = res.rvalueResult->getAttribute(kSrcInfoAttribute);
-    auto srcInfo = srcInfoAttr
-                       ? std::static_pointer_cast<SrcInfoAttribute>(srcInfoAttr)->info
-                       : seq::SrcInfo();
+    auto srcInfoAttr =
+        res.rvalueResult->getAttribute<SrcInfoAttribute>(kSrcInfoAttribute);
+    auto srcInfo = srcInfoAttr ? srcInfoAttr->info : seq::SrcInfo();
     auto t = Ns<ir::Var>(srcInfo, res.typeOverride ? res.typeOverride
                                                    : res.rvalueResult->getType());
     ctx->getBase()->addVar(t);
@@ -100,10 +99,9 @@ shared_ptr<Operand> CodegenVisitor::toOperand(CodegenResult res) {
 shared_ptr<Rvalue> CodegenVisitor::toRvalue(CodegenResult res) {
   switch (res.tag) {
   case CodegenResult::OP: {
-    auto srcInfoAttr = res.operandResult->getAttribute(kSrcInfoAttribute);
-    auto srcInfo = srcInfoAttr
-                       ? std::static_pointer_cast<SrcInfoAttribute>(srcInfoAttr)->info
-                       : seq::SrcInfo();
+    auto srcInfoAttr =
+        res.operandResult->getAttribute<SrcInfoAttribute>(kSrcInfoAttribute);
+    auto srcInfo = srcInfoAttr ? srcInfoAttr->info : seq::SrcInfo();
     return Ns<OperandRvalue>(srcInfo, res.operandResult);
   }
   case CodegenResult::LVALUE:
@@ -468,8 +466,7 @@ void CodegenVisitor::visit(const SuiteStmt *stmt) {
 void CodegenVisitor::visit(const PassStmt *stmt) {}
 
 void CodegenVisitor::visit(const BreakStmt *stmt) {
-  auto loop = std::static_pointer_cast<LoopAttribute>(
-      ctx->getBlock()->getAttribute(kLoopAttribute));
+  auto loop = ctx->getBlock()->getAttribute<LoopAttribute>(kLoopAttribute);
   auto dst = loop->end.lock();
   if (!dst)
     seqassert(false, "No loop end");
@@ -477,8 +474,7 @@ void CodegenVisitor::visit(const BreakStmt *stmt) {
 }
 
 void CodegenVisitor::visit(const ContinueStmt *stmt) {
-  auto loop = std::static_pointer_cast<LoopAttribute>(
-      ctx->getBlock()->getAttribute(kLoopAttribute));
+  auto loop = ctx->getBlock()->getAttribute<LoopAttribute>(kLoopAttribute);
   auto dst = loop->cond.lock();
   if (!dst)
     dst = loop->begin.lock();

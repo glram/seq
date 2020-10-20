@@ -48,6 +48,7 @@ struct CodegenFrame {
   std::shared_ptr<BasicBlock> curIRBlock;
 
   llvm::Function *func = nullptr;
+  std::shared_ptr<Func> irFunc;
   std::unordered_map<int, std::shared_ptr<TryCatchMetadata>> tryCatchMeta;
 
   bool isGenerator = false;
@@ -146,6 +147,13 @@ public:
                      bool stack = false) const;
 };
 
+struct BuiltinRealization {
+  llvm::Function *func = nullptr;
+  std::shared_ptr<Func> sirFunc;
+
+  llvm::Value *call(std::vector<llvm::Value *> args, llvm::IRBuilder<> &builder);
+};
+
 class Context : public seq::ir::common::IRContext<CodegenFrame> {
 private:
   llvm::Module *module;
@@ -174,8 +182,7 @@ public:
   llvm::Module *getModule() { return module; }
   llvm::LLVMContext &getLLVMContext() { return module->getContext(); }
 
-  llvm::Value *callBuiltin(const std::string &signature,
-                           std::vector<llvm::Value *> args, llvm::IRBuilder<> &builder);
+  std::shared_ptr<BuiltinRealization> getBuiltin(const std::string &name);
 
   llvm::Value *codegenStr(llvm::Value *self, const std::string &name,
                           llvm::BasicBlock *block);

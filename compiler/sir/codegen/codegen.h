@@ -7,12 +7,29 @@
 #include "sir/common/visitor.h"
 
 #define OVERRIDE_VISIT(x) void visit(std::shared_ptr<x>) override
+#define NORMAL_VISIT(x) void visit(std::shared_ptr<x>)
 
 namespace seq {
 namespace ir {
 namespace codegen {
 
 class CodegenVisitor;
+
+class LLVMOperand : public Operand {
+private:
+  std::shared_ptr<types::Type> type;
+  llvm::Value *val;
+
+public:
+  LLVMOperand(std::shared_ptr<types::Type> type, llvm::Value *val)
+      : type(std::move(type)), val(val) {}
+  void accept(CodegenVisitor &v);
+
+  std::shared_ptr<types::Type> getType() override { return type; }
+  llvm::Value *getValue() { return val; }
+
+  std::string textRepresentation() const override { return "internal"; }
+};
 
 using InlinePatternCheckFunc = std::function<llvm::Value *(llvm::Value *)>;
 using Parent =
@@ -29,6 +46,8 @@ private:
 public:
   explicit CodegenVisitor(std::shared_ptr<Context> ctx, std::string nameOverride = "")
       : Parent(std::move(ctx)), nameOverride(std::move(nameOverride)) {}
+
+  using Parent::visit;
 
   OVERRIDE_VISIT(IRModule);
 
@@ -56,6 +75,7 @@ public:
   OVERRIDE_VISIT(VarOperand);
   OVERRIDE_VISIT(VarPointerOperand);
   OVERRIDE_VISIT(LiteralOperand);
+  NORMAL_VISIT(LLVMOperand);
 
   OVERRIDE_VISIT(WildcardPattern);
   OVERRIDE_VISIT(BoundPattern);
@@ -97,3 +117,4 @@ private:
 } // namespace seq
 
 #undef OVERRIDE_VISIT
+#undef NORMAL_VISIT

@@ -114,15 +114,18 @@ class AssertTerminator : public Terminator {
 private:
   std::shared_ptr<Operand> operand;
   std::weak_ptr<BasicBlock> dst;
+  std::string msg;
 
 public:
   explicit AssertTerminator(std::shared_ptr<Operand> operand,
-                            std::weak_ptr<BasicBlock> dst)
-      : operand(std::move(operand)), dst(std::move(dst)){};
+                            std::weak_ptr<BasicBlock> dst, std::string msg = "")
+      : operand(std::move(operand)), dst(std::move(dst)), msg(std::move(msg)){};
 
   void accept(common::IRVisitor &v) override;
 
+  std::weak_ptr<BasicBlock> getDst() { return dst; }
   std::shared_ptr<Operand> getOperand() { return operand; }
+  std::string getMsg() const { return msg; }
 
   std::string textRepresentation() const override;
 };

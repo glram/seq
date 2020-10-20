@@ -93,9 +93,11 @@ public:
     kvStore[key] = std::move(value);
   }
 
-  std::shared_ptr<Attribute> getAttribute(const std::string &key) {
+  template <typename AttributeType = Attribute>
+  std::shared_ptr<AttributeType> getAttribute(const std::string &key) {
     auto it = kvStore.find(key);
-    return it == kvStore.end() ? nullptr : it->second;
+    return it == kvStore.end() ? nullptr
+                               : std::static_pointer_cast<AttributeType>(it->second);
   }
 
   std::shared_ptr<A> getShared() {
