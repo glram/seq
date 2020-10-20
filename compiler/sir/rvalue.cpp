@@ -102,15 +102,14 @@ std::string MatchRvalue::textRepresentation() const {
 }
 
 PipelineRvalue::PipelineRvalue(std::vector<std::shared_ptr<Operand>> stages,
-                               std::vector<bool> parallel)
-    : stages(std::move(stages)), parallel(std::move(parallel)) {}
+                               std::vector<bool> parallel,
+                               std::vector<std::shared_ptr<types::Type>> inTypes,
+                               std::shared_ptr<types::Type> outType)
+    : stages(std::move(stages)), parallel(std::move(parallel)),
+      inTypes(std::move(inTypes)), outType(std::move(outType)) {}
 
 void PipelineRvalue::accept(common::IRVisitor &v) {
   v.visit(std::static_pointer_cast<PipelineRvalue>(getShared()));
-}
-
-std::shared_ptr<types::Type> PipelineRvalue::getType() {
-  return !stages.empty() ? stages[stages.size() - 1]->getType() : types::kVoidType;
 }
 
 std::string PipelineRvalue::textRepresentation() const {

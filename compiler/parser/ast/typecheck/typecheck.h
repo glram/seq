@@ -33,7 +33,6 @@ class TypecheckVisitor : public CallbackASTVisitor<ExprPtr, StmtPtr, PatternPtr>
   StmtPtr resultStmt;
   PatternPtr resultPattern;
 
-  void prepend(StmtPtr s);
   std::vector<types::Generic> parseGenerics(const std::vector<Param> &generics,
                                             int level);
   std::string patchIfRealizable(types::TypePtr typ, bool isClass);
@@ -44,14 +43,19 @@ class TypecheckVisitor : public CallbackASTVisitor<ExprPtr, StmtPtr, PatternPtr>
   findBestCall(types::ClassTypePtr c, const std::string &member,
                const std::vector<std::pair<std::string, types::TypePtr>> &args,
                bool failOnMultiple = false, types::TypePtr retType = nullptr);
-  bool wrapOptional(types::TypePtr lt, ExprPtr &rhs);
-  std::vector<int> callFunc(types::TypePtr f, std::vector<CallExpr::Arg> &args,
-                            std::vector<CallExpr::Arg> &reorderedArgs,
-                            const std::vector<int> &availableArguments);
+  bool castToOptional(types::TypePtr lt, ExprPtr &rhs);
   bool getTupleIndex(types::ClassTypePtr tuple, const ExprPtr &expr,
                      const ExprPtr &index);
   ExprPtr visitDot(const ExprPtr &expr, const std::string &member,
                    std::vector<CallExpr::Arg> *args = nullptr);
+  std::string generatePartialStub(const std::string &mask, const std::string &oldMask);
+  std::vector<StmtPtr> parseClass(const ClassStmt *stmt);
+  ExprPtr parseCall(const CallExpr *expr, types::TypePtr inType = nullptr,
+                    ExprPtr *extraStage = nullptr);
+  int reorder(const std::vector<std::pair<std::string, types::TypePtr>> &args,
+              std::vector<std::pair<std::string, types::TypePtr>> &reorderedArgs,
+              types::FuncTypePtr f);
+  void addFunctionGenerics(types::FuncTypePtr t);
 
   void defaultVisit(const Expr *e) override;
   void defaultVisit(const Stmt *s) override;
@@ -91,6 +95,8 @@ public:
   void visit(const TypeOfExpr *) override;
   void visit(const PtrExpr *) override;
   void visit(const YieldExpr *) override;
+  void visit(const StmtExpr *) override;
+  void visit(const StaticExpr *) override;
 
   void visit(const SuiteStmt *) override;
   void visit(const ExprStmt *) override;

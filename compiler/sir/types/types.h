@@ -88,7 +88,15 @@ public:
   void accept(common::IRVisitor &v) override;
 
   std::vector<std::string> getMemberNames() override { return memberNames; }
+  void setMemberNames(std::vector<std::string> names) {
+    memberNames = std::move(names);
+  }
+
   std::vector<std::shared_ptr<Type>> getMemberTypes() override { return memberTypes; }
+  void setMemberTypes(std::vector<std::shared_ptr<Type>> types) {
+    memberTypes = std::move(types);
+  }
+
   std::shared_ptr<Type> getMemberType(std::string n) override;
 
   std::string textRepresentation() const override;
@@ -105,9 +113,12 @@ public:
   void accept(common::IRVisitor &v) override;
 
   std::shared_ptr<RecordType> getContents() { return contents; }
+  void setContents(std::shared_ptr<RecordType> c) { contents = std::move(c); }
+
   std::vector<std::string> getMemberNames() override {
     return contents->getMemberNames();
   }
+
   std::vector<std::shared_ptr<Type>> getMemberTypes() override {
     return contents->getMemberTypes();
   }

@@ -94,6 +94,7 @@ std::string RecordType::textRepresentation() const {
   buf.push_back(')');
   return std::string(buf.data(), buf.size());
 }
+
 RecordType::RecordType(std::string name, std::vector<std::shared_ptr<Type>> mTypes)
     : RecordType(std::move(name), std::move(mTypes), {}) {
   std::vector<std::string> names(mTypes.size());

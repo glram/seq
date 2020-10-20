@@ -33,12 +33,11 @@ namespace seq {
 namespace ast {
 
 struct CodegenResult {
-  enum { OP, RVALUE, LVALUE, PATTERN, TYPE, INSTR, NONE } tag;
+  enum { OP, RVALUE, LVALUE, PATTERN, TYPE, NONE } tag;
   std::shared_ptr<seq::ir::Operand> operandResult;
   std::shared_ptr<seq::ir::Rvalue> rvalueResult;
   std::shared_ptr<seq::ir::Lvalue> lvalueResult;
   std::shared_ptr<seq::ir::Pattern> patternResult;
-  std::shared_ptr<seq::ir::Instr> instrResult;
   std::shared_ptr<seq::ir::types::Type> typeResult;
 
   std::shared_ptr<seq::ir::types::Type> typeOverride;
@@ -54,8 +53,6 @@ struct CodegenResult {
       : tag(PATTERN), patternResult(std::move(pattern)){};
   explicit CodegenResult(std::shared_ptr<seq::ir::types::Type> type)
       : tag(TYPE), typeResult(std::move(type)){};
-  explicit CodegenResult(std::shared_ptr<seq::ir::Instr> instrResult)
-      : tag(INSTR), instrResult(std::move(instrResult)){};
 
   void addAttribute(std::string key, std::shared_ptr<seq::ir::Attribute> att) {
     switch (tag) {
@@ -71,8 +68,6 @@ struct CodegenResult {
     case PATTERN:
       patternResult->setAttribute(key, att);
       break;
-    case INSTR:
-      instrResult->setAttribute(key, att);
     default:
       break;
     }
@@ -123,6 +118,7 @@ public:
   void visit(const DotExpr *) override;
   void visit(const PtrExpr *) override;
   void visit(const YieldExpr *) override;
+  void visit(const StmtExpr *) override;
 
   void visit(const SuiteStmt *) override;
   void visit(const PassStmt *) override;
@@ -141,7 +137,6 @@ public:
   void visit(const MatchStmt *) override;
   void visit(const UpdateStmt *) override;
   void visit(const TryStmt *) override;
-  // void visit(const GlobalStmt *) override;
   void visit(const ThrowStmt *) override;
   void visit(const FunctionStmt *) override;
   void visit(const ClassStmt *stmt) override;

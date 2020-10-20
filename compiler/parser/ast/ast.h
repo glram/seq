@@ -420,8 +420,10 @@ struct SliceExpr : public Expr {
 };
 
 struct EllipsisExpr : public Expr {
+  bool isPipeArg;
+
   /// Expression ..., currently used in partial calls
-  EllipsisExpr();
+  EllipsisExpr(bool i = false);
   EllipsisExpr(const EllipsisExpr &n);
 
   std::string toString() const override;
@@ -464,6 +466,17 @@ struct YieldExpr : public Expr {
 
   std::string toString() const override;
   NODE_UTILITY(Expr, YieldExpr);
+};
+
+struct StmtExpr : public Expr {
+  std::vector<StmtPtr> stmts;
+  ExprPtr expr;
+
+  StmtExpr(std::vector<StmtPtr> &&s, ExprPtr e);
+  StmtExpr(const StmtExpr &n);
+
+  std::string toString() const override;
+  NODE_UTILITY(Expr, StmtExpr);
 };
 
 struct SuiteStmt : public Stmt {
@@ -719,12 +732,14 @@ struct FunctionStmt : public Stmt {
   std::vector<Param> args;
   std::unique_ptr<Stmt> suite;
   /// List of attributes (e.g. @internal @prefetch)
-  std::vector<std::string> attributes;
-  std::string className;
+  std::map<std::string, std::string> attributes;
 
   FunctionStmt(const std::string &n, ExprPtr r, std::vector<Param> &&g,
                std::vector<Param> &&a, std::unique_ptr<Stmt> s,
-               const std::vector<std::string> &at, const std::string &c = "");
+               const std::vector<std::string> &at);
+  FunctionStmt(const std::string &n, ExprPtr r, std::vector<Param> &&g,
+               std::vector<Param> &&a, std::unique_ptr<Stmt> s,
+               const std::map<std::string, std::string> &at);
   FunctionStmt(const FunctionStmt &s);
   std::string toString() const override;
   NODE_UTILITY(Stmt, FunctionStmt);
@@ -750,10 +765,13 @@ struct ClassStmt : public Stmt {
   std::vector<Param> generics;
   std::vector<Param> args;
   StmtPtr suite;
-  std::vector<std::string> attributes;
+  std::map<std::string, std::string> attributes;
 
   ClassStmt(bool i, const std::string &n, std::vector<Param> &&g,
             std::vector<Param> &&a, StmtPtr s, const std::vector<std::string> &at);
+  ClassStmt(bool i, const std::string &n, std::vector<Param> &&g,
+            std::vector<Param> &&a, StmtPtr s,
+            const std::map<std::string, std::string> &at);
   ClassStmt(const ClassStmt &s);
   std::string toString() const override;
   NODE_UTILITY(Stmt, ClassStmt);

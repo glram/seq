@@ -23,11 +23,11 @@ using std::vector;
 namespace seq {
 namespace ast {
 
-CodegenContext::CodegenContext(std::shared_ptr<Cache> cache,
-                               std::shared_ptr<seq::ir::BasicBlock> block,
-                               std::shared_ptr<seq::ir::IRModule> module,
-                               std::shared_ptr<seq::ir::Func> base,
-                               std::shared_ptr<seq::SeqJIT> jit)
+CodegenContext::CodegenContext(shared_ptr<Cache> cache,
+                               shared_ptr<seq::ir::BasicBlock> block,
+                               shared_ptr<seq::ir::IRModule> module,
+                               shared_ptr<seq::ir::Func> base,
+                               shared_ptr<seq::SeqJIT> jit)
     : Context<CodegenItem>(""), cache(std::move(cache)), jit(std::move(jit)),
       module(std::move(module)) {
   stack.push_front(vector<string>());
@@ -44,7 +44,7 @@ shared_ptr<CodegenItem> CodegenContext::find(const string &name, bool onlyLocal,
   return nullptr;
 }
 
-void CodegenContext::addVar(const string &name, std::shared_ptr<seq::ir::Var> v,
+void CodegenContext::addVar(const string &name, shared_ptr<seq::ir::Var> v,
                             bool global) {
   auto i =
       make_shared<CodegenItem>(CodegenItem::Var, getBase(), global || isToplevel());
@@ -52,15 +52,15 @@ void CodegenContext::addVar(const string &name, std::shared_ptr<seq::ir::Var> v,
   add(name, i);
 }
 
-void CodegenContext::addType(const string &name,
-                             std::shared_ptr<seq::ir::types::Type> t, bool global) {
+void CodegenContext::addType(const string &name, shared_ptr<seq::ir::types::Type> t,
+                             bool global) {
   auto i =
       make_shared<CodegenItem>(CodegenItem::Type, getBase(), global || isToplevel());
   i->type = std::move(t);
   add(name, i);
 }
 
-void CodegenContext::addFunc(const string &name, std::shared_ptr<seq::ir::Func> f,
+void CodegenContext::addFunc(const string &name, shared_ptr<seq::ir::Func> f,
                              bool global) {
   auto i =
       make_shared<CodegenItem>(CodegenItem::Func, getBase(), global || isToplevel());
@@ -68,8 +68,8 @@ void CodegenContext::addFunc(const string &name, std::shared_ptr<seq::ir::Func> 
   add(name, i);
 }
 
-void CodegenContext::addBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock,
-                              std::shared_ptr<seq::ir::Func> newBase) {
+void CodegenContext::addBlock(shared_ptr<seq::ir::BasicBlock> newBlock,
+                              shared_ptr<seq::ir::Func> newBase) {
   if (newBlock)
     topBlockIndex = blocks.size();
   blocks.push_back(newBlock);
@@ -80,7 +80,7 @@ void CodegenContext::addBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock,
   bases.push_back(newBase);
 }
 
-void CodegenContext::replaceBlock(std::shared_ptr<seq::ir::BasicBlock> newBlock) {
+void CodegenContext::replaceBlock(shared_ptr<seq::ir::BasicBlock> newBlock) {
   blocks.pop_back();
   blocks.push_back(newBlock);
 }
@@ -138,8 +138,7 @@ void CodegenContext::popBlock() {
 //   assert(topBaseIndex == topBlockIndex && topBlockIndex == 0);
 //}
 
-std::shared_ptr<seq::ir::types::Type>
-CodegenContext::realizeType(types::ClassTypePtr t) {
+shared_ptr<seq::ir::types::Type> CodegenContext::realizeType(types::ClassTypePtr t) {
   t = t->getClass();
   seqassert(t, "type must be set and a class");
   seqassert(t->canRealize(), "{} must be realizable", t->toString());
@@ -148,8 +147,8 @@ CodegenContext::realizeType(types::ClassTypePtr t) {
     return it->second;
 
   // LOG7("[codegen] generating ty {}", real.fullName);
-  std::shared_ptr<seq::ir::types::Type> handle;
-  vector<std::shared_ptr<seq::ir::types::Type>> types;
+  shared_ptr<seq::ir::types::Type> handle;
+  vector<shared_ptr<seq::ir::types::Type>> types;
   vector<types::ClassTypePtr> typePtrs;
   vector<int> statics;
   for (auto &m : t->explicits)
@@ -202,41 +201,45 @@ CodegenContext::realizeType(types::ClassTypePtr t) {
     auto f = t->getCallable()->getClass();
     assert(f);
     auto callee = std::static_pointer_cast<seq::ir::types::FuncType>(realizeType(f));
-    vector<std::shared_ptr<seq::ir::types::Type>> partials(f->args.size() - 1, nullptr);
+    vector<shared_ptr<seq::ir::types::Type>> partials(f->args.size() - 1, nullptr);
     for (int i = 9; i < name.size(); i++)
       if (name[i] == '1')
         partials[i - 9] = realizeType(f->args[i - 9 + 1]->getClass());
     handle = make_shared<seq::ir::types::PartialFuncType>(name, callee, partials);
   } else {
     vector<string> names;
-    vector<std::shared_ptr<seq::ir::types::Type>> types;
+    vector<shared_ptr<seq::ir::types::Type>> types;
+    shared_ptr<seq::ir::types::RecordType> record;
+
+    if (t->isRecord()) {
+      vector<string> names;
+      vector<shared_ptr<seq::ir::types::Type>> types;
+      handle = record = make_shared<seq::ir::types::RecordType>(name, types, names);
+    } else {
+      record = make_shared<seq::ir::types::RecordType>("", types, names);
+      handle = make_shared<seq::ir::types::RefType>(name, record);
+    }
+    this->types[t->realizeString()] = handle;
+
+    // Must do this afterwards to avoid infinite loop with recursive types
     for (auto &m : cache->memberRealizations[t->realizeString()]) {
       names.push_back(m.first);
       types.push_back(realizeType(m.second->getClass()));
     }
-    if (t->isRecord()) {
-      vector<string> x;
-      for (auto &t : types)
-        x.push_back(t->getName());
-      // if (startswith(name, ".Tuple."))
-      // name = "";
-      handle = make_shared<seq::ir::types::RecordType>(name, types, names);
-    } else {
-      auto internal = make_shared<seq::ir::types::RecordType>("", types, names);
-      handle = make_shared<seq::ir::types::RefType>(name, internal);
-    }
+    record->setMemberNames(names);
+    record->setMemberTypes(types);
   }
   return this->types[t->realizeString()] = handle;
 }
-std::shared_ptr<seq::ir::types::Pointer>
-CodegenContext::getPointer(types::ClassTypePtr t) {
+
+shared_ptr<seq::ir::types::Pointer> CodegenContext::getPointer(types::ClassTypePtr t) {
   t = t->getClass();
   auto pointerName = fmt::format(FMT_STRING(".Ptr[{}]"), t->realizeString());
   auto it = types.find(pointerName);
   if (it != types.end())
     return std::static_pointer_cast<seq::ir::types::Pointer>(it->second);
 
-  auto pointer = std::make_shared<seq::ir::types::Pointer>(realizeType(t));
+  auto pointer = make_shared<seq::ir::types::Pointer>(realizeType(t));
   this->types[pointerName] = pointer;
   return pointer;
 }

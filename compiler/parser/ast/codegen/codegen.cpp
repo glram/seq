@@ -29,7 +29,7 @@ using std::weak_ptr;
 using namespace seq::ir;
 
 namespace {
-std::string temporaryName(const std::string &name) { return "._" + name; }
+string temporaryName(const string &name) { return "._" + name; }
 } // namespace
 
 namespace seq {
@@ -66,7 +66,7 @@ void CodegenVisitor::condSetTerminator(shared_ptr<Terminator> term) {
     ctx->getBlock()->setTerminator(std::move(term));
 }
 
-shared_ptr<seq::ir::Operand> CodegenVisitor::toOperand(CodegenResult res) {
+shared_ptr<Operand> CodegenVisitor::toOperand(CodegenResult res) {
   switch (res.tag) {
   case CodegenResult::OP:
     return res.operandResult;
@@ -97,7 +97,7 @@ shared_ptr<seq::ir::Operand> CodegenVisitor::toOperand(CodegenResult res) {
   }
 }
 
-shared_ptr<seq::ir::Rvalue> CodegenVisitor::toRvalue(CodegenResult res) {
+shared_ptr<Rvalue> CodegenVisitor::toRvalue(CodegenResult res) {
   switch (res.tag) {
   case CodegenResult::OP: {
     auto srcInfoAttr = res.operandResult->getAttribute(kSrcInfoAttribute);
@@ -129,7 +129,6 @@ CodegenResult CodegenVisitor::transform(const ExprPtr &expr) {
   if (!expr)
     return CodegenResult();
   CodegenVisitor v(ctx);
-  v.setSrcInfo(expr->getSrcInfo());
   expr->accept(v);
   return v.result;
 }
@@ -137,19 +136,16 @@ CodegenResult CodegenVisitor::transform(const ExprPtr &expr) {
 CodegenResult CodegenVisitor::transform(const StmtPtr &stmt) {
   CodegenVisitor v(ctx);
   stmt->accept(v);
-  v.setSrcInfo(stmt->getSrcInfo());
   return v.result;
 }
 
 CodegenResult CodegenVisitor::transform(const PatternPtr &ptr) {
   CodegenVisitor v(ctx);
-  v.setSrcInfo(ptr->getSrcInfo());
   ptr->accept(v);
   return v.result;
 }
 
-shared_ptr<seq::ir::IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache,
-                                                    StmtPtr stmts) {
+shared_ptr<IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmts) {
   auto module = make_shared<IRModule>("module");
   auto block = module->getBase()->getBlocks()[0];
   auto ctx =
@@ -169,9 +165,18 @@ shared_ptr<seq::ir::IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache,
         auto name = names.back();
         if (in(ast->attributes, "internal") || in(ast->attributes, "rev_internal")) {
           vector<shared_ptr<ir::types::Type>> types;
-          auto p = t->codegenParent ? t->codegenParent : t->parent;
-          seqassert(p && p->getClass(), "parent must be set ({})",
-                    p ? p->toString() : "-");
+          auto p = t->parent;
+          assert(in(ast->attributes, ".class"));
+          if (!in(ast->attributes, ".method")) { // hack for non-generic types
+            for (auto &x : ctx->cache->realizations[ast->attributes[".class"]]) {
+              if (startswith(t->realizeString(), x.first)) {
+                p = x.second;
+                break;
+              }
+            }
+          }
+          seqassert(p && p->getClass(), "parent must be set ({}) for {}; parent={}",
+                    p ? p->toString() : "-", t->toString(), ast->attributes[".class"]);
           shared_ptr<ir::types::Type> typ = ctx->realizeType(p->getClass());
           int startI = 1;
           if (ast->args.size() && ast->args[0].name == "self")
@@ -181,15 +186,13 @@ shared_ptr<seq::ir::IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache,
           if (isdigit(name[0])) // TODO: get rid of this hack
             name = names[names.size() - 2];
           LOG7("[codegen] generating internal fn {} -> {}", ast->name, name);
-          auto fn =
-              Ns<ir::Func>(t->getSrcInfo(), names.back(), std::vector<std::string>(),
-                           ir::types::kNoArgVoidFuncType);
+          auto fn = Ns<ir::Func>(t->getSrcInfo(), names.back(), vector<string>(),
+                                 ir::types::kNoArgVoidFuncType);
           fn->setInternal(typ, name, in(ast->attributes, "internal"));
-          // ctx->functions[f.first] = {typ->findMagic(name, types), true};
           ctx->functions[f.first] = {fn, false};
           ctx->getModule()->addGlobal(fn);
         } else {
-          auto fn = Ns<ir::Func>(t->getSrcInfo(), name, std::vector<std::string>(),
+          auto fn = Ns<ir::Func>(t->getSrcInfo(), name, vector<string>(),
                                  ir::types::kNoArgVoidFuncType);
           ctx->functions[f.first] = {fn, false};
           ctx->getModule()->addGlobal(fn);
@@ -330,37 +333,86 @@ void CodegenVisitor::visit(const BinaryExpr *expr) {
 }
 
 void CodegenVisitor::visit(const PipeExpr *expr) {
-  vector<shared_ptr<Operand>> ops;
-  vector<bool> parallel;
-  for (const auto &item : expr->items) {
-    ops.push_back(toOperand(transform(item.expr)));
-    parallel.push_back(item.op == "||>");
+  //<<<<<<< HEAD
+  //  vector<shared_ptr<Operand>> ops;
+  //  vector<bool> parallel;
+  //  for (const auto &item : expr->items) {
+  //    ops.push_back(toOperand(transform(item.expr)));
+  //    parallel.push_back(item.op == "||>");
+  //=======
+  //  vector<seq::Expr *> exprs{transform(expr->items[0].expr)};
+  //  vector<seq::types::Type *> inTypes{realizeType(expr->inTypes[0]->getClass())};
+  //  for (int i = 1; i < expr->items.size(); i++) {
+  //    auto e = CAST(expr->items[i].expr, CallExpr);
+  //    assert(e);
+  //    // LOG("{}", e->toString());
+  //
+  //    auto pfn = transform(e->expr);
+  //    // LOG(" -- {} ... {}", pfn->getType()->getName(), e->args.size());
+  //    vector<seq::Expr *> items(e->args.size(), nullptr);
+  //    vector<string> names(e->args.size(), "");
+  //    vector<seq::types::Type *> partials(e->args.size(), nullptr);
+  //    for (int ai = 0; ai < e->args.size(); ai++)
+  //      if (!CAST(e->args[ai].value, EllipsisExpr)) {
+  //        items[ai] = transform(e->args[ai].value);
+  //        partials[ai] = realizeType(e->args[ai].value->getType()->getClass());
+  //        // LOG(" -- {}: {} .. {}", ai, partials[ai]->getName(),
+  //        // items[ai]->getType()->getName());
+  //      }
+  //    auto p = new seq::PartialCallExpr(pfn, items, names);
+  //    p->setType(seq::types::PartialFuncType::get(pfn->getType(), partials));
+  //    // LOG(" ?? {}", p->getType()->getName())
+  //
+  //    exprs.push_back(p);
+  //    inTypes.push_back(realizeType(expr->inTypes[i]->getClass()));
+  //>>>>>>> af86e35772e7039640dd5ff30e1edcfd12d9eca1
+  //  }
+  //  result = CodegenResult(Ns<PipelineRvalue>(expr->getSrcInfo(), ops, parallel));
+
+  vector<shared_ptr<Operand>> ops = {toOperand(transform(expr->items[0].expr))};
+  vector<bool> parallel = {expr->items[0].op == "||>"};
+  vector<shared_ptr<ir::types::Type>> inTypes = {
+      realizeType(expr->inTypes[0]->getClass())};
+  for (auto i = 1; i < expr->items.size(); ++i) {
+    auto e = CAST(expr->items[i].expr, CallExpr);
+    assert(e);
+
+    auto pfn = toOperand(transform(e->expr));
+    vector<shared_ptr<Operand>> items(e->args.size(), nullptr);
+    vector<string> names(e->args.size(), "");
+    vector<shared_ptr<ir::types::Type>> partials(e->args.size(), nullptr);
+
+    for (int ai = 0; ai < e->args.size(); ai++)
+      if (!CAST(e->args[ai].value, EllipsisExpr)) {
+        items[ai] = toOperand(transform(e->args[ai].value));
+        partials[ai] = realizeType(e->args[ai].value->getType()->getClass());
+      }
+    auto pType = std::static_pointer_cast<ir::types::PartialFuncType>(
+        realizeType(e->getType()->getClass()));
+    auto tVar = Ns<ir::Var>(expr->getSrcInfo(), pType);
+    ctx->getBase()->addVar(tVar);
+    ctx->getBlock()->add(
+        Ns<AssignInstr>(expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), tVar),
+                        Ns<PartialCallRvalue>(expr->getSrcInfo(), pfn, items, pType)));
+    ops.push_back(Ns<VarOperand>(expr->getSrcInfo(), tVar));
+    inTypes.push_back(realizeType(expr->inTypes[i]->getClass()));
   }
-  result = CodegenResult(Ns<PipelineRvalue>(expr->getSrcInfo(), ops, parallel));
+  result = CodegenResult(Ns<PipelineRvalue>(expr->getSrcInfo(), ops, parallel, inTypes,
+                                            realizeType(expr->getType()->getClass())));
 }
 
 void CodegenVisitor::visit(const CallExpr *expr) {
-  // TODO fix partial call
   auto lhs = toOperand(transform(expr->expr));
   vector<shared_ptr<Operand>> items;
-  bool isPartial = false;
   for (auto &&i : expr->args) {
     if (CAST(i.value, EllipsisExpr)) {
-      items.push_back(nullptr);
-      isPartial = true;
+      assert(false);
     } else {
       items.push_back(toOperand(transform(i.value)));
     }
   }
-  if (isPartial)
-    result = CodegenResult(
-        Ns<PartialCallRvalue>(expr->getSrcInfo(), lhs, items,
-                              std::static_pointer_cast<ir::types::PartialFuncType>(
-                                  realizeType(expr->getType()->getClass()))));
-  else {
-    result = CodegenResult(Ns<CallRvalue>(expr->getSrcInfo(), lhs, items));
-    result.typeOverride = realizeType(expr->getType()->getClass());
-  }
+  result = CodegenResult(Ns<CallRvalue>(expr->getSrcInfo(), lhs, items));
+  result.typeOverride = realizeType(expr->getType()->getClass());
 }
 
 void CodegenVisitor::visit(const StackAllocExpr *expr) {
@@ -398,6 +450,13 @@ void CodegenVisitor::visit(const YieldExpr *expr) {
   ctx->replaceBlock(dst);
 
   result = CodegenResult(Ns<VarOperand>(expr->getSrcInfo(), var));
+}
+
+void CodegenVisitor::visit(const StmtExpr *expr) {
+  for (auto &s : expr->stmts) {
+    transform(s);
+  }
+  result = transform(expr->expr);
 }
 
 void CodegenVisitor::visit(const SuiteStmt *stmt) {
@@ -547,6 +606,7 @@ void CodegenVisitor::visit(const ForStmt *stmt) {
       make_shared<LoopAttribute>(setup, cond, begin, weak_ptr<BasicBlock>(), end));
 
   ctx->addLevel();
+  transform(stmt->iter);
 
   auto doneVar =
       Ns<ir::Var>(stmt->getSrcInfo(), temporaryName("for_done"), ir::types::kBoolType);
@@ -575,6 +635,7 @@ void CodegenVisitor::visit(const ForStmt *stmt) {
   ctx->getBlock()->add(Ns<AssignInstr>(
       stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), resVar), nextRval));
   transform(stmt->suite);
+
   auto doneRval = toRvalue(transform(stmt->done));
   ctx->getBlock()->add(Ns<AssignInstr>(
       stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), doneVar), doneRval));
@@ -765,7 +826,7 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
       f->setEnclosingFunc(ctx->getBase());
     ctx->addBlock(f->getBlocks()[0], f);
     vector<string> names;
-    vector<std::shared_ptr<ir::types::Type>> types;
+    vector<shared_ptr<ir::types::Type>> types;
 
     auto t = real.second->getFunc();
     for (int i = 1; i < t->args.size(); i++) {
@@ -773,11 +834,11 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
       names.push_back(ast->args[i - 1].name);
     }
     f->setArgNames(names);
-
     f->setType(realizeType(t->getClass()));
     f->setAttribute(kFuncAttribute, make_shared<FuncAttribute>(ast->attributes));
     for (auto a : ast->attributes) {
-      if (a == "atomic")
+      if (a.first == "atomic")
+
         ctx->setFlag("atomic");
     }
     if (in(ast->attributes, ".c")) {
@@ -858,7 +919,9 @@ void CodegenVisitor::visit(const OrPattern *pat) {
 void CodegenVisitor::visit(const WildcardPattern *pat) {
   auto p = Ns<ir::WildcardPattern>(pat->getSrcInfo(),
                                    realizeType(pat->getType()->getClass()));
-  ctx->addVar(pat->var, p->getVar());
+  if (!pat->var.empty()) {
+    ctx->addVar(pat->var, p->getVar());
+  }
   ctx->getBase()->addVar(p->getVar());
   result = CodegenResult(p);
 }
@@ -869,7 +932,7 @@ void CodegenVisitor::visit(const GuardedPattern *pat) {
                                                 toOperand(transform(pat->cond))));
 }
 
-std::shared_ptr<ir::types::Type> CodegenVisitor::realizeType(types::ClassTypePtr t) {
+shared_ptr<ir::types::Type> CodegenVisitor::realizeType(types::ClassTypePtr t) {
   auto i = ctx->types.find(t->getClass()->realizeString());
   assert(i != ctx->types.end());
   return i->second;

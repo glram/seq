@@ -16,6 +16,8 @@
 #include <vector>
 
 #include "parser/ast/ast.h"
+#include "parser/ast/transform/transform.h"
+#include "parser/ast/transform/transform_ctx.h"
 #include "parser/ast/typecheck/typecheck.h"
 #include "parser/ast/typecheck/typecheck_ctx.h"
 #include "parser/ast/types.h"
@@ -69,6 +71,7 @@ ExprPtr TypecheckVisitor::transform(const ExprPtr &expr, bool allowTypes) {
     return nullptr;
   TypecheckVisitor v(ctx, prependStmts);
   v.setSrcInfo(expr->getSrcInfo());
+  // LOG9("<< {} {}", (int64_t)expr.get(), expr->toString());
   expr->accept(v);
   // LOG9("{} | {} -> {}", expr->getSrcInfo().line, expr->toString(),
   //  v.resultExpr->toString());
@@ -76,6 +79,7 @@ ExprPtr TypecheckVisitor::transform(const ExprPtr &expr, bool allowTypes) {
       v.resultExpr->getType()->getClass()->canRealize())
     realizeType(v.resultExpr->getType()->getClass());
   seqassert(v.resultExpr, "cannot parse {}", expr->toString());
+  LOG9(">> {}", v.resultExpr->toString());
   return move(v.resultExpr);
 }
 
@@ -110,11 +114,6 @@ PatternPtr TypecheckVisitor::transform(const PatternPtr &pat) {
   v.setSrcInfo(pat->getSrcInfo());
   pat->accept(v);
   return move(v.resultPattern);
-}
-
-void TypecheckVisitor::prepend(StmtPtr s) {
-  if (auto t = transform(s))
-    prependStmts->push_back(move(t));
 }
 
 StmtPtr TypecheckVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmts) {
@@ -153,8 +152,8 @@ void TypecheckVisitor::visit(const StringExpr *expr) {
 
 void TypecheckVisitor::visit(const IdExpr *expr) {
   auto val = ctx->find(expr->value);
-  // if (!val)
-  // ctx->dump();
+  if (!val)
+    ctx->dump();
   seqassert(val, "cannot find '{}'", expr->value);
   if (val->isStatic()) {
     auto s = val->getType()->getStatic();
@@ -177,6 +176,17 @@ void TypecheckVisitor::visit(const IdExpr *expr) {
 void TypecheckVisitor::visit(const IfExpr *expr) {
   auto e =
       N<IfExpr>(transform(expr->cond), transform(expr->eif), transform(expr->eelse));
+  auto ti = e->eif->getType()->getClass();
+  auto te = e->eelse->getType()->getClass();
+  if (ti && te) {
+    if (te->name != ti->name) {
+      if (ti->name == ".Optional")
+        e->eelse = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(e->eelse)));
+      else if (te->name == ".Optional")
+        e->eif = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(e->eif)));
+    }
+    forceUnify(e->eif->getType(), e->eelse->getType());
+  }
   e->setType(forceUnify(expr, e->eif->getType()));
   resultExpr = move(e);
 }
@@ -188,13 +198,25 @@ void TypecheckVisitor::visit(const BinaryExpr *expr) {
       {">", "gt"},      {">=", "ge"},     {"==", "eq"}, {"!=", "ne"},  {"<<", "lshift"},
       {">>", "rshift"}, {"&", "and"},     {"|", "or"},  {"^", "xor"}};
   auto le = transform(expr->lexpr);
-  auto re = transform(expr->rexpr);
-  if (le->getType()->getUnbound() || re->getType()->getUnbound()) {
+  auto re = CAST(expr->rexpr, NoneExpr) ? clone(expr->rexpr) : transform(expr->rexpr);
+  if (le->getType()->getUnbound() ||
+      (expr->op != "is" && re->getType()->getUnbound())) {
     resultExpr = N<BinaryExpr>(move(le), expr->op, move(re));
     resultExpr->setType(
         forceUnify(expr, ctx->addUnbound(getSrcInfo(), ctx->typecheckLevel)));
   } else if (expr->op == "is") {
-    if (!le->getType()->canRealize() || !le->getType()->canRealize()) {
+    if (CAST(expr->rexpr, NoneExpr)) {
+      if (le->getType()->getClass()->name != ".Optional") {
+        resultExpr = transform(N<BoolExpr>(false));
+        // error("only optionals can be compared to None");
+      } else {
+        resultExpr = transform(N<CallExpr>(
+            N<DotExpr>(N<CallExpr>(N<DotExpr>(move(le), "__bool__")), "__invert__")));
+      }
+      forceUnify(expr, resultExpr->getType());
+      return;
+    }
+    if (!le->getType()->canRealize() || !re->getType()->canRealize()) {
       resultExpr = N<BinaryExpr>(move(le), expr->op, move(re));
     } else {
       auto lc = realizeType(le->getType()->getClass());
@@ -226,8 +248,7 @@ void TypecheckVisitor::visit(const BinaryExpr *expr) {
       error("cannot find magic '{}' for {}", magic, lc->toString());
     }
     magic = format("__{}__", magic);
-    resultExpr = transform(
-        N<CallExpr>(N<DotExpr>(clone(expr->lexpr), magic), clone(expr->rexpr)));
+    resultExpr = transform(N<CallExpr>(N<DotExpr>(move(le), magic), move(re)));
     forceUnify(expr, resultExpr->getType());
   }
 }
@@ -240,33 +261,6 @@ void TypecheckVisitor::visit(const PipeExpr *expr) {
     else
       return t;
   };
-  auto updateType = [&](TypePtr t, int inTypePos, ExprPtr &fe) {
-    auto f = fe->getType();
-    auto fc = f->getClass();
-    assert(f && fc->getCallable());
-    bool isPartial = startswith(fc->name, ".Partial.");
-    if (isPartial) {
-      int j = 0;
-      for (int i = 9; i < fc->name.size(); i++)
-        if (fc->name[i] == '0') {
-          if (j == inTypePos) {
-            j = i - 9;
-            break;
-          }
-          j++;
-        }
-      inTypePos = j;
-      f = fc->explicits[0].type;
-      fc = f->getClass();
-    }
-    forceUnify(t, fc->args[inTypePos + 1]);
-    if (f->canRealize() && f->getFunc()) {
-      auto t = realizeFunc(f->getFunc());
-      if (isPartial)
-        fixExprName(fe, t->realizeString());
-    }
-    return fc->args[0];
-  };
 
   vector<PipeExpr::Pipe> items;
   items.push_back({expr->items[0].op, transform(expr->items[0].expr)});
@@ -276,34 +270,62 @@ void TypecheckVisitor::visit(const PipeExpr *expr) {
   inType = extractType(inType);
   int inTypePos = 0;
   for (int i = 1; i < expr->items.size(); i++) {
-    auto &l = expr->items[i];
+    auto l = expr->items[i].clone();
+
+  reset:
+    // LOG("-> {} ; {} -> {}", ctx->iteration, inType->toString(), l.expr->toString());
     if (auto ce = CAST(l.expr, CallExpr)) {
+      // TODO: what if this is a StmtExpr [e.g. a constructor]?
       int inTypePos = -1;
       for (int ia = 0; ia < ce->args.size(); ia++)
-        if (CAST(ce->args[ia].value, EllipsisExpr)) {
+        if (auto ee = CAST(ce->args[ia].value, EllipsisExpr)) {
           if (inTypePos == -1)
-            inTypePos = ia;
+            ee->isPipeArg = true, inTypePos = ia;
           else
             error(ce->args[ia].value, "unexpected partial argument");
         }
       if (inTypePos == -1) {
-        ce->args.insert(ce->args.begin(), {"", N<EllipsisExpr>()});
+        ce->args.insert(ce->args.begin(), {"", N<EllipsisExpr>(true)});
         inTypePos = 0;
       }
-      items.push_back({l.op, transform(l.expr)});
+
+      // forceUnify(ce->args[inTypePos].value, inType);
+      ExprPtr st = nullptr;
+      auto n = parseCall(ce, inType, &st);
+      if (st) {
+        l = {"|>", move(st)};
+        i--;
+        goto reset;
+      }
+      items.push_back({l.op, move(n)});
     } else {
-      items.push_back(
-          {l.op, transform(N<CallExpr>(transform(l.expr), N<EllipsisExpr>()))});
+      auto c = N<CallExpr>(clone(l.expr), N<EllipsisExpr>(true));
+      // forceUnify(c->args[0].value, inType);
+
+      ExprPtr st = nullptr;
+      auto n = parseCall(c.get(), inType, &st);
+      if (st) {
+        l = {"|>", move(st)};
+        i--;
+        goto reset;
+      }
+      items.push_back({l.op, move(n)});
       inTypePos = 0;
     }
-    inType = updateType(inType, inTypePos, items.back().expr);
+    inType = items.back().expr->getType();
     types.push_back(inType);
+
     if (i < expr->items.size() - 1)
       inType = extractType(inType);
   }
   resultExpr = N<PipeExpr>(move(items));
   CAST(resultExpr, PipeExpr)->inTypes = types;
   resultExpr->setType(forceUnify(expr, inType));
+}
+
+void TypecheckVisitor::visit(const StaticExpr *expr) {
+  // when visited "normally" just treat it as normal expression
+  resultExpr = transform(expr->expr);
 }
 
 void TypecheckVisitor::visit(const InstantiateExpr *expr) {
@@ -335,15 +357,22 @@ void TypecheckVisitor::visit(const InstantiateExpr *expr) {
         t = make_shared<StaticType>(v, clone(s->expr));
       }
     } else {
+      if (!expr->params[i]->isType())
+        error(expr->params[i], "not a type");
       t = ctx->instantiate(getSrcInfo(), transformType(expr->params[i])->getType());
     }
     /// Note: at this point, only single-variable static var expression (e.g.
     /// N) is allowed, so unify will work as expected.
     // LOG("{} {}", t->toString(), g->toString());
-    if (g->getFunc())
+    if (g->getFunc()) {
+      if (i >= g->getFunc()->explicits.size())
+        error("expected {} generics", g->getFunc()->explicits.size());
       forceUnify(g->getFunc()->explicits[i].type, t);
-    else
+    } else {
+      if (i >= g->getClass()->explicits.size())
+        error("expected {} generics", g->getClass()->explicits.size());
       forceUnify(g->getClass()->explicits[i].type, t);
+    }
   }
   bool isType = e->isType();
   auto t = forceUnify(expr, g);
@@ -402,11 +431,16 @@ void TypecheckVisitor::visit(const IndexExpr *expr) {
     } else if (auto i = CAST(index, SliceExpr)) {
       if (!getInt(&s, i->st) || !getInt(&e, i->ed) || !getInt(&st, i->step))
         return nullptr;
+      if (i->step && !i->st)
+        s = st > 0 ? 0 : tuple->args.size();
+      if (i->step && !i->ed)
+        e = st > 0 ? tuple->args.size() : 0;
       sliceAdjustIndices(tuple->args.size(), &s, &e, st);
       vector<ExprPtr> te;
       for (auto i = s; (st >= 0) ? (i < e) : (i >= e); i += st) {
-        if (i < 0 || i >= e)
-          error("tuple index out of range (expected 0..{}, got {})", e, i);
+        if (i < 0 || i >= tuple->args.size())
+          error("tuple index out of range (expected 0..{}, got {})", tuple->args.size(),
+                i);
         te.push_back(N<DotExpr>(clone(expr), format("a{}", i + 1)));
       }
       return transform(N<CallExpr>(
@@ -416,7 +450,17 @@ void TypecheckVisitor::visit(const IndexExpr *expr) {
   };
 
   ExprPtr e = transform(expr->expr, true);
-  if (auto c = e->getType()->getClass()) {
+  auto t = e->getType();
+  if (t->getFunc()) {
+    vector<ExprPtr> it;
+    if (auto t = CAST(expr->index, TupleExpr))
+      for (auto &i : t->items)
+        it.push_back(transform(i, true));
+    else
+      it.push_back(transform(expr->index, true));
+    LOG("-- {} -> INST {}", expr->toString(), e->toString());
+    resultExpr = transform(N<InstantiateExpr>(move(e), move(it)));
+  } else if (auto c = t->getClass()) {
     resultExpr = getTupleIndex(c, expr->expr, expr->index);
     if (!resultExpr)
       resultExpr = transform(N<CallExpr>(N<DotExpr>(expr->expr->clone(), "__getitem__"),
@@ -489,6 +533,9 @@ ExprPtr TypecheckVisitor::visitDot(const ExprPtr &expr, const string &member,
       }
     } else if (auto mm = ctx->findMember(c->name, member)) {
       typ = ctx->instantiate(getSrcInfo(), mm, c);
+    } else if (c->name == ".Optional") {
+      return visitDot(transform(N<CallExpr>(N<IdExpr>(".unwrap"), clone(expr))), member,
+                      args);
     } else {
       error("cannot find '{}' in {}", member, lhs->getType()->toString());
     }
@@ -500,13 +547,21 @@ ExprPtr TypecheckVisitor::visitDot(const ExprPtr &expr, const string &member,
   return t;
 }
 
-void TypecheckVisitor::visit(const CallExpr *expr) {
-  vector<CallExpr::Arg> args;
-  for (auto &i : expr->args)
-    args.push_back({i.name, transform(i.value)});
+void TypecheckVisitor::visit(const CallExpr *expr) { resultExpr = parseCall(expr); }
 
-  if (expr->expr->getType() && expr->expr->getType()->toString() == "?2586.2")
-    assert(1);
+ExprPtr TypecheckVisitor::parseCall(const CallExpr *expr, types::TypePtr inType,
+                                    ExprPtr *extraStage) {
+  vector<CallExpr::Arg> args;
+  for (auto &i : expr->args) {
+    args.push_back({i.name, transform(i.value)});
+    if (auto e = CAST(i.value, EllipsisExpr)) {
+      if (inType && e->isPipeArg)
+        forceUnify(inType, args.back().value->getType());
+      else
+        forceUnify(i.value, args.back().value->getType());
+    }
+  }
+
   ExprPtr e = nullptr;
   if (auto d = CAST(expr->expr, DotExpr))
     e = visitDot(d->expr, d->member, &args);
@@ -514,95 +569,187 @@ void TypecheckVisitor::visit(const CallExpr *expr) {
     e = transform(expr->expr, true);
   forceUnify(expr->expr.get(), e->getType());
 
-  // TODO: optional promition in findBestCall
-  if (e->isType()) {                   // Replace constructor with appropriate calls
-    auto c = e->getType()->getClass(); // no need for instantiation
-    assert(c);
-    if (c->isRecord()) {
-      vector<TypePtr> targs;
-      for (auto &a : args)
-        targs.push_back(a.value->getType());
-      resultExpr = transform(N<CallExpr>(N<DotExpr>(move(e), "__new__"), move(args)));
-    } else {
-      string var = getTemporaryVar("typ");
-      /// TODO: assumes that a class cannot have multiple __new__ magics
-      /// WARN: passing e & args that have already been transformed
-      prepend(
-          N<AssignStmt>(N<IdExpr>(var), N<CallExpr>(N<DotExpr>(move(e), "__new__"))));
-      prepend(
-          N<ExprStmt>(N<CallExpr>(N<DotExpr>(N<IdExpr>(var), "__init__"), move(args))));
-      resultExpr = transform(N<IdExpr>(var));
-    }
-    return;
-  }
-
   auto c = e->getType();
   auto cc = c->getClass();
   if (!cc) { // Unbound caller, will be handled later
-    resultExpr = N<CallExpr>(move(e), move(args));
-    resultExpr->setType(
-        forceUnify(expr, ctx->addUnbound(getSrcInfo(), ctx->typecheckLevel)));
-    return;
-  }
-  if (!cc->getCallable()) { // route to a call method
-    resultExpr = transform(N<CallExpr>(N<DotExpr>(move(e), "__call__"), move(args)));
-    return;
+    e = N<CallExpr>(move(e), move(args));
+    e->setType(forceUnify(expr, ctx->addUnbound(getSrcInfo(), ctx->typecheckLevel)));
+    return e;
+  } else if (e->isType() && cc->isRecord()) {
+    return transform(N<CallExpr>(N<DotExpr>(move(e), "__new__"), move(args)));
+  } else if (e->isType()) {
+    /// TODO: assumes that a class cannot have multiple __new__ magics
+    /// WARN: passing e & args that have already been transformed
+    ExprPtr var = N<IdExpr>(getTemporaryVar("v"));
+    vector<StmtPtr> stmts;
+    stmts.push_back(
+        N<AssignStmt>(clone(var), N<CallExpr>(N<DotExpr>(move(e), "__new__"))));
+    stmts.push_back(
+        N<ExprStmt>(N<CallExpr>(N<DotExpr>(clone(var), "__init__"), move(args))));
+    return transform(N<StmtExpr>(move(stmts), clone(var)));
+  } else if (!cc->getCallable()) {
+    return transform(N<CallExpr>(N<DotExpr>(move(e), "__call__"), move(args)));
   }
 
   // Handle named and default arguments
   vector<CallExpr::Arg> reorderedArgs;
   vector<int> availableArguments;
-  bool isPartial = false;
   string knownTypes;
   if (startswith(cc->name, ".Partial.")) {
-    isPartial = true;
     knownTypes = cc->name.substr(9);
-    c = cc->explicits[0].type;
+    c = cc->args[0]; // args?
     cc = c->getClass();
     assert(cc);
   }
-
-  auto &t_args = cc->args;
-  for (int i = 0; i < int(t_args.size()) - 1; i++)
-    if (!isPartial || knownTypes[i] == '0')
+  for (int i = 0; i < int(cc->args.size()) - 1; i++)
+    if (knownTypes.empty() || knownTypes[i] == '0')
       availableArguments.push_back(i);
-  auto pending = callFunc(c, args, reorderedArgs, availableArguments);
+
+  vector<int> pending;
+  bool isPartial = false;
+  bool namesStarted = false;
+  unordered_map<string, ExprPtr> namedArgs;
+  for (int i = 0; i < args.size(); i++) {
+    if (args[i].name == "" && namesStarted)
+      error("unnamed argument after a named argument");
+    namesStarted |= args[i].name != "";
+    if (args[i].name == "")
+      reorderedArgs.push_back({"", move(args[i].value)});
+    else if (namedArgs.find(args[i].name) == namedArgs.end())
+      namedArgs[args[i].name] = move(args[i].value);
+    else
+      error("named argument {} repeated multiple times", args[i].name);
+  }
+
+  if (namedArgs.size() == 0 && reorderedArgs.size() == availableArguments.size() + 1 &&
+      CAST(reorderedArgs.back().value, EllipsisExpr)) {
+    isPartial = true;
+    forceUnify(reorderedArgs.back().value, ctx->findInternal(".void"));
+    reorderedArgs.pop_back();
+  } else if (reorderedArgs.size() + namedArgs.size() > availableArguments.size()) {
+    error("too many arguments for {} (expected {}, got {})", c->toString(),
+          availableArguments.size(), reorderedArgs.size() + namedArgs.size());
+  }
+
+  FunctionStmt *ast = nullptr;
+  auto &t_args = cc->args;
+  if (auto ff = c->getFunc()) {
+    ast = (FunctionStmt *)(ctx->cache->asts[ff->name].get());
+  }
+
+  if (ast) {
+    ctx->addBlock();
+    addFunctionGenerics(c->getFunc());
+  } else if (!ast && namedArgs.size()) {
+    error("unexpected name '{}' (function pointers have argument names elided)",
+          namedArgs.begin()->first);
+  }
+  for (int i = 0, ra = reorderedArgs.size(); i < availableArguments.size(); i++) {
+    if (i >= ra) {
+      assert(ast);
+      auto it = namedArgs.find(ast->args[availableArguments[i]].name);
+      if (it != namedArgs.end()) {
+        reorderedArgs.push_back({"", move(it->second)});
+        namedArgs.erase(it);
+      } else if (ast->args[availableArguments[i]].deflt) {
+        reorderedArgs.push_back(
+            {"", transform(ast->args[availableArguments[i]].deflt)});
+      } else {
+        error("argument '{}' missing", ast->args[availableArguments[i]].name);
+      }
+    }
+    if (auto ee = CAST(reorderedArgs[i].value, EllipsisExpr))
+      if (!ee->isPipeArg)
+        pending.push_back(availableArguments[i]);
+
+    // unify arg (reorderedArgs) with signature (t_args)
+    // 1. check is it a trait?
+    auto &typ = t_args[availableArguments[i] + 1];
+    auto targetType = typ->getClass();
+    auto &arg = reorderedArgs[i].value;
+    auto c = arg->getType()->getClass();
+    if (targetType && (targetType->isTrait || targetType->name == ".Optional")) {
+      if (!c) // do not unify if not yet known
+        continue;
+      if (targetType->name == ".Generator") {
+        if (c->name != targetType->name) {
+          if (!extraStage) // do not do this in pipelines
+            arg = transform(N<CallExpr>(N<DotExpr>(move(arg), "__iter__")));
+        }
+      } else if (startswith(targetType->name, ".Function.")) {
+        if (!startswith(c->name, ".Function.") &&
+            !extraStage) // TODO: do this in pipelines later
+          arg = transform(N<CallExpr>(N<DotExpr>(move(arg), "__call__")));
+      } else if (targetType->name == ".Optional") {
+        if (c->name != targetType->name) {
+          if (extraStage && CAST(arg, EllipsisExpr)) {
+            *extraStage = N<DotExpr>(N<IdExpr>(".Optional"), "__new__");
+            return expr->clone();
+          } else
+            arg = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(arg)));
+        }
+      } else {
+        error("cannot handle trait {}", targetType->name);
+      }
+    } else if (targetType && c && c->name == ".Optional") { // unwrap optional
+      if (extraStage && CAST(arg, EllipsisExpr)) {
+        *extraStage = N<IdExpr>(".unwrap");
+        return expr->clone();
+      } else
+        arg = transform(N<CallExpr>(N<IdExpr>(".unwrap"), move(arg)));
+    }
+    forceUnify(reorderedArgs[i].value, typ);
+  }
+  for (auto &i : namedArgs)
+    error(i.second, "unknown argument {}", i.first);
+  if (isPartial || pending.size())
+    pending.push_back(args.size());
+  if (ast)
+    ctx->popBlock();
 
   // Realize functions that are passed as arguments
   for (auto &ra : reorderedArgs)
-    if (ra.value->getType()->canRealize()) {
-      if (auto f = ra.value->getType()->getFunc()) {
-        auto r = realizeFunc(f);
-        fixExprName(ra.value, r->realizeString());
-      }
-      // TODO: realize partials
+    if (ra.value->getType()->getFunc() && ra.value->getType()->canRealize()) {
+      auto r = realizeFunc(ra.value->getType());
+      fixExprName(ra.value, r->realizeString());
     }
-
   if (c->canRealize() && c->getFunc()) {
     auto r = realizeFunc(c->getFunc());
-    if (!isPartial)
+    if (knownTypes.empty())
       fixExprName(e, r->realizeString());
   }
-  TypePtr t = make_shared<LinkType>(t_args[0]);
-  if (pending.size()) {
+
+  // Emit final call
+  if (pending.size()) { // (still) partial?
     pending.pop_back();
-    string known(t_args.size() - 1, '1');
+    string known(cc->args.size() - 1, '1');
     for (auto p : pending)
       known[p] = '0';
-
-    if (ctx->cache->partials.find(known) == ctx->cache->partials.end()) {
-      ctx->cache->partials[known] = make_shared<ClassType>(
-          fmt::format(".Partial.{}", known), true, vector<TypePtr>{},
-          vector<Generic>{Generic{
-              "F",
-              make_shared<types::LinkType>(LinkType::Generic, ctx->cache->unboundCount),
-              ctx->cache->unboundCount}});
-      ctx->cache->unboundCount++;
-    }
-    t = ctx->instantiateGeneric(getSrcInfo(), ctx->cache->partials[known], {c});
+    // Gets function name
+    // if (known != knownTypes) {
+    auto pt = generatePartialStub(known, knownTypes);
+    vector<ExprPtr> a;
+    a.push_back(move(e));
+    for (auto &r : reorderedArgs)
+      if (!CAST(r.value, EllipsisExpr))
+        a.push_back(move(r.value));
+    e = transform(N<CallExpr>(N<IdExpr>(pt), move(a)));
+    // LOG("[partial-pending] {}: {} -> {}", ctx->iteration, expr->toString(),
+    // e->toString());
+    forceUnify(expr, e->getType());
+    return e;
+  } else if (knownTypes.empty()) { // normal function
+    e = N<CallExpr>(move(e), move(reorderedArgs));
+    // TypePtr t = make_shared<LinkType>(cc->args[0]);
+    e->setType(forceUnify(expr, cc->args[0]));
+    return e;
+  } else { // partial that is fulfilled
+    e = transform(N<CallExpr>(N<DotExpr>(move(e), "__call__"), move(reorderedArgs)));
+    forceUnify(expr, e->getType());
+    // LOG("[partial-fulfilled] {}: {} -> {}", ctx->iteration, expr->toString(),
+    // e->toString());
+    return e;
   }
-  resultExpr = N<CallExpr>(move(e), move(reorderedArgs));
-  resultExpr->setType(forceUnify(expr, t));
 }
 
 void TypecheckVisitor::visit(const DotExpr *expr) {
@@ -611,7 +758,7 @@ void TypecheckVisitor::visit(const DotExpr *expr) {
 }
 
 void TypecheckVisitor::visit(const EllipsisExpr *expr) {
-  resultExpr = N<EllipsisExpr>();
+  resultExpr = N<EllipsisExpr>(expr->isPipeArg);
   resultExpr->setType(ctx->addUnbound(getSrcInfo(), ctx->typecheckLevel));
 }
 
@@ -654,6 +801,19 @@ void TypecheckVisitor::visit(const YieldExpr *expr) {
   resultExpr->setType(forceUnify(expr, c->explicits[0].type));
 }
 
+void TypecheckVisitor::visit(const StmtExpr *expr) {
+  vector<StmtPtr> stmts;
+  for (auto &s : expr->stmts)
+    stmts.push_back(transform(s));
+  // LOG("-> {}", expr->expr->toString());
+  auto e = transform(expr->expr);
+  // LOG("<- {}", e->toString());
+  // LOG("-- setting type {} to {}", expr->toString(), e->getType()->toString());
+  auto t = forceUnify(expr, e->getType());
+  resultExpr = N<StmtExpr>(move(stmts), move(e));
+  resultExpr->setType(t);
+}
+
 void TypecheckVisitor::visit(const SuiteStmt *stmt) {
   vector<StmtPtr> r;
   if (stmt->ownBlock)
@@ -685,8 +845,13 @@ void TypecheckVisitor::visit(const AssignStmt *stmt) {
   } else {
     if (typExpr && typExpr->getType()->getClass()) {
       auto typ = ctx->instantiate(getSrcInfo(), typExpr->getType());
-      if (!wrapOptional(typ, rhs))
-        forceUnify(typ, rhs->getType());
+
+      auto lc = typ->getClass();
+      auto rc = rhs->getType()->getClass();
+      if (lc && lc->name == ".Optional" && rc && rc->name != lc->name)
+        rhs = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(rhs)));
+
+      forceUnify(typ, rhs->getType());
     }
     k = rhs->isType()
             ? TypecheckItem::Type
@@ -701,30 +866,70 @@ void TypecheckVisitor::visit(const AssignStmt *stmt) {
 void TypecheckVisitor::visit(const UpdateStmt *stmt) {
   auto l = transform(stmt->lhs);
   auto r = transform(stmt->rhs);
-  if (!wrapOptional(l->getType(), r))
-    forceUnify(r.get(), l->getType());
+
+  auto lc = l->getType()->getClass();
+  auto rc = r->getType()->getClass();
+  if (lc && lc->name == ".Optional" && rc && rc->name != lc->name)
+    r = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(r)));
+  forceUnify(r.get(), l->getType());
   resultStmt = N<UpdateStmt>(move(l), move(r));
 }
 
 void TypecheckVisitor::visit(const AssignMemberStmt *stmt) {
   auto lh = transform(stmt->lhs);
   auto rh = transform(stmt->rhs);
-  auto c = lh->getType()->getClass();
-  if (c && c->isRecord())
-    error("records are read-only ^ {} , {}", c->toString(), lh->toString());
-  auto mm = ctx->findMember(c->name, stmt->member);
-  forceUnify(ctx->instantiate(getSrcInfo(), mm, c), rh->getType());
+  auto lc = lh->getType()->getClass();
+  auto rc = rh->getType()->getClass();
+
+  auto mm = ctx->findMember(lc->name, stmt->member);
+  if (!mm && lc->name == ".Optional") {
+    resultStmt = transform(N<AssignMemberStmt>(
+        N<CallExpr>(N<IdExpr>(".unwrap"), clone(stmt->lhs)), stmt->member, move(rh)));
+    return;
+  }
+  if (!mm)
+    error("cannot find '{}'", stmt->member);
+
+  if (lc && lc->isRecord())
+    error("records are read-only ^ {} , {}", lc->toString(), lh->toString());
+
+  auto t = ctx->instantiate(getSrcInfo(), mm, lc);
+  lc = t->getClass();
+  if (lc && lc->name == ".Optional" && rc && rc->name != lc->name)
+    rh = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(rh)));
+  forceUnify(t, rh->getType());
+
   resultStmt = N<AssignMemberStmt>(move(lh), stmt->member, move(rh));
 }
 
 void TypecheckVisitor::visit(const ReturnStmt *stmt) {
+  auto n = ctx->bases.back().name;
   if (stmt->expr) {
     auto e = transform(stmt->expr);
     auto &base = ctx->bases.back();
-    if (base.returnType)
+
+    if (base.returnType) {
+      auto l = base.returnType->getClass();
+      auto r = e->getType()->getClass();
+      if (l && r && r->name != l->name) {
+        if (l->name == ".Optional") {
+          e = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(e)));
+        }
+        // For now this only works if we already know that returnType is optional
+      }
       forceUnify(e->getType(), base.returnType);
-    else
+    } else {
       base.returnType = e->getType();
+    }
+
+    // HACK for return void in Partial.__call__
+    if (startswith(base.name, ".Partial.") && endswith(base.name, ".__call__")) {
+      auto c = e->getType()->getClass();
+      if (c && c->name == ".void") {
+        resultStmt = N<ExprStmt>(move(e));
+        return;
+      }
+    }
     resultStmt = N<ReturnStmt>(move(e));
   } else {
     resultStmt = N<ReturnStmt>(nullptr);
@@ -793,8 +998,16 @@ void TypecheckVisitor::visit(const IfStmt *stmt) {
 
 void TypecheckVisitor::visit(const MatchStmt *stmt) {
   auto w = transform(stmt->what);
-  auto oldMatchType = ctx->matchType;
-  ctx->matchType = w->getType();
+  auto matchType = w->getType();
+  auto matchTypeClass = matchType->getClass();
+
+  auto unifyType = [&](TypePtr t) {
+    auto tc = t->getClass();
+    if (tc && tc->name == ".seq" && matchTypeClass && matchTypeClass->name == ".Kmer")
+      return;
+    forceUnify(t, matchType);
+  };
+
   vector<PatternPtr> patterns;
   vector<StmtPtr> cases;
   for (auto ci = 0; ci < stmt->cases.size(); ci++) {
@@ -803,14 +1016,15 @@ void TypecheckVisitor::visit(const MatchStmt *stmt) {
       auto boundPat = transform(p->pattern);
       ctx->add(TypecheckItem::Var, p->var, boundPat->getType());
       patterns.push_back(move(boundPat));
+      unifyType(patterns.back()->getType());
       cases.push_back(transform(stmt->cases[ci]));
     } else {
       patterns.push_back(transform(stmt->patterns[ci]));
+      unifyType(patterns.back()->getType());
       cases.push_back(transform(stmt->cases[ci]));
     }
     ctx->popBlock();
   }
-  ctx->matchType = oldMatchType;
   resultStmt = N<MatchStmt>(move(w), move(patterns), move(cases));
 }
 
@@ -834,7 +1048,7 @@ void TypecheckVisitor::visit(const ThrowStmt *stmt) {
 
 void TypecheckVisitor::visit(const FunctionStmt *stmt) {
   resultStmt = N<FunctionStmt>(stmt->name, nullptr, vector<Param>(), vector<Param>(),
-                               nullptr, stmt->attributes, stmt->className);
+                               nullptr, stmt->attributes);
   bool isClassMember = in(stmt->attributes, ".class");
 
   if (ctx->findInVisited(stmt->name).second)
@@ -865,30 +1079,29 @@ void TypecheckVisitor::visit(const FunctionStmt *stmt) {
     ctx->add(TypecheckItem::Var, a.name, t->args.back());
   }
   ctx->typecheckLevel--;
-  if (stmt->name == ".unwrap")
-    assert(1);
   for (auto &g : generics) { // Generalize generics
     assert(g && g->getLink() && g->getLink()->kind != types::LinkType::Link);
     if (g->getLink()->kind == LinkType::Unbound)
       g->getLink()->kind = LinkType::Generic;
   }
   ctx->popBlock();
-  if (ctx->bases.size())
-    t->parent = ctx->bases.back().type;
-  if (isClassMember) {
-    auto val = ctx->find(stmt->className);
+
+  auto &attributes = const_cast<FunctionStmt *>(stmt)->attributes;
+  if (isClassMember && in(attributes, ".method")) {
+    auto val = ctx->find(attributes[".class"]);
     assert(val && val->getType());
-    if (!in(stmt->attributes, ".method"))
-      t->codegenParent = val->getType();
-    else
-      t->parent = val->getType();
+    t->parent = val->getType();
+  } else {
+    t->parent = ctx->bases[ctx->findBase(attributes[".parentFunc"])].type;
   }
 
   t->setSrcInfo(stmt->getSrcInfo());
   t = std::static_pointer_cast<FuncType>(t->generalize(ctx->typecheckLevel));
   LOG7("[stmt] added func {}: {} (base={}; parent={})", stmt->name, t->toString(),
        ctx->getBase(), printParents(t->parent));
-  ctx->bases.back().visitedAsts[stmt->name] = {TypecheckItem::Func, t};
+
+  ctx->bases[ctx->findBase(attributes[".parentFunc"])].visitedAsts[stmt->name] = {
+      TypecheckItem::Func, t};
 
   if (in(stmt->attributes, "builtin") || in(stmt->attributes, ".c")) {
     if (!t->canRealize())
@@ -902,22 +1115,31 @@ void TypecheckVisitor::visit(const FunctionStmt *stmt) {
 }
 
 void TypecheckVisitor::visit(const ClassStmt *stmt) {
-  resultStmt = N<ClassStmt>(stmt->isRecord, stmt->name, vector<Param>(),
-                            vector<Param>(), N<SuiteStmt>(), stmt->attributes);
   if (ctx->findInVisited(stmt->name).second)
-    return;
+    resultStmt = N<ClassStmt>(stmt->isRecord, stmt->name, vector<Param>(),
+                              vector<Param>(), N<SuiteStmt>(), stmt->attributes);
+  else
+    resultStmt = N<SuiteStmt>(parseClass(stmt));
+}
 
+vector<StmtPtr> TypecheckVisitor::parseClass(const ClassStmt *stmt) {
   vector<StmtPtr> stmts;
-  stmts.push_back(move(resultStmt));
+  stmts.push_back(N<ClassStmt>(stmt->isRecord, stmt->name, vector<Param>(),
+                               vector<Param>(), N<SuiteStmt>(), stmt->attributes));
 
+  auto &attributes = const_cast<ClassStmt *>(stmt)->attributes;
   auto ct = make_shared<ClassType>(
       stmt->name, stmt->isRecord, vector<TypePtr>(), vector<Generic>(),
-      ctx->typecheckLevel ? ctx->bases.back().type : nullptr);
+      ctx->bases[ctx->findBase(attributes[".parentFunc"])].type);
+  if (in(stmt->attributes, "trait"))
+    ct->isTrait = true;
   ct->setSrcInfo(stmt->getSrcInfo());
   auto ctxi = make_shared<TypecheckItem>(TypecheckItem::Type, ct, ctx->getBase(), true);
   if (!stmt->isRecord) // add classes early
     ctx->add(stmt->name, ctxi);
-  ctx->bases.back().visitedAsts[stmt->name] = {TypecheckItem::Type, ct};
+
+  ctx->bases[ctx->findBase(attributes[".parentFunc"])].visitedAsts[stmt->name] = {
+      TypecheckItem::Type, ct};
 
   ct->explicits = parseGenerics(stmt->generics, ctx->typecheckLevel);
   ctx->typecheckLevel++;
@@ -960,7 +1182,7 @@ void TypecheckVisitor::visit(const ClassStmt *stmt) {
       // realizeFunc(ctx->instantiate(getSrcInfo(), f)->getFunc());
       LOG7("       - method: {}: {}", m.first, f->toString());
     }
-  resultStmt = N<SuiteStmt>(move(stmts));
+  return stmts;
 }
 
 void TypecheckVisitor::visit(const ExtendStmt *stmt) {
@@ -1001,51 +1223,43 @@ void TypecheckVisitor::visit(const ExtendStmt *stmt) {
 void TypecheckVisitor::visit(const StarPattern *pat) {
   resultPattern = N<StarPattern>();
   resultPattern->setType(
-      forceUnify(pat, forceUnify(ctx->matchType,
-                                 ctx->addUnbound(getSrcInfo(), ctx->typecheckLevel))));
+      forceUnify(pat, ctx->addUnbound(getSrcInfo(), ctx->typecheckLevel)));
 }
 
 void TypecheckVisitor::visit(const IntPattern *pat) {
   resultPattern = N<IntPattern>(pat->value);
-  resultPattern->setType(
-      forceUnify(pat, forceUnify(ctx->matchType, ctx->findInternal(".int"))));
+  resultPattern->setType(forceUnify(pat, ctx->findInternal(".int")));
 }
 
 void TypecheckVisitor::visit(const BoolPattern *pat) {
   resultPattern = N<BoolPattern>(pat->value);
-  resultPattern->setType(
-      forceUnify(pat, forceUnify(ctx->matchType, ctx->findInternal(".bool"))));
+  resultPattern->setType(forceUnify(pat, ctx->findInternal(".bool")));
 }
 
 void TypecheckVisitor::visit(const StrPattern *pat) {
   resultPattern = N<StrPattern>(pat->value);
-  resultPattern->setType(
-      forceUnify(pat, forceUnify(ctx->matchType, ctx->findInternal(".str"))));
+  resultPattern->setType(forceUnify(pat, ctx->findInternal(".str")));
 }
 
 void TypecheckVisitor::visit(const SeqPattern *pat) {
   resultPattern = N<SeqPattern>(pat->value);
-  resultPattern->setType(
-      forceUnify(pat, forceUnify(ctx->matchType, ctx->findInternal(".seq"))));
+  resultPattern->setType(forceUnify(pat, ctx->findInternal(".seq")));
 }
 
 void TypecheckVisitor::visit(const RangePattern *pat) {
   resultPattern = N<RangePattern>(pat->start, pat->end);
-  resultPattern->setType(
-      forceUnify(pat, forceUnify(ctx->matchType, ctx->findInternal(".int"))));
+  resultPattern->setType(forceUnify(pat, ctx->findInternal(".int")));
 }
 
 void TypecheckVisitor::visit(const TuplePattern *pat) {
   auto p = N<TuplePattern>(transform(pat->patterns));
-  TypePtr t = nullptr;
   vector<TypePtr> types;
   for (auto &pp : p->patterns)
     types.push_back(pp->getType());
-  // TODO: Ensure type...
-  error("not yet implemented");
-  t = make_shared<ClassType>("Tuple", true, types);
+  auto t = ctx->instantiateGeneric(
+      getSrcInfo(), ctx->findInternal(format(".Tuple.{}", types.size())), {types});
   resultPattern = move(p);
-  resultPattern->setType(forceUnify(pat, forceUnify(ctx->matchType, t)));
+  resultPattern->setType(forceUnify(pat, t));
 }
 
 void TypecheckVisitor::visit(const ListPattern *pat) {
@@ -1055,7 +1269,7 @@ void TypecheckVisitor::visit(const ListPattern *pat) {
     forceUnify(t, pp->getType());
   t = ctx->instantiateGeneric(getSrcInfo(), ctx->findInternal(".list"), {t});
   resultPattern = move(p);
-  resultPattern->setType(forceUnify(pat, forceUnify(ctx->matchType, t)));
+  resultPattern->setType(forceUnify(pat, t));
 }
 
 void TypecheckVisitor::visit(const OrPattern *pat) {
@@ -1065,21 +1279,22 @@ void TypecheckVisitor::visit(const OrPattern *pat) {
   for (auto &pp : p->patterns)
     forceUnify(t, pp->getType());
   resultPattern = move(p);
-  resultPattern->setType(forceUnify(pat, forceUnify(ctx->matchType, t)));
+  resultPattern->setType(forceUnify(pat, t));
 }
 
 void TypecheckVisitor::visit(const WildcardPattern *pat) {
   resultPattern = N<WildcardPattern>(pat->var);
+  auto t = forceUnify(pat, ctx->addUnbound(getSrcInfo(), ctx->typecheckLevel));
   if (pat->var != "")
-    ctx->add(TypecheckItem::Var, pat->var, ctx->matchType);
-  resultPattern->setType(forceUnify(pat, ctx->matchType));
+    ctx->add(TypecheckItem::Var, pat->var, t);
+  resultPattern->setType(t);
 }
 
 void TypecheckVisitor::visit(const GuardedPattern *pat) {
   auto p = N<GuardedPattern>(transform(pat->pattern), transform(pat->cond));
   auto t = p->pattern->getType();
   resultPattern = move(p);
-  resultPattern->setType(forceUnify(pat, forceUnify(ctx->matchType, t)));
+  resultPattern->setType(forceUnify(pat, t));
 }
 
 void TypecheckVisitor::visit(const BoundPattern *pat) {
@@ -1087,7 +1302,7 @@ void TypecheckVisitor::visit(const BoundPattern *pat) {
   auto t = p->pattern->getType();
   ctx->add(TypecheckItem::Var, p->var, t);
   resultPattern = move(p);
-  resultPattern->setType(forceUnify(pat, forceUnify(ctx->matchType, t)));
+  resultPattern->setType(forceUnify(pat, t));
 }
 
 /*******************************/
@@ -1211,7 +1426,7 @@ void TypecheckVisitor::fixExprName(ExprPtr &e, const string &newName) {
   }
 }
 
-bool TypecheckVisitor::wrapOptional(TypePtr lt, ExprPtr &rhs) {
+bool TypecheckVisitor::castToOptional(TypePtr lt, ExprPtr &rhs) {
   auto lc = lt->getClass();
   auto rc = rhs->getType()->getClass();
   if (lc && lc->name == ".Optional" && rc && rc->name != ".Optional") {
@@ -1238,27 +1453,51 @@ FuncTypePtr TypecheckVisitor::findBestCall(ClassTypePtr c, const string &member,
   // Another assomption is that magic methods of interest have no default
   // arguments or reordered arguments...
   if (member.substr(0, 2) != "__" || member.substr(member.size() - 2) != "__")
-    error("overloaded non-magic method...");
-  for (auto &a : args)
-    if (!a.first.empty())
-      error("[todo] named magic call");
+    error("overloaded non-magic method {} in {}", member, c->toString());
 
   vector<pair<int, int>> scores;
   for (int i = 0; i < m->size(); i++) {
     auto mt = dynamic_pointer_cast<FuncType>(
         ctx->instantiate(getSrcInfo(), (*m)[i], c, false));
-    auto s = 0;
-    if (mt->args.size() - 1 != args.size())
+
+    vector<pair<string, TypePtr>> reorderedArgs;
+    int s;
+    if ((s = reorder(args, reorderedArgs, mt)) == -1)
       continue;
-    for (int j = 0; j < args.size(); j++) {
+    // LOG("{} in, {} passed!", args.size(), mt->name);
+
+    for (int j = 0; j < reorderedArgs.size(); j++) {
+      auto mac = mt->args[j + 1]->getClass();
+      if (mac && mac->isTrait) // treat traits as generics
+        continue;
+      if (!reorderedArgs[j].second) // default arguments don't matter at all
+        continue;
+      auto ac = reorderedArgs[j].second->getClass();
+
       Unification us;
-      int u = args[j].second->unify(mt->args[j + 1], us);
+      int u = reorderedArgs[j].second->unify(mt->args[j + 1], us);
       us.undo();
       if (u < 0) {
+        if (mac && mac->name == ".Optional" && ac && ac->name != mac->name) { // wrap
+          int u = reorderedArgs[j].second->unify(mac->explicits[0].type, us);
+          us.undo();
+          if (u >= 0) {
+            s += u + 2;
+            continue;
+          }
+        }
+        if (ac && ac->name == ".Optional" && mac && ac->name != mac->name) { // unwrap
+          int u = ac->explicits[0].type->unify(mt->args[j + 1], us);
+          us.undo();
+          if (u >= 0) {
+            s += u;
+            continue;
+          }
+        }
         s = -1;
         break;
       } else {
-        s += u;
+        s += u + 3;
       }
     }
     if (retType) {
@@ -1288,69 +1527,6 @@ FuncTypePtr TypecheckVisitor::findBestCall(ClassTypePtr c, const string &member,
   return (*m)[scores[0].second];
 }
 
-vector<int> TypecheckVisitor::callFunc(types::TypePtr f, vector<CallExpr::Arg> &args,
-                                       vector<CallExpr::Arg> &reorderedArgs,
-                                       const vector<int> &availableArguments) {
-  vector<int> pending;
-  bool isPartial = false;
-  bool namesStarted = false;
-  unordered_map<string, ExprPtr> namedArgs;
-  for (int i = 0; i < args.size(); i++) {
-    if (args[i].name == "" && namesStarted)
-      error("unnamed argument after a named argument");
-    namesStarted |= args[i].name != "";
-    if (args[i].name == "")
-      reorderedArgs.push_back({"", move(args[i].value)});
-    else if (namedArgs.find(args[i].name) == namedArgs.end())
-      namedArgs[args[i].name] = move(args[i].value);
-    else
-      error("named argument {} repeated multiple times", args[i].name);
-  }
-
-  if (namedArgs.size() == 0 && reorderedArgs.size() == availableArguments.size() + 1 &&
-      CAST(reorderedArgs.back().value, EllipsisExpr)) {
-    isPartial = true;
-    reorderedArgs.pop_back();
-  } else if (reorderedArgs.size() + namedArgs.size() > availableArguments.size()) {
-    error("too many arguments for {} (expected {}, got {})", f->toString(),
-          availableArguments.size(), reorderedArgs.size() + namedArgs.size());
-  }
-
-  FunctionStmt *ast = nullptr;
-  auto fc = f->getClass();
-  auto &t_args = fc->args;
-  if (auto ff = f->getFunc())
-    ast = (FunctionStmt *)(ctx->cache->asts[ff->name].get());
-  if (!ast && namedArgs.size())
-    error("unexpected name '{}' (function pointers have argument "
-          "names elided)",
-          namedArgs.begin()->first);
-  for (int i = 0, ra = reorderedArgs.size(); i < availableArguments.size(); i++) {
-    if (i >= ra) {
-      assert(ast);
-      auto it = namedArgs.find(ast->args[availableArguments[i]].name);
-      if (it != namedArgs.end()) {
-        reorderedArgs.push_back({"", move(it->second)});
-        namedArgs.erase(it);
-      } else if (ast->args[i].deflt) {
-        reorderedArgs.push_back(
-            {"", transform(ast->args[availableArguments[i]].deflt)});
-      } else {
-        error("argument '{}' missing", ast->args[availableArguments[i]].name);
-      }
-    }
-    if (CAST(reorderedArgs[i].value, EllipsisExpr))
-      pending.push_back(availableArguments[i]);
-    if (!wrapOptional(t_args[availableArguments[i] + 1], reorderedArgs[i].value))
-      forceUnify(reorderedArgs[i].value, t_args[availableArguments[i] + 1]);
-  }
-  for (auto &i : namedArgs)
-    error(i.second, "unknown argument {}", i.first);
-  if (isPartial || pending.size())
-    pending.push_back(args.size());
-  return pending;
-}
-
 vector<types::Generic> TypecheckVisitor::parseGenerics(const vector<Param> &generics,
                                                        int level) {
   auto genericTypes = vector<types::Generic>();
@@ -1365,6 +1541,34 @@ vector<types::Generic> TypecheckVisitor::parseGenerics(const vector<Param> &gene
     ctx->add(TypecheckItem::Type, g.name, tp, false, true, bool(g.type));
   }
   return genericTypes;
+}
+
+void TypecheckVisitor::addFunctionGenerics(FuncTypePtr t) {
+  int pi = 0;
+  for (auto p = t->parent; p; pi++) {
+    if (auto y = p->getFunc()) {
+      for (auto &g : y->explicits)
+        if (auto s = g.type->getStatic())
+          ctx->add(TypecheckItem::Type, g.name, s, false, false, true);
+        else if (!g.name.empty())
+          ctx->add(TypecheckItem::Type, g.name, g.type, true);
+      p = y->parent;
+    } else {
+      auto c = p->getClass();
+      assert(c);
+      for (auto &g : c->explicits)
+        if (auto s = g.type->getStatic())
+          ctx->add(TypecheckItem::Type, g.name, s, false, false, true);
+        else if (!g.name.empty())
+          ctx->add(TypecheckItem::Type, g.name, g.type, true);
+      p = c->parent;
+    }
+  }
+  for (auto &g : t->explicits)
+    if (auto s = g.type->getStatic())
+      ctx->add(TypecheckItem::Type, g.name, s, false, false, true);
+    else if (!g.name.empty())
+      ctx->add(TypecheckItem::Type, g.name, g.type, true);
 }
 
 types::TypePtr TypecheckVisitor::realizeFunc(types::TypePtr tt) {
@@ -1395,33 +1599,9 @@ types::TypePtr TypecheckVisitor::realizeFunc(types::TypePtr tt) {
          ctx->getBase(), depth);
     ctx->addBlock();
     ctx->typecheckLevel++;
-    ctx->bases.push_back({t, t->args[0]});
+    ctx->bases.push_back({t->name, t, t->args[0]});
     auto *ast = (FunctionStmt *)(ctx->cache->asts[t->name].get());
-    int pi = 0;
-    for (auto p = t->parent; p; pi++) {
-      if (auto y = p->getFunc()) {
-        for (auto &g : y->explicits)
-          if (auto s = g.type->getStatic())
-            ctx->add(TypecheckItem::Type, g.name, s, false, false, true);
-          else if (!g.name.empty())
-            ctx->add(TypecheckItem::Type, g.name, g.type, true);
-        p = y->parent;
-      } else {
-        auto c = p->getClass();
-        assert(c);
-        for (auto &g : c->explicits)
-          if (auto s = g.type->getStatic())
-            ctx->add(TypecheckItem::Type, g.name, s, false, false, true);
-          else if (!g.name.empty())
-            ctx->add(TypecheckItem::Type, g.name, g.type, true);
-        p = c->parent;
-      }
-    }
-    for (auto &g : t->explicits)
-      if (auto s = g.type->getStatic())
-        ctx->add(TypecheckItem::Type, g.name, s, false, false, true);
-      else if (!g.name.empty())
-        ctx->add(TypecheckItem::Type, g.name, g.type, true);
+    addFunctionGenerics(t);
     // There is no AST linked to internal functions, so just ignore them
     bool isInternal = in(ast->attributes, "internal");
     isInternal |= ast->suite == nullptr;
@@ -1442,9 +1622,10 @@ types::TypePtr TypecheckVisitor::realizeFunc(types::TypePtr tt) {
     StmtPtr realized = nullptr;
     if (!isInternal) {
       ctx->typecheckLevel++;
-      LOG9(">>> {}", t->realizeString());
+      auto oldIter = ctx->iteration;
+      ctx->iteration = 0;
       realized = realizeBlock(ast->suite);
-      LOG9("<<< {}", t->realizeString());
+      ctx->iteration = oldIter;
       ctx->typecheckLevel--;
 
       if (!ast->ret && t->args[0]->getUnbound())
@@ -1515,7 +1696,7 @@ StmtPtr TypecheckVisitor::realizeBlock(const StmtPtr &stmt, bool keepLast) {
   // iteration--- if not, the program cannot be type-checked.
   // TODO: this can be probably optimized one day...
   int minUnbound = ctx->cache->unboundCount;
-  for (int iter = 0, prevSize = INT_MAX;; iter++) {
+  for (int iter = 0, prevSize = INT_MAX;; iter++, ctx->iteration++) {
     ctx->addBlock();
     result = TypecheckVisitor(ctx).transform(result ? result : stmt);
 
@@ -1539,13 +1720,15 @@ StmtPtr TypecheckVisitor::realizeBlock(const StmtPtr &stmt, bool keepLast) {
     } else {
       if (newUnbounds >= prevSize) {
         TypePtr fu = nullptr;
+        int count = 0;
         for (auto &ub : ctx->activeUnbounds)
           if (ub->getLink()->id >= minUnbound) {
             if (!fu)
               fu = ub;
             LOG7("[realizeBlock] dangling {} @ {}", ub->toString(), ub->getSrcInfo());
+            count++;
           }
-        error(fu, "cannot resolve unbound variables");
+        error(fu, "cannot resolve {} unbound variables", count);
       }
       prevSize = newUnbounds;
     }
@@ -1560,6 +1743,132 @@ StmtPtr TypecheckVisitor::realizeBlock(const StmtPtr &stmt, bool keepLast) {
   if (!keepLast)
     ctx->popBlock();
   return result;
+}
+
+int TypecheckVisitor::reorder(const vector<pair<string, TypePtr>> &args,
+                              vector<pair<string, TypePtr>> &reorderedArgs,
+                              types::FuncTypePtr f) {
+  vector<int> availableArguments;
+  for (int i = 0; i < int(f->args.size()) - 1; i++)
+    availableArguments.push_back(i);
+  string knownTypes;
+
+  bool namesStarted = false;
+  unordered_map<string, TypePtr> namedArgs;
+  for (int i = 0; i < args.size(); i++) {
+    if (args[i].first == "" && namesStarted)
+      error("unnamed argument after a named argument");
+    namesStarted |= args[i].first != "";
+    if (args[i].first == "")
+      reorderedArgs.push_back({"", args[i].second});
+    else if (namedArgs.find(args[i].first) == namedArgs.end())
+      namedArgs[args[i].first] = args[i].second;
+    else
+      return -1;
+  }
+
+  if (reorderedArgs.size() + namedArgs.size() != availableArguments.size())
+    return -1;
+
+  int score = reorderedArgs.size() * 2;
+
+  FunctionStmt *ast = (FunctionStmt *)(ctx->cache->asts[f->name].get());
+  seqassert(ast, "AST not accessible for {}", f->name);
+  for (int i = 0, ra = reorderedArgs.size(); i < availableArguments.size(); i++) {
+    if (i >= ra) {
+      assert(ast);
+      auto it = namedArgs.find(ast->args[availableArguments[i]].name);
+      if (it != namedArgs.end()) {
+        reorderedArgs.push_back({"", it->second});
+        namedArgs.erase(it);
+        score += 2;
+      } else if (ast->args[i].deflt) {
+        if (ast->args[availableArguments[i]].type) {
+          reorderedArgs.push_back({"", f->args[availableArguments[i] + 1]});
+        } else { // TODO: does this even work? any dangling issues?
+          // auto t = transform(ast->args[availableArguments[i]].deflt);
+          reorderedArgs.push_back({"", nullptr}); // really does not matter
+        }
+        score += 1;
+      } else {
+        return -1;
+      }
+    }
+  }
+  return score;
+}
+
+string TypecheckVisitor::generatePartialStub(const string &mask,
+                                             const string &oldMask) {
+  auto typeName = fmt::format(".Partial.{}", mask);
+  if (ctx->cache->variardics.find(typeName) == ctx->cache->variardics.end()) {
+    ctx->cache->variardics.insert(typeName);
+
+    vector<Param> generics, args, missingArgs;
+    vector<ExprPtr> genericNames, callArgs;
+    args.push_back({".ptr", nullptr, nullptr});
+    missingArgs.push_back(Param{"self", nullptr, nullptr});
+    for (int i = 0; i <= mask.size(); i++) {
+      genericNames.push_back(N<IdExpr>(format("T{}", i)));
+      generics.push_back(Param{format("T{}", i), nullptr, nullptr});
+      if (i && mask[i - 1] == '1') {
+        args.push_back(Param{format(".a{0}", i), N<IdExpr>(format("T{}", i)), nullptr});
+        callArgs.push_back(N<DotExpr>(N<IdExpr>("self"), format(".a{0}", i)));
+      } else if (i && mask[i - 1] == '0') {
+        missingArgs.push_back(
+            Param{format("a{0}", i), N<IdExpr>(format("T{}", i)), nullptr});
+        callArgs.push_back(N<IdExpr>(format("a{0}", i)));
+      }
+    }
+    args[0].type = N<IndexExpr>(N<IdExpr>(format("Function", mask.size())),
+                                N<TupleExpr>(move(genericNames)));
+    StmtPtr func =
+        N<FunctionStmt>("__call__", N<IdExpr>("T0"), vector<Param>{}, move(missingArgs),
+                        N<ReturnStmt>(N<CallExpr>(N<DotExpr>(N<IdExpr>("self"), ".ptr"),
+                                                  move(callArgs))),
+                        vector<string>{});
+    StmtPtr stmt = make_unique<ClassStmt>(
+        true, typeName, move(generics), move(args), move(func),
+        vector<string>{"no_total_ordering", "no_pickle", "no_container", "no_python"});
+
+    auto tctx = static_pointer_cast<TransformContext>(ctx->cache->imports[""].ctx);
+    stmt = TransformVisitor(tctx).transform(stmt);
+    stmt = TypecheckVisitor(ctx).transform(stmt);
+    prependStmts->push_back(move(stmt));
+  }
+
+  if (oldMask.empty())
+    return typeName + ".__new__";
+
+  auto fnName = format("{}.__new_{}_{}__", typeName, oldMask, mask);
+  if (!ctx->find(fnName)) {
+    vector<Param> args;
+    vector<ExprPtr> newArgs;
+    args.push_back(Param{"p", nullptr, nullptr});
+    newArgs.push_back(N<DotExpr>(N<IdExpr>("p"), ".ptr"));
+    for (int i = 0; i < mask.size(); i++) {
+      if (mask[i] == '1' && oldMask[i] == '0') {
+        args.push_back(Param{format("a{}", i), nullptr, nullptr});
+        newArgs.push_back(N<IdExpr>(format("a{}", i)));
+      } else if (oldMask[i] == '1') {
+        newArgs.push_back(N<DotExpr>(N<IdExpr>("p"), format(".a{}", i + 1)));
+      }
+    }
+    ExprPtr callee = N<IdExpr>(format("{}.__new__", typeName));
+    // if (mask == string(mask.size(), '1')) {
+    //   callee = move(newArgs[0]);
+    //   newArgs.erase(newArgs.begin(), newArgs.begin() + 1);
+    // }
+    StmtPtr stmt = make_unique<FunctionStmt>(
+        fnName, nullptr, vector<Param>{}, move(args),
+        N<SuiteStmt>(N<ReturnStmt>(N<CallExpr>(move(callee), move(newArgs)))),
+        vector<string>{});
+    auto tctx = static_pointer_cast<TransformContext>(ctx->cache->imports[""].ctx);
+    stmt = TransformVisitor(tctx).transform(stmt);
+    stmt = TypecheckVisitor(ctx).transform(stmt);
+    prependStmts->push_back(move(stmt));
+  }
+  return fnName;
 }
 
 } // namespace ast

@@ -125,14 +125,19 @@ class PipelineRvalue : public Rvalue {
 private:
   std::vector<std::shared_ptr<Operand>> stages;
   std::vector<bool> parallel;
+  std::vector<std::shared_ptr<types::Type>> inTypes;
+  std::shared_ptr<types::Type> outType;
 
 public:
   PipelineRvalue(std::vector<std::shared_ptr<Operand>> stages,
-                 std::vector<bool> parallel);
+                 std::vector<bool> parallel,
+                 std::vector<std::shared_ptr<types::Type>> inTypes,
+                 std::shared_ptr<types::Type> outType);
 
   void accept(common::IRVisitor &v) override;
 
-  std::shared_ptr<types::Type> getType() override;
+  std::shared_ptr<types::Type> getType() override { return outType; };
+  std::vector<std::shared_ptr<types::Type>> getInTypes() { return inTypes; }
 
   std::vector<std::shared_ptr<Operand>> getStages() { return stages; }
   std::vector<bool> getParallel() const { return parallel; }

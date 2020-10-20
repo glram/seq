@@ -45,9 +45,10 @@ bool getInt(seq_int_t *o, const std::unique_ptr<ast::Expr> &e, bool zeroOnNull =
 std::vector<std::string> split(const std::string &s, char delim);
 std::string escape(std::string s);
 std::string executable_path(const char *argv0);
-std::string getTemporaryVar(const std::string &prefix = "", char p = '.');
+std::string getTemporaryVar(const std::string &prefix = "", char p = '$');
 std::string chop(const std::string &s);
 bool startswith(const std::string &s, const std::string &p);
+bool endswith(const std::string &s, const std::string &p);
 void error(const char *format);
 void error(const SrcInfo &p, const char *format);
 
@@ -60,6 +61,12 @@ template <typename T> std::string join(const T &items, std::string delim = " ") 
 
 template <typename T, typename U> bool in(const std::vector<T> &c, const U &i) {
   auto f = std::find(c.begin(), c.end(), i);
+  return f != c.end();
+}
+
+template <typename K, typename V, typename U>
+bool in(const std::map<K, V> &c, const U &i) {
+  auto f = c.find(i);
   return f != c.end();
 }
 

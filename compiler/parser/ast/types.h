@@ -222,6 +222,7 @@ typedef std::shared_ptr<ClassType> ClassTypePtr;
 struct ClassType : public Type {
   std::vector<Generic> explicits;
   TypePtr parent;
+  bool isTrait;
 
 public:
   /// Global unique name for each type (generated from the getSrcPos())
@@ -263,7 +264,7 @@ public:
 typedef std::shared_ptr<FuncType> FuncTypePtr;
 struct FuncType : public Type {
   std::vector<Generic> explicits;
-  TypePtr parent, codegenParent;
+  TypePtr parent;
   ClassTypePtr funcClass;
 
   std::string name;
@@ -273,7 +274,7 @@ public:
   FuncType(const std::string &name, ClassTypePtr funcClass,
            const std::vector<TypePtr> &args = std::vector<TypePtr>(),
            const std::vector<Generic> &explicits = std::vector<Generic>(),
-           TypePtr parent = nullptr, TypePtr codegenParent = nullptr);
+           TypePtr parent = nullptr);
 
 public:
   virtual int unify(TypePtr typ, Unification &us) override;

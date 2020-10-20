@@ -249,7 +249,6 @@ assign_statement:
     { let all = List.map (function [l] -> l | l -> $loc, Tuple l) (List.rev ($1 :: $3)) in
       List.rev @@ List.map (fun i -> $loc, Assign (i, List.hd all, None)) (List.tl all) }
 %inline aug_eq: PLUSEQ | MINEQ | MULEQ | DIVEQ | MODEQ | POWEQ | FDIVEQ | LSHEQ | RSHEQ | ANDEQ | OREQ | XOREQ { $1 }
-decl_statement: ID COLON expr NL { $loc, Declare ($loc, { name = $1; typ = Some $3; default = None }) }
 
 try_statement: TRY COLON suite catch* finally? { $loc, Try ($3, $4, opt_val $5 []) }
 catch:
@@ -297,15 +296,23 @@ pyfunc: PYDEF ID LP FL(COMMA, typed_param) RP func_ret_type? COLON PYDEF_RAW { [
 
 class_statement: cls | extend | typ { $1 }
 cls:
-  | decorator(CLASS) ID generic_list? COLON NL INDENT dataclass_member+ DEDENT
+  | decorator(CLASS) cls_body { $loc, Class $2 }
+  | decorator(TYPE) cls_body { $loc, Type $2 }
+cls_body:
+  | ID generic_list? COLON NL INDENT dataclass_member+ DEDENT
     { let args = List.rev @@ List.fold_left
-        (fun acc i -> match i with Some (_, Declare d) -> d :: acc | _ -> acc) [] $7
+        (fun acc i -> match i with Some (_, Declare d) -> d :: acc | _ -> acc) [] $6
       in
       let members = List.rev @@ List.fold_left
-        (fun acc i -> match i with Some (_, Declare _) | None -> acc | Some p -> p :: acc) [] $7
+        (fun acc i -> match i with Some (_, Declare _) | None -> acc | Some p -> p :: acc) [] $6
       in
-      $loc, Class { class_name = $2; generics = opt_val $3 []; args; members; attrs = $1 } }
-dataclass_member: class_member { $1 } | decl_statement { Some $1 }
+      { class_name = $1; generics = opt_val $2 []; args; members; attrs = [] } }
+dataclass_member:
+  | class_member { $1 }
+  | ID COLON expr NL
+    { Some ($loc, Declare ($loc, { name = $1; typ = Some $3; default = None })) }
+  | ID COLON expr EQ expr NL
+    { Some ($loc, Declare ($loc, { name = $1; typ = Some $3; default = Some $5 })) }
 class_member:
   | PASS NL | STRING NL { None }
   | func_statement { Some (List.hd $1) }

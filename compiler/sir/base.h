@@ -61,9 +61,9 @@ struct SrcInfoAttribute : public Attribute {
 };
 
 struct FuncAttribute : public Attribute {
-  std::vector<std::string> attributes;
+  std::map<std::string, std::string> attributes;
 
-  explicit FuncAttribute(std::vector<std::string> attributes)
+  explicit FuncAttribute(std::map<std::string, std::string> attributes)
       : attributes(std::move(attributes)) {}
   bool has(const std::string &val) const;
   std::string textRepresentation() const override;

@@ -31,7 +31,6 @@ class TransformVisitor : public CallbackASTVisitor<ExprPtr, StmtPtr, PatternPtr>
   PatternPtr resultPattern;
 
 private:
-  void prepend(StmtPtr s);
   StmtPtr getGeneratorBlock(const std::vector<GeneratorExpr::Body> &loops,
                             SuiteStmt *&prev);
   std::vector<StmtPtr> addMethods(const StmtPtr &s);
@@ -40,6 +39,8 @@ private:
   std::string generatePartialStub(const std::string &flag);
   StmtPtr codegenMagic(const std::string &op, const ExprPtr &typExpr,
                        const std::vector<Param> &args, bool isRecord);
+  ExprPtr makeAnonFn(std::vector<StmtPtr> &&stmts,
+                     const std::vector<std::string> &vars = std::vector<std::string>{});
 
   void defaultVisit(const Expr *e) override;
   void defaultVisit(const Stmt *s) override;

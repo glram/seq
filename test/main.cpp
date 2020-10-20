@@ -197,7 +197,8 @@ auto getTypeTests(const vector<string> &files) {
     while (getline(fin, l)) {
       if (l.substr(0, 3) == "#%%") {
         if (line)
-          cases.push_back({f, true, to_string(line) + "_" + testName, code, codeLine});
+          cases.push_back(
+              make_tuple(f, true, to_string(line) + "_" + testName, code, codeLine));
         testName = l.substr(4);
         code = l + "\n";
         codeLine = line;
@@ -208,7 +209,8 @@ auto getTypeTests(const vector<string> &files) {
       line++;
     }
     if (line)
-      cases.push_back({f, true, to_string(line) + "_" + testName, code, codeLine});
+      cases.push_back(
+          make_tuple(f, true, to_string(line) + "_" + testName, code, codeLine));
   }
   return cases;
 }
@@ -230,12 +232,12 @@ INSTANTIATE_TEST_SUITE_P(
         "core/generators.seq",
         "core/exceptions.seq",
         "core/big.seq",
-        // F: "core/bltin.seq", // weird max trick
-        // F: "core/arguments.seq", // some error
-        // F: "core/range.seq", // needs auto-unify
-        // F: "core/match.seq", // needs seq type
-        // F: "core/containers.seq", // unification
-        // F: "core/trees.seq",
+        "core/containers.seq",
+        "core/trees.seq",
+        "core/range.seq",
+        "core/bltin.seq",
+        "core/arguments.seq",
+        // F: "core/match.seq", // needs list & seq fixes
         // "core/align.seq",
         // "core/bwtsa.seq",
         // "core/formats.seq",
