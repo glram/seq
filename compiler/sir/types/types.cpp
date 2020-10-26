@@ -43,6 +43,10 @@ std::shared_ptr<Type> kSeqType = std::make_shared<RecordType>(
     "seq", std::vector<std::shared_ptr<Type>>{kIntType, kBytePointerType},
     std::vector<std::string>{"len", "ptr"});
 
+std::shared_ptr<Type> kStringPointerType = std::make_shared<Pointer>(kStringType);
+std::shared_ptr<Type> kStringArrayType =
+    std::make_shared<Array>(std::static_pointer_cast<Pointer>(kStringPointerType));
+
 std::shared_ptr<Type> kNoArgVoidFuncType = std::make_shared<FuncType>(
     "void->void", kVoidType, std::vector<std::shared_ptr<Type>>());
 
@@ -63,6 +67,10 @@ void Type::resetId() {
   kSeqType = std::make_shared<RecordType>(
       "seq", std::vector<std::shared_ptr<Type>>{kIntType, kBytePointerType},
       std::vector<std::string>{"len", "ptr"});
+
+  kStringPointerType = std::make_shared<Pointer>(kStringType);
+  kStringArrayType =
+      std::make_shared<Array>(std::static_pointer_cast<Pointer>(kStringPointerType));
 
   kNoArgVoidFuncType = std::make_shared<FuncType>("void->void", kVoidType,
                                                   std::vector<std::shared_ptr<Type>>());
@@ -99,7 +107,7 @@ RecordType::RecordType(std::string name, std::vector<std::shared_ptr<Type>> mTyp
     : RecordType(std::move(name), std::move(mTypes), {}) {
   std::vector<std::string> names(mTypes.size());
   for (int i = 0; i < mTypes.size(); ++i) {
-    names.push_back(std::to_string(i));
+    names[i] = std::to_string(i);
   }
   memberNames = std::move(names);
 }

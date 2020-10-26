@@ -50,7 +50,8 @@ Var *SeqModule::getArgVar() { return argVar; }
 
 void SeqModule::setFileName(std::string file) { module->setSourceFileName(file); }
 
-static void invokeMain(Function *main, BasicBlock *&block) {
+namespace seq {
+void invokeMain(Function *main, BasicBlock *&block) {
   LLVMContext &context = block->getContext();
   Function *func = block->getParent();
   Module *module = func->getParent();
@@ -71,6 +72,155 @@ static void invokeMain(Function *main, BasicBlock *&block) {
 
   block = normal;
 }
+
+void verifyModuleFailFast(Module &module) {
+  auto fo = fopen("_dump.ll", "w");
+  raw_fd_ostream fout(fileno(fo), true);
+  fout << module;
+  fout.close();
+  if (verifyModule(module, &errs())) {
+    auto fo = fopen("_dump.ll", "w");
+    raw_fd_ostream fout(fileno(fo), true);
+    fout << module;
+    fout.close();
+    assert(0);
+  }
+}
+TargetMachine *getTargetMachine(Triple triple, StringRef cpuStr, StringRef featuresStr,
+                                const TargetOptions &options) {
+  std::string err;
+  const Target *target = TargetRegistry::lookupTarget(MArch, triple, err);
+
+  if (!target)
+    return nullptr;
+
+  return target->createTargetMachine(triple.getTriple(), cpuStr, featuresStr, options,
+                                     getRelocModel(), getCodeModel(),
+                                     CodeGenOpt::Aggressive);
+}
+
+void optimizeModule(Module *module) {
+  const bool debug = config::config().debug;
+  applyDebugTransformations(module);
+  std::unique_ptr<legacy::PassManager> pm(new legacy::PassManager());
+  std::unique_ptr<legacy::FunctionPassManager> fpm(
+      new legacy::FunctionPassManager(module));
+
+  Triple moduleTriple(module->getTargetTriple());
+  std::string cpuStr, featuresStr;
+  TargetMachine *machine = nullptr;
+  const TargetOptions options = InitTargetOptionsFromCodeGenFlags();
+  TargetLibraryInfoImpl tlii(moduleTriple);
+  pm->add(new TargetLibraryInfoWrapperPass(tlii));
+
+  if (moduleTriple.getArch()) {
+    cpuStr = getCPUStr();
+    featuresStr = getFeaturesStr();
+    machine = getTargetMachine(moduleTriple, cpuStr, featuresStr, options);
+  }
+
+  std::unique_ptr<TargetMachine> tm(machine);
+  setFunctionAttributes(cpuStr, featuresStr, *module);
+  pm->add(createTargetTransformInfoWrapperPass(tm ? tm->getTargetIRAnalysis()
+                                                  : TargetIRAnalysis()));
+  fpm->add(createTargetTransformInfoWrapperPass(tm ? tm->getTargetIRAnalysis()
+                                                   : TargetIRAnalysis()));
+
+  if (tm) {
+    auto &ltm = dynamic_cast<LLVMTargetMachine &>(*tm);
+    Pass *tpc = ltm.createPassConfig(*pm);
+    pm->add(tpc);
+  }
+
+  unsigned optLevel = 3;
+  unsigned sizeLevel = 0;
+  PassManagerBuilder builder;
+
+#if SEQ_HAS_TAPIR
+  static OpenMPABI omp;
+  builder.tapirTarget = &omp;
+#endif
+
+  if (!debug) {
+    builder.OptLevel = optLevel;
+    builder.SizeLevel = sizeLevel;
+    builder.Inliner = createFunctionInliningPass(optLevel, sizeLevel, false);
+    builder.DisableUnitAtATime = false;
+    builder.DisableUnrollLoops = false;
+    builder.LoopVectorize = true;
+    builder.SLPVectorize = true;
+  }
+
+  if (tm)
+    tm->adjustPassManager(builder);
+
+  addCoroutinePassesToExtensionPoints(builder);
+  builder.populateModulePassManager(*pm);
+  builder.populateFunctionPassManager(*fpm);
+
+  fpm->doInitialization();
+  for (Function &f : *module)
+    fpm->run(f);
+  fpm->doFinalization();
+  pm->run(*module);
+  applyDebugTransformations(module);
+}
+
+void applyDebugTransformations(Module *module) {
+  if (!config::config().debug && !config::config().profile)
+    return;
+  // remove tail calls and fix linkage for stack traces
+  for (Function &f : *module) {
+    f.setLinkage(GlobalValue::ExternalLinkage);
+    if (f.hasFnAttribute(Attribute::AttrKind::AlwaysInline))
+      f.removeFnAttr(Attribute::AttrKind::AlwaysInline);
+    f.addFnAttr(Attribute::AttrKind::NoInline);
+    f.setHasUWTable();
+    f.addFnAttr("no-frame-pointer-elim", "true");
+    f.addFnAttr("no-frame-pointer-elim-non-leaf");
+    f.addFnAttr("no-jump-tables", "false");
+
+    for (BasicBlock &block : f.getBasicBlockList()) {
+      for (Instruction &inst : block) {
+        if (CallInst *call = dyn_cast<CallInst>(&inst)) {
+          call->setTailCall(false);
+        }
+      }
+    }
+  }
+}
+
+void applyGCTransformations(Module *module) {
+  LLVMContext &context = module->getContext();
+  auto *addRoots = cast<Function>(module->getOrInsertFunction(
+      "seq_gc_add_roots", Type::getVoidTy(context), IntegerType::getInt8PtrTy(context),
+      IntegerType::getInt8PtrTy(context)));
+  addRoots->setDoesNotThrow();
+
+  // insert add_roots calls where needed
+  for (Function &f : *module) {
+    for (BasicBlock &block : f.getBasicBlockList()) {
+      for (Instruction &inst : block) {
+        if (CallInst *call = dyn_cast<CallInst>(&inst)) {
+          if (Function *g = call->getCalledFunction()) {
+            // tell GC about OpenMP's allocation
+            if (g->getName() == "__kmpc_omp_task_alloc") {
+              Value *taskSize = call->getArgOperand(3);
+              Value *sharedSize = call->getArgOperand(4);
+              IRBuilder<> builder(call->getNextNode());
+              Value *baseOffset = builder.CreateSub(taskSize, sharedSize);
+              Value *ptr = builder.CreateBitCast(call, builder.getInt8PtrTy());
+              Value *lo = builder.CreateGEP(ptr, baseOffset);
+              Value *hi = builder.CreateGEP(ptr, taskSize);
+              builder.CreateCall(addRoots, {lo, hi});
+            }
+          }
+        }
+      }
+    }
+  }
+}
+} // namespace seq
 
 Function *SeqModule::makeCanonicalMainFunc(Function *realMain) {
 #define LLVM_I32() IntegerType::getInt32Ty(context)
@@ -245,157 +395,7 @@ void SeqModule::codegen(Module *module) {
   func = makeCanonicalMainFunc(func);
 }
 
-static void verifyModuleFailFast(Module &module) {
-  auto fo = fopen("_dump.ll", "w");
-  raw_fd_ostream fout(fileno(fo), true);
-  fout << module;
-  fout.close();
-  if (verifyModule(module, &errs())) {
-    auto fo = fopen("_dump.ll", "w");
-    raw_fd_ostream fout(fileno(fo), true);
-    fout << module;
-    fout.close();
-    assert(0);
-  }
-}
-
 void SeqModule::verify() { verifyModuleFailFast(*module); }
-
-static TargetMachine *getTargetMachine(Triple triple, StringRef cpuStr,
-                                       StringRef featuresStr,
-                                       const TargetOptions &options) {
-  std::string err;
-  const Target *target = TargetRegistry::lookupTarget(MArch, triple, err);
-
-  if (!target)
-    return nullptr;
-
-  return target->createTargetMachine(triple.getTriple(), cpuStr, featuresStr, options,
-                                     getRelocModel(), getCodeModel(),
-                                     CodeGenOpt::Aggressive);
-}
-
-static void applyDebugTransformations(Module *module) {
-  if (!config::config().debug && !config::config().profile)
-    return;
-  // remove tail calls and fix linkage for stack traces
-  for (Function &f : *module) {
-    f.setLinkage(GlobalValue::ExternalLinkage);
-    if (f.hasFnAttribute(Attribute::AttrKind::AlwaysInline))
-      f.removeFnAttr(Attribute::AttrKind::AlwaysInline);
-    f.addFnAttr(Attribute::AttrKind::NoInline);
-    f.setHasUWTable();
-    f.addFnAttr("no-frame-pointer-elim", "true");
-    f.addFnAttr("no-frame-pointer-elim-non-leaf");
-    f.addFnAttr("no-jump-tables", "false");
-
-    for (BasicBlock &block : f.getBasicBlockList()) {
-      for (Instruction &inst : block) {
-        if (CallInst *call = dyn_cast<CallInst>(&inst)) {
-          call->setTailCall(false);
-        }
-      }
-    }
-  }
-}
-
-static void applyGCTransformations(Module *module) {
-  LLVMContext &context = module->getContext();
-  auto *addRoots = cast<Function>(module->getOrInsertFunction(
-      "seq_gc_add_roots", Type::getVoidTy(context), IntegerType::getInt8PtrTy(context),
-      IntegerType::getInt8PtrTy(context)));
-  addRoots->setDoesNotThrow();
-
-  // insert add_roots calls where needed
-  for (Function &f : *module) {
-    for (BasicBlock &block : f.getBasicBlockList()) {
-      for (Instruction &inst : block) {
-        if (CallInst *call = dyn_cast<CallInst>(&inst)) {
-          if (Function *g = call->getCalledFunction()) {
-            // tell GC about OpenMP's allocation
-            if (g->getName() == "__kmpc_omp_task_alloc") {
-              Value *taskSize = call->getArgOperand(3);
-              Value *sharedSize = call->getArgOperand(4);
-              IRBuilder<> builder(call->getNextNode());
-              Value *baseOffset = builder.CreateSub(taskSize, sharedSize);
-              Value *ptr = builder.CreateBitCast(call, builder.getInt8PtrTy());
-              Value *lo = builder.CreateGEP(ptr, baseOffset);
-              Value *hi = builder.CreateGEP(ptr, taskSize);
-              builder.CreateCall(addRoots, {lo, hi});
-            }
-          }
-        }
-      }
-    }
-  }
-}
-
-static void optimizeModule(Module *module) {
-  const bool debug = config::config().debug;
-  applyDebugTransformations(module);
-  std::unique_ptr<legacy::PassManager> pm(new legacy::PassManager());
-  std::unique_ptr<legacy::FunctionPassManager> fpm(
-      new legacy::FunctionPassManager(module));
-
-  Triple moduleTriple(module->getTargetTriple());
-  std::string cpuStr, featuresStr;
-  TargetMachine *machine = nullptr;
-  const TargetOptions options = InitTargetOptionsFromCodeGenFlags();
-  TargetLibraryInfoImpl tlii(moduleTriple);
-  pm->add(new TargetLibraryInfoWrapperPass(tlii));
-
-  if (moduleTriple.getArch()) {
-    cpuStr = getCPUStr();
-    featuresStr = getFeaturesStr();
-    machine = getTargetMachine(moduleTriple, cpuStr, featuresStr, options);
-  }
-
-  std::unique_ptr<TargetMachine> tm(machine);
-  setFunctionAttributes(cpuStr, featuresStr, *module);
-  pm->add(createTargetTransformInfoWrapperPass(tm ? tm->getTargetIRAnalysis()
-                                                  : TargetIRAnalysis()));
-  fpm->add(createTargetTransformInfoWrapperPass(tm ? tm->getTargetIRAnalysis()
-                                                   : TargetIRAnalysis()));
-
-  if (tm) {
-    auto &ltm = dynamic_cast<LLVMTargetMachine &>(*tm);
-    Pass *tpc = ltm.createPassConfig(*pm);
-    pm->add(tpc);
-  }
-
-  unsigned optLevel = 3;
-  unsigned sizeLevel = 0;
-  PassManagerBuilder builder;
-
-#if SEQ_HAS_TAPIR
-  static OpenMPABI omp;
-  builder.tapirTarget = &omp;
-#endif
-
-  if (!debug) {
-    builder.OptLevel = optLevel;
-    builder.SizeLevel = sizeLevel;
-    builder.Inliner = createFunctionInliningPass(optLevel, sizeLevel, false);
-    builder.DisableUnitAtATime = false;
-    builder.DisableUnrollLoops = false;
-    builder.LoopVectorize = true;
-    builder.SLPVectorize = true;
-  }
-
-  if (tm)
-    tm->adjustPassManager(builder);
-
-  addCoroutinePassesToExtensionPoints(builder);
-  builder.populateModulePassManager(*pm);
-  builder.populateFunctionPassManager(*fpm);
-
-  fpm->doInitialization();
-  for (Function &f : *module)
-    fpm->run(f);
-  fpm->doFinalization();
-  pm->run(*module);
-  applyDebugTransformations(module);
-}
 
 void SeqModule::optimize() { optimizeModule(module); }
 
@@ -537,18 +537,16 @@ void tapir::resetOMPABI() {
  * JIT
  */
 #if LLVM_VERSION_MAJOR == 6
-static std::shared_ptr<Module> optimizeModule(std::shared_ptr<Module> module) {
-  optimizeModule(module.get());
-  verifyModuleFailFast(*module);
-  return module;
-}
-
 SeqJIT::SeqJIT()
     : target(EngineBuilder().selectTarget()), layout(target->createDataLayout()),
       objLayer([]() { return std::make_shared<BoehmGCMemoryManager>(); }),
       comLayer(objLayer, SimpleCompiler(*target)),
       optLayer(comLayer,
-               [](std::shared_ptr<Module> M) { return optimizeModule(std::move(M)); }),
+               [](std::shared_ptr<Module> M) {
+                 optimizeModule(M.get());
+                 verifyModuleFailFast(*M);
+                 return M;
+               }),
       globals(), inputNum(0) {
   sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 }

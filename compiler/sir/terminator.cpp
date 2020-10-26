@@ -87,5 +87,14 @@ std::string AssertTerminator::textRepresentation() const {
                      attributeString());
 }
 
+void FinallyTerminator::accept(common::IRVisitor &v) {
+  v.visit(std::static_pointer_cast<FinallyTerminator>(getShared()));
+}
+
+std::string FinallyTerminator::textRepresentation() const {
+  return fmt::format(FMT_STRING("end_finally ({}); {}"), tc->referenceString(),
+                     attributeString());
+}
+
 } // namespace ir
 } // namespace seq

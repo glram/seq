@@ -15,7 +15,10 @@ IRModule::IRModule(std::string name)
     : name(std::move(name)),
       baseFunc(std::make_shared<Func>("base", std::vector<std::string>(),
                                       types::kNoArgVoidFuncType)),
-      argVar(std::make_shared<Var>(name + "-argv", types::kIntType)) {}
+      argVar(std::make_shared<Var>("argv", types::kStringArrayType)) {
+  argVar->setGlobal();
+  globals.push_back(argVar);
+}
 
 void IRModule::accept(common::IRVisitor &v) { v.visit(getShared()); }
 

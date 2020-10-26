@@ -1440,7 +1440,9 @@ StmtPtr TransformVisitor::codegenMagic(const string &op, const ExprPtr &typExpr,
   } else if (op == "iter") {
     fargs.push_back({"self", clone(typExpr)});
     ret = N<IndexExpr>(I("Generator"), args.size() ? clone(args[0].type) : I("void"));
-    attrs.push_back("internal");
+    for (int i = 0; i < args.size(); i++) {
+      stmts.push_back(N<YieldStmt>(N<DotExpr>(I("self"), args[i].name)));
+    }
   } else if (op == "eq") {
     fargs.push_back({"self", clone(typExpr)});
     fargs.push_back({"other", clone(typExpr)});
@@ -1549,7 +1551,12 @@ StmtPtr TransformVisitor::codegenMagic(const string &op, const ExprPtr &typExpr,
     fargs.push_back({"self", clone(typExpr)});
     fargs.push_back({"what", args.size() ? clone(args[0].type) : I("void")});
     ret = I("bool");
-    attrs.push_back("internal");
+    for (int i = 0; i < args.size(); i++)
+      stmts.push_back(N<IfStmt>(
+          N<CallExpr>(N<DotExpr>(N<DotExpr>(I("self"), args[i].name), "__eq__"),
+                      I("what")),
+          N<ReturnStmt>(N<BoolExpr>(true))));
+    stmts.push_back(N<ReturnStmt>(N<BoolExpr>(false)));
   } else if (op == "to_py") {
     fargs.push_back({"self", clone(typExpr)});
     ret = I("pyobj");

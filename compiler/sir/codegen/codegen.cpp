@@ -28,10 +28,12 @@ std::string getLLVMFuncName(std::shared_ptr<Func> f) {
   return fmt::format(FMT_STRING("seq.{}{}"), f->getName(), f->getId());
 }
 
+/*
+ * Recursively extract the function and args from a partial call.
+ */
 std::tuple<llvm::Value *, std::vector<Value *>>
 processPartial(Value *self, const std::vector<Value *> &args,
                std::shared_ptr<types::PartialFuncType> p, IRBuilder<> b) {
-
   std::vector<Value *> argsFull;
   auto *func = b.CreateExtractValue(self, 0);
   auto callTypes = p->getCallTypes();
@@ -65,10 +67,33 @@ void LLVMOperand::accept(CodegenVisitor &v) {
 }
 
 void CodegenVisitor::visit(std::shared_ptr<IRModule> module) {
-  // TODO deal with argvar
   ctx->pushFrame();
+
+  transform(types::kBoolType);
+  transform(types::kFloatType);
+  transform(types::kIntType);
+  transform(types::kByteType);
+  transform(types::kBytePointerType);
+  transform(types::kStringType);
+  transform(types::kSeqType);
+  transform(types::kStringPointerType);
+  transform(types::kStringArrayType);
+  transform(types::kNoArgVoidFuncType);
+
+  for (auto &g : module->getGlobals())
+    if (!g->isFunc() || std::static_pointer_cast<Func>(g)->isBuiltin()) {
+      auto fn = std::static_pointer_cast<Func>(g);
+
+      auto *funcPtrType = cast<PointerType>(transform(fn->getType())->llvmType);
+      auto *funcType = cast<FunctionType>(funcPtrType->getElementType());
+
+      auto *llvmFunc = ctx->getModule()->getOrInsertFunction(
+          fmt::format(FMT_STRING("seq.{}"), fn->getMagicName()), funcType);
+      ctx->stubBuiltin(fn, std::make_shared<BuiltinStub>(fn, cast<Function>(llvmFunc)));
+    }
   for (auto &g : module->getGlobals())
     transform(g);
+
   transform(module->getBase(), "seq.main");
   ctx->popFrame();
 }
@@ -80,25 +105,187 @@ void CodegenVisitor::visit(std::shared_ptr<BasicBlock> block) {
 
   for (auto &inst : block->getInstructions())
     transform(inst);
-
-  if (block->getTerminator())
-    transform(block->getTerminator());
-  else {
-    if (ctx->getFrame().isGenerator) {
-      funcYield(ctx->getFrame(), nullptr, ctx->getFrame().curBlock, nullptr);
-    } else {
-      IRBuilder<> builder(ctx->getFrame().curBlock);
-      builder.CreateRetVoid();
-    }
-  }
 }
 
 void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
-  // TODO
+  auto meta = ctx->getTryCatchMeta(tc);
+
+  if (meta) {
+    tcResult = meta;
+    return;
+  }
+
+  meta = std::make_shared<TryCatchMetadata>();
+  tcResult = meta;
+
+  auto &context = ctx->getLLVMContext();
+  auto *module = ctx->getModule();
+  auto *func = ctx->getFrame().func;
+
+  auto *unreachable = llvm::BasicBlock::Create(context, "", func);
+  IRBuilder<> builder(unreachable);
+  builder.CreateUnreachable();
+
+  meta->excFlag = transform(tc->getFlagVar());
+  meta->finallyBr = SwitchInst::Create(meta->excFlag, unreachable, 10);
+
+  StructType *padType = getPadType(context);
+  StructType *unwindType =
+      StructType::get(IntegerType::getInt64Ty(context)); // header only
+  StructType *excType = getExcType(context);
+
+  meta->exceptionBlock = llvm::BasicBlock::Create(context, "exception", func);
+  meta->exceptionRouteBlock =
+      llvm::BasicBlock::Create(context, "exception_route", func);
+
+  auto *externalExceptionBlock =
+      llvm::BasicBlock::Create(context, "external_exception", func);
+  auto *unwindResumeBlock = llvm::BasicBlock::Create(context, "unwind_resume", func);
+  auto *endBlock = llvm::BasicBlock::Create(context, "end", func);
+
+  using Path = std::vector<std::shared_ptr<TryCatch>>;
+  llvm::BasicBlock *catchAll = nullptr;
+  Path catchAllPath;
+  Path totalPath = tc->getPath(nullptr);
+
+  builder.SetInsertPoint(unwindResumeBlock);
+  builder.CreateResume(builder.CreateLoad(ctx->getFrame().catchStore));
+
+  for (auto &handler : tc->getCatchBlocks()) {
+    meta->handlers.push_back(ctx->getBlock(handler.lock()));
+  }
+
+  std::vector<std::shared_ptr<types::Type>> catchTypesFull(tc->getCatchTypes());
+  std::vector<llvm::BasicBlock *> handlersFull(meta->handlers);
+  std::vector<Path> paths(catchTypesFull.size());
+  std::vector<llvm::Value *> vars;
+
+  for (auto i = 0; i < handlersFull.size(); ++i) {
+    if (tc->getVar(i))
+      vars.push_back(transform(tc->getVar(i)));
+    vars.push_back(nullptr);
+  }
+
+  auto checkMatch = [](std::vector<std::shared_ptr<types::Type>> &all,
+                       std::shared_ptr<types::Type> &t) -> bool {
+    for (auto &cur : all)
+      if (cur && cur->getId() == t->getId())
+        return true;
+    return false;
+  };
+
+  Path pathStub = {tc};
+  auto cur = tc->getParent().lock();
+  while (cur) {
+    if (catchAll)
+      break;
+
+    auto curMeta = transform(cur);
+    auto curCatchTypes = cur->getCatchTypes();
+
+    for (auto i = 0; i < curCatchTypes.size(); ++i) {
+      auto t = curCatchTypes[i];
+      if (!t && !catchAll) {
+        catchAll = curMeta->handlers[i];
+        catchAllPath = Path(pathStub.begin(), pathStub.end());
+        catchTypesFull.push_back(t);
+        handlersFull.push_back(catchAll);
+        paths.push_back(catchAllPath);
+
+        if (cur->getVar(i))
+          vars.push_back(transform(cur->getVar(i)));
+        else
+          vars.push_back(nullptr);
+      } else if (!checkMatch(catchTypesFull, t)) {
+        catchTypesFull.push_back(t);
+        handlersFull.push_back(curMeta->handlers[i]);
+        paths.emplace_back(pathStub.begin(), pathStub.end());
+
+        if (cur->getVar(i))
+          vars.push_back(transform(cur->getVar(i)));
+        else
+          vars.push_back(nullptr);
+      }
+    }
+
+    cur = cur->getParent().lock();
+  }
+
+  builder.SetInsertPoint(meta->exceptionBlock);
+  auto *caughtResult =
+      builder.CreateLandingPad(padType, (unsigned)catchTypesFull.size());
+  caughtResult->setCleanup(true);
+  std::vector<ConstantInt *> typeIndices;
+
+  for (auto &catchType : catchTypesFull) {
+    auto *tidx = ConstantInt::get(seqIntLLVM(context), catchType->getId());
+    typeIndices.push_back(tidx);
+    caughtResult->addClause(tidx);
+  }
+
+  auto *unwindException = builder.CreateExtractValue(caughtResult, 0);
+  builder.CreateStore(caughtResult, ctx->getFrame().catchStore);
+  auto *unwindExceptionClass = builder.CreateLoad(builder.CreateStructGEP(
+      unwindType,
+      builder.CreatePointerCast(unwindException, unwindType->getPointerTo()), 0));
+
+  // Check for foreign
+  builder.CreateCondBr(
+      builder.CreateICmpEQ(
+          unwindExceptionClass,
+          ConstantInt::get(IntegerType::getInt64Ty(context), seq_exc_class())),
+      meta->exceptionRouteBlock, externalExceptionBlock);
+
+  // External exception
+  builder.SetInsertPoint(externalExceptionBlock);
+  builder.CreateUnreachable();
+
+  // reroute Seq exceptions:
+  builder.SetInsertPoint(meta->exceptionRouteBlock);
+  unwindException =
+      builder.CreateExtractValue(builder.CreateLoad(ctx->getFrame().catchStore), 0);
+  auto *excVal = builder.CreatePointerCast(
+      builder.CreateConstGEP1_64(unwindException, (uint64_t)seq_exc_offset()),
+      excType->getPointerTo());
+
+  auto *loadedExc = builder.CreateLoad(excVal);
+  auto *objType = builder.CreateExtractValue(loadedExc, 0);
+  objType = builder.CreateExtractValue(objType, 0);
+  auto *objPtr = builder.CreateExtractValue(loadedExc, 1);
+
+  llvm::BasicBlock *dfltRoute = llvm::BasicBlock::Create(context, "dflt", func);
+  ctx->getFrame().curBlock = dfltRoute;
+  if (catchAll)
+    codegenTcJump(catchAll, catchAllPath);
+  else
+    codegenTcJump(unwindResumeBlock, totalPath);
+
+  builder.SetInsertPoint(meta->exceptionRouteBlock);
+  auto switchToCatch =
+      builder.CreateSwitch(objType, dfltRoute, (unsigned)handlersFull.size());
+  for (auto i = 0; i < handlersFull.size(); ++i) {
+    auto *catchSetup =
+        llvm::BasicBlock::Create(context, fmt::format(FMT_STRING("catch{}"), i), func);
+    ctx->getFrame().curBlock = catchSetup;
+    builder.SetInsertPoint(catchSetup);
+    if (vars[i]) {
+      builder.CreateStore(
+          builder.CreateBitCast(objPtr, transform(catchTypesFull[i])->llvmType),
+          vars[i]);
+    }
+    codegenTcJump(handlersFull[i], paths[i]);
+    switchToCatch->addCase(typeIndices[i], catchSetup);
+  }
+
+  ctx->registerTryCatch(tc, meta);
 }
 
 void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
-  auto name = nameOverride.empty() ? getLLVMFuncName(sirFunc) : nameOverride;
+  auto name = nameOverride.empty()
+                  ? (sirFunc->isBuiltin()
+                         ? fmt::format(FMT_STRING("seq.{}"), sirFunc->getMagicName())
+                         : getLLVMFuncName(sirFunc))
+                  : nameOverride;
   if (auto *llvmFunc = ctx->getModule()->getFunction(name)) {
     varResult = llvmFunc;
     return;
@@ -108,15 +295,21 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
     return;
 
   auto *module = ctx->getModule();
+  auto isGen = sirFunc->isGenerator();
+
   auto sirFuncType = std::static_pointer_cast<types::FuncType>(sirFunc->getType());
+  auto outTypeRealization =
+      isGen ? transform(sirFuncType->getRType())
+            : transform(
+                  std::static_pointer_cast<types::Generator>(sirFuncType->getRType())
+                      ->getBase());
+
   auto typeRealization = transform(sirFuncType);
   auto *funcPtrType = cast<PointerType>(typeRealization->llvmType);
   auto *funcType = cast<FunctionType>(funcPtrType->getElementType());
+  auto *outLLVMType = outTypeRealization->llvmType;
 
-  auto rTypeRealization = transform(sirFuncType->getRType());
   auto *func = cast<Function>(module->getOrInsertFunction(name, funcType));
-  auto *outLLVMType = funcType->getReturnType();
-
   varResult = func;
 
   if (sirFunc->isInternal()) {
@@ -126,10 +319,8 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
     return;
   }
 
-  auto funcAttributes =
-      std::static_pointer_cast<FuncAttribute>(sirFunc->getAttribute(kFuncAttribute));
-  auto srcInfoAttribute = std::static_pointer_cast<SrcInfoAttribute>(
-      sirFunc->getAttribute(kSrcInfoAttribute));
+  auto funcAttributes = sirFunc->getAttribute<FuncAttribute>(kFuncAttribute);
+  auto srcInfoAttribute = sirFunc->getAttribute<SrcInfoAttribute>(kSrcInfoAttribute);
   auto srcInfo = srcInfoAttribute ? srcInfoAttribute->info : seq::SrcInfo();
 
   if (funcAttributes) {
@@ -160,7 +351,7 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   auto &frame = ctx->getFrame();
   frame.func = func;
   frame.irFunc = sirFunc;
-  frame.isGenerator = sirFunc->isGenerator();
+  frame.isGenerator = isGen;
 
   // Stub blocks
   for (auto &b : sirFunc->getBlocks()) {
@@ -168,23 +359,40 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
     ctx->registerBlock(b, llvm::BasicBlock::Create(context, blockName, func));
   }
 
-  if (sirFunc->getTryCatch())
-    transform(sirFunc->getTryCatch());
-
   auto *preamble = llvm::BasicBlock::Create(context, "preamble", func);
 
   IRBuilder<> builder(preamble);
+  frame.curBlock = preamble;
+
+  // Register vars
+  for (auto &v : sirFunc->getVars())
+    transform(v);
+
+  // Register arg vars
+  auto argIter = func->arg_begin();
+  for (auto &a : sirFunc->getArgVars()) {
+    auto *var = transform(a);
+    builder.SetInsertPoint(frame.curBlock);
+    builder.CreateStore(var, argIter++);
+  }
+
+  auto *padType = getPadType(context);
+  if (sirFunc->getTryCatch()) {
+    frame.catchStore = makeAlloca(ConstantAggregateZero::get(padType), preamble);
+    transform(sirFunc->getTryCatch());
+  }
 
   // General generator primitives
   Value *id = nullptr;
-  if (sirFunc->isGenerator()) {
+  if (isGen) {
     Function *idFn = Intrinsic::getDeclaration(module, Intrinsic::coro_id);
     Value *nullPtr = ConstantPointerNull::get(IntegerType::getInt8PtrTy(context));
 
-    if (sirFuncType->getRType()->getId() != types::kVoidType->getId()) {
-      auto *promise = makeAlloca(outLLVMType, preamble);
+    if (outTypeRealization->irType->getId() != types::kVoidType->getId()) {
+      auto *promise = outTypeRealization->alloc(builder, true);
       promise->setName("promise");
-      Value *promiseRaw =
+
+      auto *promiseRaw =
           builder.CreateBitCast(promise, IntegerType::getInt8PtrTy(context));
       id = builder.CreateCall(idFn,
                               {ConstantInt::get(IntegerType::getInt32Ty(context), 0),
@@ -195,52 +403,39 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
                                nullPtr, nullPtr, nullPtr});
     }
     id->setName("id");
-  }
-
-  frame.curBlock = preamble;
-  // Register vars
-  for (auto &v : sirFunc->getVars())
-    transform(v);
-
-  if (!funcType->getReturnType()->isVoidTy()) {
+  } else if (!funcType->getReturnType()->isVoidTy()) {
     builder.SetInsertPoint(frame.curBlock);
-    frame.rValPtr =
-        rTypeRealization->alloc(ConstantInt::get(seqIntLLVM(context), 1), builder);
-  }
-
-  // Register arg vars
-  auto argIter = func->arg_begin();
-  for (auto &a : sirFunc->getArgVars()) {
-    auto *var = transform(a);
-    builder.SetInsertPoint(frame.curBlock);
-    builder.CreateStore(var, argIter++);
+    frame.rValPtr = outTypeRealization->alloc(builder, true);
   }
 
   llvm::BasicBlock *allocBlock = nullptr;
   Value *alloc = nullptr;
-  if (sirFunc->isGenerator()) {
+  if (isGen) {
     allocBlock = llvm::BasicBlock::Create(context, "alloc", func);
     builder.SetInsertPoint(allocBlock);
-    Function *sizeFn =
+    auto *sizeFn =
         Intrinsic::getDeclaration(module, Intrinsic::coro_size, {seqIntLLVM(context)});
-    Value *size = builder.CreateCall(sizeFn);
+    auto *size = builder.CreateCall(sizeFn);
     auto *allocFunc = makeAllocFunc(module, false);
     alloc = builder.CreateCall(allocFunc, size);
   }
 
-  llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "entry", func);
-  llvm::BasicBlock *entryActual = entry;
+  auto *entry = llvm::BasicBlock::Create(context, "entry", func);
+  auto *entryActual = entry;
   llvm::BasicBlock *dynFree = nullptr;
 
-  if (sirFunc->isGenerator()) {
+  if (isGen) {
     builder.CreateBr(entry);
+
     builder.SetInsertPoint(entry);
+
     PHINode *phi = builder.CreatePHI(IntegerType::getInt8PtrTy(context), 2);
     phi->addIncoming(ConstantPointerNull::get(IntegerType::getInt8PtrTy(context)),
                      preamble);
     phi->addIncoming(alloc, allocBlock);
 
     Function *beginFn = Intrinsic::getDeclaration(module, Intrinsic::coro_begin);
+
     auto *handle = builder.CreateCall(beginFn, {id, phi});
     handle->setName("hdl");
 
@@ -251,15 +446,16 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
      */
     auto *cleanup = llvm::BasicBlock::Create(context, "cleanup", func);
     frame.cleanup = cleanup;
-
     dynFree = llvm::BasicBlock::Create(context, "dyn_free", func);
+
     builder.SetInsertPoint(cleanup);
-    Function *freeFn = Intrinsic::getDeclaration(module, Intrinsic::coro_free);
-    Value *mem = builder.CreateCall(freeFn, {id, handle});
-    Value *needDynFree = builder.CreateIsNotNull(mem);
+    auto *freeFn = Intrinsic::getDeclaration(module, Intrinsic::coro_free);
+    auto *mem = builder.CreateCall(freeFn, {id, handle});
+    auto *needDynFree = builder.CreateIsNotNull(mem);
 
     auto *suspend = llvm::BasicBlock::Create(context, "suspend", func);
     frame.suspend = suspend;
+
     builder.CreateCondBr(needDynFree, dynFree, suspend);
 
     builder.SetInsertPoint(dynFree);
@@ -327,9 +523,9 @@ void CodegenVisitor::visit(std::shared_ptr<Var> var) {
                              Constant::getNullValue(llvmType), var->getName());
   } else {
     IRBuilder<> builder(ctx->getFrame().curBlock);
-    val = typeRealization->alloc(
-        llvm::ConstantInt::get(seqIntLLVM(ctx->getLLVMContext()), 1), builder, true);
+    val = typeRealization->alloc(builder, true);
   }
+
   ctx->registerVar(var, val);
   varResult = val;
 }
@@ -337,6 +533,7 @@ void CodegenVisitor::visit(std::shared_ptr<Var> var) {
 void CodegenVisitor::visit(std::shared_ptr<AssignInstr> assignInstr) {
   auto *rhs = transform(assignInstr->getRhs());
   auto *lhs = transform(assignInstr->getLhs());
+
   IRBuilder<> builder(ctx->getFrame().curBlock);
   instrResult = builder.CreateStore(rhs, lhs);
 }
@@ -347,6 +544,7 @@ void CodegenVisitor::visit(std::shared_ptr<RvalueInstr> rvalInstr) {
 
 void CodegenVisitor::visit(std::shared_ptr<MemberRvalue> memberRval) {
   auto var = transform(memberRval->getVar());
+
   IRBuilder<> builder(ctx->getFrame().curBlock);
   rvalResult = transform(memberRval->getType())
                    ->extractMember(var, memberRval->getField(), builder);
@@ -361,6 +559,7 @@ void CodegenVisitor::visit(std::shared_ptr<CallRvalue> callRval) {
 
   std::vector<Value *> args;
 
+  // TODO probably no longer required
   if (sirFuncType->isPartial()) {
     IRBuilder<> builder(ctx->getFrame().curBlock);
     std::tie(func, args) = processPartial(
@@ -372,15 +571,18 @@ void CodegenVisitor::visit(std::shared_ptr<CallRvalue> callRval) {
     }
   }
 
-  auto tc = ctx->getFrame().curIRBlock->getTryCatch();
+  auto tc = ctx->getFrame().curIRBlock->getHandlerTryCatch();
 
   IRBuilder<> builder(ctx->getFrame().curBlock);
   if (tc) {
+    auto tcMeta = transform(tc);
+
     auto &context = ctx->getLLVMContext();
-    auto *unwind = ctx->getFrame().tryCatchMeta[tc->getId()]->exceptionBlock;
+    auto *unwind = tcMeta->exceptionBlock;
     auto *parent = ctx->getFrame().func;
     auto *normal = llvm::BasicBlock::Create(context, "normal", parent);
     ctx->getFrame().curBlock = normal;
+
     rvalResult = builder.CreateInvoke(func, normal, unwind, args);
   } else {
     rvalResult = builder.CreateCall(func, args);
@@ -398,9 +600,11 @@ void CodegenVisitor::visit(std::shared_ptr<PartialCallRvalue> partial) {
 
   auto partialArgs = partial->getArgs();
   for (auto it = partialArgs.begin(); it != partialArgs.end(); ++it) {
-    auto *res = transform(*it);
-    builder.SetInsertPoint(ctx->getFrame().curBlock);
-    builder.CreateInsertValue(val, res, it - partialArgs.begin() + 1);
+    if (*it) {
+      auto *res = transform(*it);
+      builder.SetInsertPoint(ctx->getFrame().curBlock);
+      builder.CreateInsertValue(val, res, it - partialArgs.begin() + 1);
+    }
   }
 
   rvalResult = val;
@@ -412,6 +616,7 @@ void CodegenVisitor::visit(std::shared_ptr<OperandRvalue> opRval) {
 
 void CodegenVisitor::visit(std::shared_ptr<MatchRvalue> matchRval) {
   auto *op = transform(matchRval->getOperand());
+
   rvalResult = transform(matchRval->getPattern())(op);
 }
 
@@ -442,6 +647,7 @@ void CodegenVisitor::visit(std::shared_ptr<VarLvalue> varLvalue) {
 void CodegenVisitor::visit(std::shared_ptr<VarMemberLvalue> varMemberLvalue) {
   auto typeRealization = transform(varMemberLvalue->getType());
   auto var = transform(varMemberLvalue->getVar());
+
   IRBuilder<> builder(ctx->getFrame().curBlock);
   lvalResult =
       typeRealization->getMemberPointer(var, varMemberLvalue->getField(), builder);
@@ -449,8 +655,10 @@ void CodegenVisitor::visit(std::shared_ptr<VarMemberLvalue> varMemberLvalue) {
 
 void CodegenVisitor::visit(std::shared_ptr<VarOperand> varOperand) {
   opResult = transform(varOperand->getVar());
+
   if (!varOperand->getVar()->isFunc()) {
     auto opType = transform(varOperand->getType());
+
     IRBuilder<> builder(ctx->getFrame().curBlock);
     opResult = opType->load(opResult, builder);
   }
@@ -465,6 +673,8 @@ void CodegenVisitor::visit(std::shared_ptr<LiteralOperand> literalOperand) {
   auto *literalType = typeRealization->llvmType;
 
   auto contentType = literalOperand->getLiteralType();
+
+  // TODO seq/kmer?
   if (contentType == STR) {
     IRBuilder<> builder(ctx->getFrame().curBlock);
 
@@ -499,6 +709,7 @@ void CodegenVisitor::visit(std::shared_ptr<LLVMOperand> llvmOperand) {
 
 void CodegenVisitor::visit(std::shared_ptr<WildcardPattern> wildcardPattern) {
   auto *var = transform(wildcardPattern->getVar());
+
   patResult = [=](llvm::Value *val) -> llvm::Value * {
     IRBuilder<> builder(ctx->getFrame().curBlock);
     builder.CreateStore(val, var);
@@ -508,6 +719,7 @@ void CodegenVisitor::visit(std::shared_ptr<WildcardPattern> wildcardPattern) {
 
 void CodegenVisitor::visit(std::shared_ptr<BoundPattern> boundPattern) {
   auto *var = transform(boundPattern->getVar());
+
   patResult = [=](llvm::Value *val) -> llvm::Value * {
     IRBuilder<> builder(ctx->getFrame().curBlock);
 
@@ -523,6 +735,7 @@ void CodegenVisitor::visit(std::shared_ptr<StarPattern>) {
 
 void CodegenVisitor::visit(std::shared_ptr<IntPattern> intPattern) {
   auto *intType = transform(types::kIntType)->llvmType;
+
   patResult = [=](llvm::Value *val) -> llvm::Value * {
     IRBuilder<> builder(ctx->getFrame().curBlock);
 
@@ -533,6 +746,7 @@ void CodegenVisitor::visit(std::shared_ptr<IntPattern> intPattern) {
 
 void CodegenVisitor::visit(std::shared_ptr<BoolPattern> boolPattern) {
   auto *boolType = transform(types::kBoolType)->llvmType;
+
   patResult = [=](llvm::Value *val) -> llvm::Value * {
     IRBuilder<> builder(ctx->getFrame().curBlock);
 
@@ -543,6 +757,7 @@ void CodegenVisitor::visit(std::shared_ptr<BoolPattern> boolPattern) {
 
 void CodegenVisitor::visit(std::shared_ptr<StrPattern> strPattern) {
   auto typeRealization = transform(types::kStringType);
+
   patResult = [=](llvm::Value *val) -> llvm::Value * {
     IRBuilder<> builder(ctx->getFrame().curBlock);
 
@@ -562,7 +777,7 @@ void CodegenVisitor::visit(std::shared_ptr<StrPattern> strPattern) {
     auto *compStr = typeRealization->makeNew(
         {builder.CreateBitCast(strVar, IntegerType::getInt8PtrTy(context)), len},
         builder);
-    return typeRealization->callMagic("__eq__[str, str]", {val, compStr}, builder);
+    return builder.CreateCall(ctx->getBuiltinStub("_str_eq")->func, {val, compStr});
   };
 }
 
@@ -772,8 +987,8 @@ void CodegenVisitor::visit(std::shared_ptr<GuardedPattern> guardedPattern) {
 
 void CodegenVisitor::visit(std::shared_ptr<JumpTerminator> jumpTerminator) {
   auto dstIRBlock = jumpTerminator->getDst().lock();
-  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
-  auto tcPath = curTc ? curTc->getPath(dstIRBlock->getTryCatch())
+  auto curTc = ctx->getFrame().curIRBlock->getFinallyTryCatch();
+  auto tcPath = curTc ? curTc->getPath(dstIRBlock->getFinallyTryCatch())
                       : std::vector<std::shared_ptr<TryCatch>>();
   auto *dst = ctx->getBlock(dstIRBlock);
   codegenTcJump(dst, tcPath);
@@ -782,11 +997,11 @@ void CodegenVisitor::visit(std::shared_ptr<JumpTerminator> jumpTerminator) {
 void CodegenVisitor::visit(std::shared_ptr<CondJumpTerminator> condJumpTerminator) {
   auto tDstIRBlock = condJumpTerminator->getTDst().lock();
   auto fDstIRBlock = condJumpTerminator->getFDst().lock();
-  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
+  auto curTc = ctx->getFrame().curIRBlock->getFinallyTryCatch();
 
-  auto tTcPath = curTc ? curTc->getPath(tDstIRBlock->getTryCatch())
+  auto tTcPath = curTc ? curTc->getPath(tDstIRBlock->getFinallyTryCatch())
                        : std::vector<std::shared_ptr<TryCatch>>();
-  auto fTcPath = curTc ? curTc->getPath(fDstIRBlock->getTryCatch())
+  auto fTcPath = curTc ? curTc->getPath(fDstIRBlock->getFinallyTryCatch())
                        : std::vector<std::shared_ptr<TryCatch>>();
 
   auto *tDst = ctx->getBlock(tDstIRBlock);
@@ -815,6 +1030,22 @@ void CodegenVisitor::visit(std::shared_ptr<CondJumpTerminator> condJumpTerminato
 }
 
 void CodegenVisitor::visit(std::shared_ptr<ReturnTerminator> returnTerminator) {
+  auto curTc = ctx->getFrame().curIRBlock->getFinallyTryCatch();
+  auto tcPath =
+      curTc ? curTc->getPath(nullptr) : std::vector<std::shared_ptr<TryCatch>>();
+  if (tcPath.empty()) {
+    if (returnTerminator->getOperand()) {
+      auto *opVal = transform(returnTerminator->getOperand());
+
+      IRBuilder<> builder(ctx->getFrame().curBlock);
+      builder.CreateRet(opVal);
+    } else {
+      IRBuilder<> builder(ctx->getFrame().curBlock);
+      builder.CreateRetVoid();
+    }
+    return;
+  }
+
   if (returnTerminator->getOperand()) {
     auto *opVal = transform(returnTerminator->getOperand());
 
@@ -822,16 +1053,13 @@ void CodegenVisitor::visit(std::shared_ptr<ReturnTerminator> returnTerminator) {
     builder.CreateStore(opVal, ctx->getFrame().rValPtr);
   }
 
-  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
-  auto tcPath =
-      curTc ? curTc->getPath(nullptr) : std::vector<std::shared_ptr<TryCatch>>();
   codegenTcJump(ctx->getFrame().exit, tcPath);
 }
 
 void CodegenVisitor::visit(std::shared_ptr<YieldTerminator> yieldTerminator) {
   auto dstIRBlock = yieldTerminator->getDst().lock();
-  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
-  auto tcPath = curTc ? curTc->getPath(dstIRBlock->getTryCatch())
+  auto curTc = ctx->getFrame().curIRBlock->getFinallyTryCatch();
+  auto tcPath = curTc ? curTc->getPath(dstIRBlock->getFinallyTryCatch())
                       : std::vector<std::shared_ptr<TryCatch>>();
   auto *dst = ctx->getBlock(dstIRBlock);
 
@@ -882,8 +1110,8 @@ void CodegenVisitor::visit(std::shared_ptr<ThrowTerminator> throwTerminator) {
   auto *fileNameVal = transform(std::make_shared<LiteralOperand>(fileNameStr));
 
   builder.SetInsertPoint(ctx->getFrame().curBlock);
-  Value *fileLineVal = ConstantInt::get(seqIntLLVM(context), fileLine, true);
-  Value *fileColVal = ConstantInt::get(seqIntLLVM(context), fileCol, true);
+  auto *fileLineVal = ConstantInt::get(seqIntLLVM(context), fileLine, true);
+  auto *fileColVal = ConstantInt::get(seqIntLLVM(context), fileCol, true);
 
   builder.CreateStore(funcNameVal,
                       excHeaderRealization->getMemberPointer(hdrPtr, "3", builder));
@@ -899,7 +1127,7 @@ void CodegenVisitor::visit(std::shared_ptr<ThrowTerminator> throwTerminator) {
                                                    (uint64_t)excIRType->getId(), true),
                                   op});
 
-  auto tc = ctx->getFrame().curIRBlock->getTryCatch();
+  auto tc = ctx->getFrame().curIRBlock->getHandlerTryCatch();
   if (tc) {
     auto *unwind = ctx->getFrame().tryCatchMeta[tc->getId()]->exceptionBlock;
     auto *parent = ctx->getFrame().func;
@@ -914,8 +1142,8 @@ void CodegenVisitor::visit(std::shared_ptr<ThrowTerminator> throwTerminator) {
 
 void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> assertTerminator) {
   auto dstIRBlock = assertTerminator->getDst().lock();
-  auto curTc = ctx->getFrame().curIRBlock->getTryCatch();
-  auto tcPath = curTc ? curTc->getPath(dstIRBlock->getTryCatch())
+  auto curTc = ctx->getFrame().curIRBlock->getFinallyTryCatch();
+  auto tcPath = curTc ? curTc->getPath(dstIRBlock->getFinallyTryCatch())
                       : std::vector<std::shared_ptr<TryCatch>>();
   auto *dst = ctx->getBlock(dstIRBlock);
 
@@ -950,10 +1178,11 @@ void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> assertTerminator) {
     auto *line = ConstantInt::get(seqIntLLVM(context), srcInfo.line);
     builder.SetInsertPoint(ctx->getFrame().curBlock);
 
-    ctx->getBuiltin("_test_failed")->call({file, line, msgVal}, builder);
+    auto *failed = ctx->getBuiltinStub("_test_failed")->func;
+    builder.CreateCall(failed, {file, line, msgVal});
   } else {
-    auto builtin = ctx->getBuiltin("_make_assert_error");
-    auto *excVal = builtin->call({msgVal}, builder);
+    auto builtin = ctx->getBuiltinStub("_make_assert_error");
+    auto *excVal = builder.CreateCall(builtin->func, msgVal);
 
     auto excType =
         std::static_pointer_cast<types::FuncType>(builtin->sirFunc->getType())
@@ -967,6 +1196,11 @@ void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> assertTerminator) {
             term->getAttribute<SrcInfoAttribute>(kSrcInfoAttribute)->info));
     transform(term);
   }
+}
+
+void CodegenVisitor::visit(std::shared_ptr<FinallyTerminator> finallyTerminator) {
+  auto meta = transform(finallyTerminator->getTryCatch());
+  ctx->getFrame().curBlock->getInstList().push_back(meta->finallyBr);
 }
 
 void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
@@ -1015,7 +1249,6 @@ void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
        }},
   };
   TypeRealization::NonInlineMagics nonInlineMagicFuncs = {};
-  // TODO  __iter__,  __contains__
 
   auto heterogeneous = memberedType->getMemberTypes().empty();
   if (!heterogeneous) {
@@ -1056,7 +1289,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
 
   auto typeRealization = std::make_shared<TypeRealization>(
       memberedType, llvmType, dfltBuilder, inlineMagics, newSig, nonInlineMagicFuncs,
-      TypeRealization::ReverseMagicStubs(), fields);
+      fields);
   ctx->registerType(memberedType, typeRealization);
   typeResult = typeRealization;
 }
@@ -1119,8 +1352,8 @@ void CodegenVisitor::visit(std::shared_ptr<types::RefType> refType) {
 
   auto typeRealization = std::make_shared<TypeRealization>(
       refType, llvmType, dfltBuilder, inlineMagics, newSig,
-      TypeRealization::NonInlineMagics(), TypeRealization::ReverseMagicStubs(), fields,
-      customGetters, memberPointerFunc, loader);
+      TypeRealization::NonInlineMagics(), fields, customGetters, memberPointerFunc,
+      loader);
   ctx->registerType(refType, typeRealization);
   typeResult = typeRealization;
 }
@@ -1285,8 +1518,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Optional> optType) {
 
   auto typeRealization = std::make_shared<TypeRealization>(
       optType, llvmType, dfltBuilder, inlineMagics, newSig,
-      TypeRealization::NonInlineMagics(), TypeRealization::ReverseMagicStubs(), fields,
-      customGetters);
+      TypeRealization::NonInlineMagics(), fields, customGetters);
   ctx->registerType(optType, typeRealization);
   typeResult = typeRealization;
 }
@@ -1416,7 +1648,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
 
   auto typeRealization = std::make_shared<TypeRealization>(
       arrayType, llvmType, dfltBuilder, inlineMagics, newSig,
-      TypeRealization::NonInlineMagics(), TypeRealization::ReverseMagicStubs(), fields);
+      TypeRealization::NonInlineMagics(), fields);
   ctx->registerType(arrayType, typeRealization);
   typeResult = typeRealization;
 }

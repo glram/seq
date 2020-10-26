@@ -49,7 +49,7 @@ void CodegenVisitor::defaultVisit(const Pattern *n) {
 
 shared_ptr<BasicBlock> CodegenVisitor::newBlock() {
   auto templ = ctx->getBlock();
-  auto ret = make_shared<BasicBlock>(templ->getTryCatch());
+  auto ret = make_shared<BasicBlock>(templ->getTryCatch(), templ->isCatchClause());
 
   ctx->getBase()->addBlock(ret);
 
@@ -161,7 +161,7 @@ shared_ptr<IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmt
         auto ast = (FunctionStmt *)(cache->asts[ff.first].get());
         auto names = split(ast->name, '.');
         auto name = names.back();
-        if (in(ast->attributes, "internal") || in(ast->attributes, "rev_internal")) {
+        if (in(ast->attributes, "internal")) {
           vector<shared_ptr<ir::types::Type>> types;
           auto p = t->parent;
           assert(in(ast->attributes, ".class"));
@@ -186,7 +186,7 @@ shared_ptr<IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmt
           LOG7("[codegen] generating internal fn {} -> {}", ast->name, name);
           auto fn = Ns<ir::Func>(t->getSrcInfo(), names.back(), vector<string>(),
                                  ir::types::kNoArgVoidFuncType);
-          fn->setInternal(typ, name, in(ast->attributes, "internal"));
+          fn->setInternal(typ, name);
           ctx->functions[f.first] = {fn, false};
           ctx->getModule()->addGlobal(fn);
         } else {
@@ -194,6 +194,10 @@ shared_ptr<IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmt
                                  ir::types::kNoArgVoidFuncType);
           ctx->functions[f.first] = {fn, false};
           ctx->getModule()->addGlobal(fn);
+
+          if (in(ast->attributes, "builtin")) {
+            fn->setBuiltin(names[names.size() - 2]);
+          }
         }
         ctx->addFunc(f.first, ctx->functions[f.first].first);
       }
@@ -756,10 +760,17 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
   auto parentTc = ctx->getBlock()->getTryCatch() ? ctx->getBlock()->getTryCatch()
                                                  : ctx->getBase()->getTryCatch();
   auto newTc = Ns<ir::TryCatch>(stmt->getSrcInfo());
+
   if (parentTc)
     parentTc->addChild(newTc);
   else
     ctx->getBase()->setTryCatch(newTc);
+
+  ctx->getBase()->addVar(newTc->getFlagVar());
+  ctx->getBlock()->add(Ns<AssignInstr>(
+      stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), newTc->getFlagVar()),
+      Ns<OperandRvalue>(stmt->getSrcInfo(),
+                        Ns<LiteralOperand>(stmt->getSrcInfo(), int64_t(0)))));
 
   auto end = newBlock();
   auto body = newBlock();
@@ -775,6 +786,8 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
   int varIdx = 0;
   for (auto &c : stmt->catches) {
     auto cBlock = newBlock();
+    cBlock->setTryCatch(newTc, true);
+
     newTc->addCatch(c.exc->getType() ? realizeType(c.exc->getType()->getClass())
                                      : nullptr,
                     c.var, cBlock);
@@ -792,6 +805,7 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
     auto fBlock = newBlock();
     ctx->addBlock(fBlock);
     transform(stmt->finally);
+    condSetTerminator(Ns<FinallyTerminator>(stmt->getSrcInfo(), newTc));
     ctx->popBlock();
     newTc->setFinallyBlock(fBlock);
     ctx->removeLevel();
@@ -846,7 +860,7 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
         ctx->addVar(arg, f->getArgVar(arg));
       transform(ast->suite);
     }
-    condSetTerminator(make_shared<ReturnTerminator>(nullptr));
+    condSetTerminator(Ns<ReturnTerminator>({}, nullptr));
     ctx->popBlock();
   }
 }

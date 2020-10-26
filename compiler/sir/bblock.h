@@ -27,10 +27,12 @@ private:
   int id;
 
   std::shared_ptr<TryCatch> tc;
+  bool isCatch;
 
 public:
-  explicit BasicBlock(std::shared_ptr<TryCatch> tc = nullptr)
-      : id(currentId++), tc(std::move(tc)) {}
+  explicit BasicBlock(std::shared_ptr<TryCatch> tc = nullptr,
+                      bool isCatchClause = false)
+      : id(currentId++), tc(std::move(tc)), isCatch(isCatchClause) {}
 
   static void resetId();
 
@@ -42,8 +44,16 @@ public:
 
   int getId() const { return id; }
 
-  void setTryCatch(std::shared_ptr<TryCatch> newTc) { tc = std::move(newTc); }
+  void setTryCatch(std::shared_ptr<TryCatch> newTc, bool isCatchClause = false) {
+    tc = std::move(newTc);
+    isCatch = isCatchClause;
+  }
+  void setIsCatch(bool val) { isCatch = val; }
   std::shared_ptr<TryCatch> getTryCatch() { return tc; }
+  std::shared_ptr<TryCatch> getHandlerTryCatch();
+  std::shared_ptr<TryCatch> getFinallyTryCatch();
+
+  bool isCatchClause() const { return isCatch; }
 
   std::string referenceString() const override;
   std::string textRepresentation() const override;

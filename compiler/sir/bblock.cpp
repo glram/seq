@@ -20,6 +20,12 @@ std::string BasicBlock::referenceString() const {
 
 void BasicBlock::accept(common::IRVisitor &v) { v.visit(getShared()); }
 
+std::shared_ptr<TryCatch> BasicBlock::getHandlerTryCatch() {
+  return isCatch ? tc->getParent().lock() : tc;
+}
+
+std::shared_ptr<TryCatch> BasicBlock::getFinallyTryCatch() { return tc; }
+
 std::string BasicBlock::textRepresentation() const {
   fmt::memory_buffer buf;
   fmt::format_to(buf, FMT_STRING("{}"), referenceString());

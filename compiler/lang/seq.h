@@ -170,4 +170,13 @@ seq_int_t sliceAdjustIndices(seq_int_t length, seq_int_t *start, seq_int_t *stop
                              seq_int_t step);
 
 seq_int_t translateIndex(seq_int_t idx, seq_int_t len, bool clamp = false);
+
+void invokeMain(llvm::Function *main, llvm::BasicBlock *&block);
+void verifyModuleFailFast(llvm::Module &module);
+llvm::TargetMachine *getTargetMachine(llvm::Triple triple, llvm::StringRef cpuStr,
+                                      llvm::StringRef featuresStr,
+                                      const llvm::TargetOptions &options);
+void applyDebugTransformations(llvm::Module *module);
+void optimizeModule(llvm::Module *module);
+void applyGCTransformations(llvm::Module *module);
 } // namespace seq

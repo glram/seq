@@ -32,6 +32,9 @@ extern std::shared_ptr<Type> kBytePointerType;
 extern std::shared_ptr<Type> kStringType;
 extern std::shared_ptr<Type> kSeqType;
 
+extern std::shared_ptr<Type> kStringPointerType;
+extern std::shared_ptr<Type> kStringArrayType;
+
 extern std::shared_ptr<Type> kNoArgVoidFuncType;
 
 class Type : public AttributeHolder<Type> {

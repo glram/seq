@@ -82,6 +82,7 @@ public:
   DEFAULT_VISIT(YieldTerminator);
   DEFAULT_VISIT(ThrowTerminator);
   DEFAULT_VISIT(AssertTerminator);
+  DEFAULT_VISIT(FinallyTerminator);
 
   DEFAULT_VISIT(types::Type);
   DEFAULT_VISIT(types::RecordType);

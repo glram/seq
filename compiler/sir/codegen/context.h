@@ -26,18 +26,14 @@ class Type;
 namespace codegen {
 
 struct TryCatchMetadata {
-private:
   llvm::SwitchInst *finallyBr = nullptr;
-
-public:
   llvm::BasicBlock *exceptionBlock = nullptr;
   llvm::BasicBlock *exceptionRouteBlock = nullptr;
   llvm::BasicBlock *finallyStart = nullptr;
   std::vector<llvm::BasicBlock *> handlers;
   llvm::Value *excFlag = nullptr;
-  llvm::Value *catchStore = nullptr;
 
-  void storeDstValue(llvm::BasicBlock *dst, llvm::IRBuilder<> &builder);
+  void storeDstValue(llvm::BasicBlock *dst, llvm::IRBuilder<> &builder) const;
 };
 
 struct CodegenFrame {
@@ -53,6 +49,7 @@ struct CodegenFrame {
 
   bool isGenerator = false;
 
+  llvm::Value *catchStore = nullptr;
   llvm::Value *rValPtr = nullptr;
 
   // Storage for this coroutine's promise, or null if none
@@ -101,9 +98,6 @@ public:
   using NonInlineMagics = std::unordered_map<std::string, NonInlineMagicBuilder>;
   NonInlineMagics nonInlineMagicFuncs;
 
-  using ReverseMagicStubs = std::unordered_map<std::string, llvm::Function *>;
-  ReverseMagicStubs reverseMagicStubs;
-
   InlineMagicBuilder maker;
 
   using CustomLoader = std::function<llvm::Value *(llvm::Value *, llvm::IRBuilder<> &)>;
@@ -115,8 +109,7 @@ public:
   TypeRealization(std::shared_ptr<seq::ir::types::Type> irType, llvm::Type *llvmType,
                   DefaultBuilder dfltBuilder, InlineMagics inlineMagicFuncs = {},
                   const std::string &newSig = "",
-                  NonInlineMagics nonInlineMagicFuncs = {},
-                  ReverseMagicStubs reverseMagicStubs = {}, Fields fields = {},
+                  NonInlineMagics nonInlineMagicFuncs = {}, Fields fields = {},
                   CustomGetters customGetters = {},
                   MemberPointerFunc memberPointerFunc = nullptr,
                   CustomLoader customLoader = nullptr)
@@ -126,7 +119,6 @@ public:
         dfltBuilder(std::move(dfltBuilder)),
         inlineMagicFuncs(std::move(inlineMagicFuncs)),
         nonInlineMagicFuncs(std::move(nonInlineMagicFuncs)),
-        reverseMagicStubs(std::move(reverseMagicStubs)),
         maker(newSig.empty() ? nullptr : inlineMagicFuncs[newSig]),
         customLoader(std::move(customLoader)) {}
 
@@ -139,25 +131,27 @@ public:
   llvm::Value *callMagic(const std::string &sig, std::vector<llvm::Value *> args,
                          llvm::IRBuilder<> &builder);
   NonInlineMagicBuilder getMagicBuilder(const std::string &sig) const;
-  llvm::Function *getStub(const std::string &sig) const;
   llvm::Value *makeNew(std::vector<llvm::Value *> args,
                        llvm::IRBuilder<> &builder) const;
   llvm::Value *load(llvm::Value *ptr, llvm::IRBuilder<> &builder) const;
   llvm::Value *alloc(llvm::Value *count, llvm::IRBuilder<> &builder,
                      bool stack = false) const;
+  llvm::Value *alloc(llvm::IRBuilder<> &builder, bool stack = false) const;
 };
 
-struct BuiltinRealization {
-  llvm::Function *func = nullptr;
+struct BuiltinStub {
   std::shared_ptr<Func> sirFunc;
+  llvm::Function *func;
 
-  llvm::Value *call(std::vector<llvm::Value *> args, llvm::IRBuilder<> &builder);
+  BuiltinStub(std::shared_ptr<Func> sirFunc, llvm::Function *func)
+      : sirFunc(std::move(sirFunc)), func(func) {}
 };
 
 class Context : public seq::ir::common::IRContext<CodegenFrame> {
 private:
   llvm::Module *module;
   std::unordered_map<int, std::shared_ptr<TypeRealization>> typeRealizations;
+  std::unordered_map<std::string, std::shared_ptr<BuiltinStub>> builtinStubs;
 
   void initTypeRealizations();
 
@@ -168,6 +162,9 @@ public:
                     std::shared_ptr<TypeRealization> t);
   std::shared_ptr<TypeRealization>
   getTypeRealization(std::shared_ptr<types::Type> sirType);
+
+  void stubBuiltin(std::shared_ptr<Func> sirFunc, std::shared_ptr<BuiltinStub> stub);
+  std::shared_ptr<BuiltinStub> getBuiltinStub(const std::string &name);
 
   void registerTryCatch(std::shared_ptr<TryCatch> tc,
                         std::shared_ptr<TryCatchMetadata> meta);
@@ -181,8 +178,6 @@ public:
 
   llvm::Module *getModule() { return module; }
   llvm::LLVMContext &getLLVMContext() { return module->getContext(); }
-
-  std::shared_ptr<BuiltinRealization> getBuiltin(const std::string &name);
 
   llvm::Value *codegenStr(llvm::Value *self, const std::string &name,
                           llvm::BasicBlock *block);

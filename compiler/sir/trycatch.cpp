@@ -12,6 +12,10 @@ namespace ir {
 
 int TryCatch::currentId = 0;
 
+TryCatch::TryCatch() : id(currentId++) {
+  flagVar = std::make_shared<Var>(types::kIntType);
+}
+
 void TryCatch::resetId() { currentId = 0; }
 
 void TryCatch::accept(common::IRVisitor &v) { v.visit(getShared()); }

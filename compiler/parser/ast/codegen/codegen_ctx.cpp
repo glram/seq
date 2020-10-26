@@ -177,11 +177,16 @@ shared_ptr<seq::ir::types::Type> CodegenContext::realizeType(types::ClassTypePtr
     handle = make_shared<seq::ir::types::IntNType>(statics[0], name == ".Int");
   } else if (name == ".Array") {
     assert(types.size() == 1 && statics.size() == 0);
-    handle = make_shared<seq::ir::types::Array>(getPointer(typePtrs[0]));
+    if (types[0]->getId() == seq::ir::types::kStringType->getId())
+      handle = seq::ir::types::kStringArrayType;
+    else
+      handle = make_shared<seq::ir::types::Array>(getPointer(typePtrs[0]));
   } else if (name == ".Ptr") {
     assert(types.size() == 1 && statics.size() == 0);
     if (types[0]->getId() == seq::ir::types::kByteType->getId())
       handle = seq::ir::types::kBytePointerType;
+    else if (types[0]->getId() == seq::ir::types::kStringType->getId())
+      handle = seq::ir::types::kStringPointerType;
     else
       handle = make_shared<seq::ir::types::Pointer>(types[0]);
   } else if (name == ".Generator") {

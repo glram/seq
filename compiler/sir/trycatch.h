@@ -25,13 +25,14 @@ private:
   std::vector<std::shared_ptr<types::Type>> catchTypes;
   std::vector<std::string> catchVarNames;
   std::vector<std::shared_ptr<Var>> catchVars;
+  std::shared_ptr<Var> flagVar;
   std::vector<std::weak_ptr<BasicBlock>> catchBlocks;
   std::weak_ptr<BasicBlock> finallyBlock;
   std::weak_ptr<TryCatch> parent;
   int id;
 
 public:
-  TryCatch() : id(currentId++){};
+  TryCatch();
 
   static void resetId();
 
@@ -57,6 +58,7 @@ public:
   int getId() const { return id; }
 
   std::shared_ptr<Var> getVar(int i) { return catchVars[i]; }
+  std::shared_ptr<Var> getFlagVar() { return flagVar; }
 
   std::vector<std::shared_ptr<TryCatch>> getPath(std::shared_ptr<TryCatch> dst);
 

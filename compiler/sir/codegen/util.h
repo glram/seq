@@ -9,6 +9,8 @@
 namespace seq {
 namespace ir {
 
+class IRModule;
+
 namespace types {
 class Type;
 class Generator;
@@ -34,11 +36,17 @@ void generatorSend(llvm::Value *self, llvm::Value *val, llvm::BasicBlock *block,
                    llvm::Type *outType);
 void generatorDestroy(llvm::Value *self, llvm::BasicBlock *block);
 
-void funcReturn(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block);
 void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
                llvm::BasicBlock *dst);
 void funcYieldIn(CodegenFrame &meta, llvm::Value *ptr, llvm::BasicBlock *block,
                  llvm::BasicBlock *dst);
+
+llvm::StructType *getTypeInfoType(llvm::LLVMContext &ctx);
+llvm::StructType *getPadType(llvm::LLVMContext &ctx);
+llvm::StructType *getExcType(llvm::LLVMContext &ctx);
+
+llvm::Module *compile(std::shared_ptr<IRModule> module);
+
 } // namespace codegen
 } // namespace ir
 } // namespace seq

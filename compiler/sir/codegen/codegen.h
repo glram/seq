@@ -23,6 +23,8 @@ private:
 public:
   LLVMOperand(std::shared_ptr<types::Type> type, llvm::Value *val)
       : type(std::move(type)), val(val) {}
+
+  using Operand::accept;
   void accept(CodegenVisitor &v);
 
   std::shared_ptr<types::Type> getType() override { return type; }
@@ -96,6 +98,7 @@ public:
   OVERRIDE_VISIT(YieldTerminator);
   OVERRIDE_VISIT(ThrowTerminator);
   OVERRIDE_VISIT(AssertTerminator);
+  OVERRIDE_VISIT(FinallyTerminator);
 
   OVERRIDE_VISIT(types::RecordType);
   OVERRIDE_VISIT(types::RefType);

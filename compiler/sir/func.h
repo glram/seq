@@ -36,7 +36,7 @@ private:
   bool generator;
 
   bool internal;
-  bool llvmOnly;
+  bool builtin;
   std::shared_ptr<types::Type> parent;
   std::string magicName;
 
@@ -69,15 +69,18 @@ public:
   void setGenerator() { generator = true; }
   bool isGenerator() const { return generator; }
 
-  void setInternal(std::shared_ptr<types::Type> p, std::string n,
-                   bool isLLVMOnly = true) {
+  void setInternal(std::shared_ptr<types::Type> p, std::string n) {
     internal = true;
     parent = std::move(p);
     magicName = std::move(n);
-    llvmOnly = isLLVMOnly;
   }
   bool isInternal() const { return internal; }
-  bool isLLVMOnly() const { return llvmOnly; }
+
+  void setBuiltin(std::string n) {
+    builtin = true;
+    magicName = std::move(n);
+  }
+  bool isBuiltin() const { return builtin; }
 
   std::shared_ptr<types::Type> getParentType() { return parent; }
   std::string getMagicName() const { return magicName; }

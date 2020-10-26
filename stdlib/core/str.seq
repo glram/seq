@@ -1289,3 +1289,7 @@ extend str:
 
         l.reverse()
         return l
+
+@builtin
+def _str_eq(first: str, second: str) -> bool:
+    return first == second

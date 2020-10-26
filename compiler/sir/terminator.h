@@ -130,5 +130,19 @@ public:
   std::string textRepresentation() const override;
 };
 
+class FinallyTerminator : public Terminator {
+private:
+  std::shared_ptr<TryCatch> tc;
+
+public:
+  FinallyTerminator(std::shared_ptr<TryCatch> tc) : tc(std::move(tc)) {}
+
+  void accept(common::IRVisitor &v) override;
+
+  std::shared_ptr<TryCatch> getTryCatch() { return tc; }
+
+  std::string textRepresentation() const override;
+};
+
 } // namespace ir
 } // namespace seq

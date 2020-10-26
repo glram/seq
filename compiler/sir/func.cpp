@@ -15,7 +15,7 @@ namespace ir {
 Func::Func(std::string name, std::vector<std::string> argNames,
            std::shared_ptr<types::Type> type)
     : Var(std::move(name), type, true), argNames(argNames), external(), generator(),
-      internal(), llvmOnly() {
+      internal(), builtin() {
 
   argVars = std::vector<std::shared_ptr<Var>>{};
   auto argTypes = std::static_pointer_cast<types::FuncType>(type)->getArgTypes();
@@ -56,7 +56,7 @@ std::string Func::textRepresentation() const {
   }
 
   fmt::format_to(buf, FMT_STRING("]{{\n"));
-  if (llvmOnly) {
+  if (internal) {
     fmt::format_to(buf, FMT_STRING("internal: {}.{}\n"), parent->referenceString(),
                    magicName);
   } else if (external) {

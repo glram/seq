@@ -3,6 +3,7 @@
 #include <utility>
 
 #include "sir/bblock.h"
+#include "sir/func.h"
 #include "sir/trycatch.h"
 #include "sir/types/types.h"
 #include "sir/var.h"
@@ -18,7 +19,8 @@ namespace codegen {
 
 using namespace llvm;
 
-void TryCatchMetadata::storeDstValue(llvm::BasicBlock *dst, IRBuilder<> &builder) {
+void TryCatchMetadata::storeDstValue(llvm::BasicBlock *dst,
+                                     IRBuilder<> &builder) const {
   ConstantInt *val;
   val = finallyBr->findCaseDest(dst);
 
@@ -64,16 +66,9 @@ Value *TypeRealization::getUndefValue() const { return UndefValue::get(llvmType)
 
 Value *TypeRealization::callMagic(const std::string &sig, std::vector<Value *> args,
                                   IRBuilder<> &builder) {
-  {
-    auto it = inlineMagicFuncs.find(sig);
-    if (it != inlineMagicFuncs.end())
-      return it->second(std::move(args), builder);
-  }
-  {
-    auto it = reverseMagicStubs.find(sig);
-    if (it != reverseMagicStubs.end())
-      return builder.CreateCall(it->second, args);
-  }
+  auto it = inlineMagicFuncs.find(sig);
+  if (it != inlineMagicFuncs.end())
+    return it->second(std::move(args), builder);
   throw std::runtime_error(
       fmt::format(FMT_STRING("magic {} is not in {}"), sig, irType->referenceString()));
 }
@@ -105,14 +100,6 @@ TypeRealization::getMagicBuilder(const std::string &sig) const {
       fmt::format(FMT_STRING("magic {} is not in {}"), sig, irType->referenceString()));
 }
 
-Function *TypeRealization::getStub(const std::string &sig) const {
-  auto it = reverseMagicStubs.find(sig);
-  if (it == reverseMagicStubs.end())
-    throw std::runtime_error(fmt::format(FMT_STRING("stub {} is not in {}"), sig,
-                                         irType->referenceString()));
-  return it->second;
-}
-
 Value *TypeRealization::makeNew(std::vector<llvm::Value *> args,
                                 llvm::IRBuilder<> &builder) const {
   return maker ? maker(std::move(args), builder) : dfltBuilder(builder);
@@ -124,14 +111,17 @@ Value *TypeRealization::load(llvm::Value *ptr, llvm::IRBuilder<> &builder) const
 
 Value *TypeRealization::alloc(Value *count, llvm::IRBuilder<> &builder,
                               bool stack) const {
-  // TODO
-  return nullptr;
+  if (stack) {
+    return builder.CreateAlloca(llvmType, count);
+  } else {
+    auto *allocFn = makeAllocFunc(builder.GetInsertBlock()->getModule(), false);
+    auto *numBytes = builder.CreateMul(ConstantExpr::getSizeOf(llvmType), count);
+    return builder.CreateBitCast(builder.CreateCall(allocFn, numBytes), llvmType);
+  }
 }
 
-llvm::Value *BuiltinRealization::call(std::vector<llvm::Value *> args,
-                                      IRBuilder<> &builder) {
-  // TODO
-  return nullptr;
+Value *TypeRealization::alloc(llvm::IRBuilder<> &builder, bool stack) const {
+  return alloc(ConstantInt::get(seqIntLLVM(builder.getContext()), 1), builder, stack);
 }
 
 void Context::registerType(std::shared_ptr<types::Type> sirType,
@@ -145,6 +135,17 @@ Context::getTypeRealization(std::shared_ptr<types::Type> sirType) {
   if (typeRealizations.find(id) == typeRealizations.end())
     return nullptr;
   return typeRealizations[id];
+}
+
+void Context::stubBuiltin(std::shared_ptr<Func> sirFunc,
+                          std::shared_ptr<BuiltinStub> stub) {
+  builtinStubs[sirFunc->getMagicName()] = std::move(stub);
+}
+
+std::shared_ptr<BuiltinStub> Context::getBuiltinStub(const std::string &name) {
+  if (builtinStubs.find(name) == builtinStubs.end())
+    return nullptr;
+  return builtinStubs[name];
 }
 
 void Context::registerTryCatch(std::shared_ptr<TryCatch> tc,
@@ -260,16 +261,11 @@ void Context::initTypeRealizations() {
          }},
     };
 
-    TypeRealization::ReverseMagicStubs reverseMagicStubs = {
-        {"__eq__", cast<Function>(module->getOrInsertFunction(
-                       "seq.str.__eq__", IntegerType::getInt8Ty(module->getContext()),
-                       strType, strType))}};
     TypeRealization::Fields fields = {{"len", 0}, {"ptr", 1}};
     registerType(types::kStringType,
                  std::make_shared<TypeRealization>(
                      types::kStringType, strType, dfltBuilder, inlineMagicFuncs,
-                     "__new__[Pointer[byte], int]", nonInlineMagicFuncs,
-                     reverseMagicStubs, fields));
+                     "__new__[Pointer[byte], int]", nonInlineMagicFuncs, fields));
   }
   {
     auto dfltBuilder = [boolType](IRBuilder<> &) -> Value * {
@@ -822,11 +818,8 @@ Value *Context::codegenStr(Value *self, const std::string &name,
   auto strTypeRealization = getTypeRealization(types::kStringType);
   Value *nameVal = strTypeRealization->makeNew({len, str}, builder);
 
-  return getBuiltin("_raw_type_str")->call({ptr, nameVal}, builder);
-}
-
-std::shared_ptr<BuiltinRealization> Context::getBuiltin(const std::string &name) {
-  return std::shared_ptr<BuiltinRealization>();
+  auto *fn = getBuiltinStub("_raw_type_str")->func;
+  return builder.CreateCall(fn, {ptr, nameVal});
 }
 
 } // namespace codegen
