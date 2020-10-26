@@ -24,6 +24,8 @@ TypePtr Type::follow() { return shared_from_this(); }
 StaticType::StaticType(const std::vector<Generic> &ex, std::unique_ptr<Expr> &&e)
     : explicits(ex), expr(move(e)) {}
 
+StaticType::StaticType(int i) { expr = std::make_unique<IntExpr>(i); }
+
 string StaticType::toString(bool reduced) const {
   vector<string> s;
   for (auto &e : explicits)
@@ -289,6 +291,11 @@ int ClassType::unify(TypePtr typ, Unification &us) {
     if (isRecord() != t->isRecord())
       return -1;
 
+    if (name == ".int" && t->name == ".Int")
+      return t->explicits[0].type->unify(make_shared<StaticType>(64), us);
+    if (t->name == ".int" && name == ".Int")
+      return explicits[0].type->unify(make_shared<StaticType>(64), us);
+
     if (args.size() != t->args.size())
       return -1;
     int s1 = 0, s;
@@ -402,7 +409,20 @@ FuncType::FuncType(const string &name, ClassTypePtr funcClass,
     : explicits(explicits), parent(parent), funcClass(funcClass), name(name),
       args(args) {}
 
-int FuncType::unify(TypePtr typ, Unification &us) { return getClass()->unify(typ, us); }
+int FuncType::unify(TypePtr typ, Unification &us) {
+  int s1 = 0, s = 0;
+  if (auto t = typ->getFunc()) {
+    if (explicits.size() != t->explicits.size())
+      return -1;
+    for (int i = 0; i < explicits.size(); i++) {
+      if ((s = explicits[i].type->unify(t->explicits[i].type, us)) == -1)
+        return -1;
+      s1 += s;
+    }
+    // TODO : parent?
+  }
+  return s1 + getClass()->unify(typ, us);
+}
 
 string FuncType::realizeString() const {
   vector<string> gs;
