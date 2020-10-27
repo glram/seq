@@ -104,10 +104,10 @@ std::string RecordType::textRepresentation() const {
 }
 
 RecordType::RecordType(std::string name, std::vector<std::shared_ptr<Type>> mTypes)
-    : RecordType(std::move(name), std::move(mTypes), {}) {
+    : RecordType(std::move(name), mTypes, {}) {
   std::vector<std::string> names(mTypes.size());
   for (int i = 0; i < mTypes.size(); ++i) {
-    names[i] = std::to_string(i);
+    names[i] = std::to_string(i + 1);
   }
   memberNames = std::move(names);
 }

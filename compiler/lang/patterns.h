@@ -110,7 +110,7 @@ public:
 
 class SeqPattern : public Pattern {
   std::string pattern;
-  unsigned k;  // k-mer length if matching k-mers, else 0
+  unsigned k; // k-mer length if matching k-mers, else 0
 
 public:
   explicit SeqPattern(std::string pattern, unsigned k = 0);

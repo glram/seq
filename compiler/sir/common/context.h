@@ -14,6 +14,7 @@ public:
   template <typename... Args> void pushFrame(Args... args) {
     frames.emplace_back(args...);
   }
+  std::vector<Frame> &getFrames() { return frames; }
   Frame &getFrame() { return frames.back(); }
   void popFrame() { return frames.pop_back(); }
 };

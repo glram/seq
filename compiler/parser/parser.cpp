@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "lang/seq.h"
@@ -14,6 +15,7 @@
 #include "parser/parser.h"
 #include "util/fmt/format.h"
 
+#include "sir/codegen/util.h"
 #include "sir/module.h"
 
 using std::make_shared;
@@ -32,8 +34,9 @@ void generateDocstr(const std::string &file) {
   // ast::parse_file(file)->accept(d);
 }
 
-seq::SeqModule *parse(const std::string &argv0, const std::string &file,
-                      const string &code, bool isCode, bool isTest, int startLine) {
+std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string &file,
+                                    const string &code, bool isCode, bool isTest,
+                                    int startLine) {
   try {
     auto d = getenv("SEQ_DEBUG");
     if (d)
@@ -83,8 +86,7 @@ seq::SeqModule *parse(const std::string &argv0, const std::string &file,
     }
     __isTest = isTest;
 
-    // TODO!
-    return nullptr;
+    return module;
   } catch (seq::exc::SeqException &e) {
     if (isTest) {
       LOG("ERROR: {}", e.what());
@@ -109,21 +111,37 @@ seq::SeqModule *parse(const std::string &argv0, const std::string &file,
   }
 }
 
-void execute(seq::SeqModule *module, vector<string> args, vector<string> libs,
-             bool debug) {
-  config::config().debug = debug;
-  // try {
-  module->execute(args, libs, !__isTest);
-  // } catch (exc::SeqException &e) {
-  // compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
-  //  e.getSrcInfo().col);
-  // }
-}
+// void execute(seq::SeqModule *module, vector<string> args, vector<string> libs,
+//             bool debug) {
+//  config::config().debug = debug;
+//  // try {
+//  module->execute(args, libs, !__isTest);
+//  // } catch (exc::SeqException &e) {
+//  // compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
+//  //  e.getSrcInfo().col);
+//  // }
+//}
 
-void compile(seq::SeqModule *module, const string &out, bool debug) {
+void compile(std::shared_ptr<ir::IRModule> module, const string &out, bool debug) {
   config::config().debug = debug;
   try {
-    module->compile(out);
+    llvm::LLVMContext context;
+    auto *llvmModule = seq::ir::codegen::compile(context, module);
+    std::error_code err;
+    llvm::raw_fd_ostream stream(out, err, llvm::sys::fs::F_None);
+
+    std::cout << module->textRepresentation();
+
+#if LLVM_VERSION_MAJOR >= 7
+    WriteBitcodeToFile(*module, stream);
+#else
+    llvm::WriteBitcodeToFile(llvmModule, stream);
+#endif
+
+    if (err) {
+      std::cerr << "error: " << err.message() << std::endl;
+      exit(err.value());
+    }
   } catch (exc::SeqException &e) {
     compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
                      e.getSrcInfo().col);

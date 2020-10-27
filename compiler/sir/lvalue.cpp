@@ -28,7 +28,7 @@ void VarMemberLvalue::accept(common::IRVisitor &v) {
 }
 
 std::shared_ptr<types::Type> VarMemberLvalue::getType() {
-  return std::static_pointer_cast<types::RecordType>(var->getType())
+  return std::static_pointer_cast<types::MemberedType>(var->getType())
       ->getMemberType(field);
 }
 

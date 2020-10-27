@@ -15,24 +15,6 @@ namespace codegen {
 
 class CodegenVisitor;
 
-class LLVMOperand : public Operand {
-private:
-  std::shared_ptr<types::Type> type;
-  llvm::Value *val;
-
-public:
-  LLVMOperand(std::shared_ptr<types::Type> type, llvm::Value *val)
-      : type(std::move(type)), val(val) {}
-
-  using Operand::accept;
-  void accept(CodegenVisitor &v);
-
-  std::shared_ptr<types::Type> getType() override { return type; }
-  llvm::Value *getValue() { return val; }
-
-  std::string textRepresentation() const override { return "internal"; }
-};
-
 using InlinePatternCheckFunc = std::function<llvm::Value *(llvm::Value *)>;
 using Parent =
     common::CallbackIRVisitor<CodegenVisitor, Context, llvm::Module *,
@@ -77,7 +59,7 @@ public:
   OVERRIDE_VISIT(VarOperand);
   OVERRIDE_VISIT(VarPointerOperand);
   OVERRIDE_VISIT(LiteralOperand);
-  NORMAL_VISIT(LLVMOperand);
+  OVERRIDE_VISIT(common::LLVMOperand);
 
   OVERRIDE_VISIT(WildcardPattern);
   OVERRIDE_VISIT(BoundPattern);
@@ -100,6 +82,7 @@ public:
   OVERRIDE_VISIT(AssertTerminator);
   OVERRIDE_VISIT(FinallyTerminator);
 
+  OVERRIDE_VISIT(types::Type);
   OVERRIDE_VISIT(types::RecordType);
   OVERRIDE_VISIT(types::RefType);
   OVERRIDE_VISIT(types::FuncType);

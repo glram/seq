@@ -196,7 +196,7 @@ shared_ptr<IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmt
           ctx->getModule()->addGlobal(fn);
 
           if (in(ast->attributes, "builtin")) {
-            fn->setBuiltin(names[names.size() - 2]);
+            fn->setBuiltin(name);
           }
         }
         ctx->addFunc(f.first, ctx->functions[f.first].first);
@@ -521,11 +521,12 @@ void CodegenVisitor::visit(const AssignStmt *stmt) {
 void CodegenVisitor::visit(const AssignMemberStmt *stmt) {
   auto i = CAST(stmt->lhs, IdExpr);
   auto name = i->value;
+
   auto var = ctx->find(name, false);
   auto rhs = toRvalue(transform(stmt->rhs));
   ctx->getBlock()->add(Ns<AssignInstr>(
-      stmt->getSrcInfo(), Ns<VarMemberLvalue>(stmt->getSrcInfo(), var->getVar(), name),
-      rhs));
+      stmt->getSrcInfo(),
+      Ns<VarMemberLvalue>(stmt->getSrcInfo(), var->getVar(), stmt->member), rhs));
 }
 
 void CodegenVisitor::visit(const UpdateStmt *stmt) {

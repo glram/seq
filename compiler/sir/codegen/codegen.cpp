@@ -62,10 +62,6 @@ namespace codegen {
 
 using namespace llvm;
 
-void LLVMOperand::accept(CodegenVisitor &v) {
-  v.visit(std::static_pointer_cast<LLVMOperand>(getShared()));
-}
-
 void CodegenVisitor::visit(std::shared_ptr<IRModule> module) {
   ctx->pushFrame();
 
@@ -75,27 +71,30 @@ void CodegenVisitor::visit(std::shared_ptr<IRModule> module) {
   transform(types::kByteType);
   transform(types::kBytePointerType);
   transform(types::kStringType);
-  transform(types::kSeqType);
+  // transform(types::kSeqType);
   transform(types::kStringPointerType);
   transform(types::kStringArrayType);
-  transform(types::kNoArgVoidFuncType);
+  // transform(types::kNoArgVoidFuncType);
 
-  for (auto &g : module->getGlobals())
-    if (!g->isFunc() || std::static_pointer_cast<Func>(g)->isBuiltin()) {
+  for (auto &g : module->getGlobals()) {
+    if (g->isFunc() && std::static_pointer_cast<Func>(g)->isBuiltin()) {
       auto fn = std::static_pointer_cast<Func>(g);
 
       auto *funcPtrType = cast<PointerType>(transform(fn->getType())->llvmType);
       auto *funcType = cast<FunctionType>(funcPtrType->getElementType());
 
       auto *llvmFunc = ctx->getModule()->getOrInsertFunction(
-          fmt::format(FMT_STRING("seq.{}"), fn->getMagicName()), funcType);
+          fn->getMagicName(), funcType);
       ctx->stubBuiltin(fn, std::make_shared<BuiltinStub>(fn, cast<Function>(llvmFunc)));
+    } else if (!g->isFunc()) {
+      transform(g);
     }
+  }
+
   for (auto &g : module->getGlobals())
     transform(g);
 
   transform(module->getBase(), "seq.main");
-  ctx->popFrame();
 }
 
 void CodegenVisitor::visit(std::shared_ptr<BasicBlock> block) {
@@ -105,6 +104,11 @@ void CodegenVisitor::visit(std::shared_ptr<BasicBlock> block) {
 
   for (auto &inst : block->getInstructions())
     transform(inst);
+
+  auto term = block->getTerminator();
+  if (term) {
+    transform(term);
+  }
 }
 
 void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
@@ -282,27 +286,29 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
 
 void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   auto name = nameOverride.empty()
-                  ? (sirFunc->isBuiltin()
-                         ? fmt::format(FMT_STRING("seq.{}"), sirFunc->getMagicName())
+                  ? (sirFunc->isBuiltin() || sirFunc->isExternal()
+                         ? sirFunc->getName()
                          : getLLVMFuncName(sirFunc))
                   : nameOverride;
-  if (auto *llvmFunc = ctx->getModule()->getFunction(name)) {
-    varResult = llvmFunc;
-    return;
-  }
 
-  if (sirFunc->isExternal())
-    return;
+  if (auto *llvmFunc = ctx->getModule()->getFunction(name)) {
+    if (!sirFunc->isBuiltin() || ctx->getBuiltinStub(sirFunc->getMagicName())->doneGen) {
+      varResult = llvmFunc;
+      return;
+    } else if (sirFunc->isBuiltin()) {
+      ctx->getBuiltinStub(sirFunc->getMagicName())->doneGen = true;
+    }
+  }
 
   auto *module = ctx->getModule();
   auto isGen = sirFunc->isGenerator();
 
   auto sirFuncType = std::static_pointer_cast<types::FuncType>(sirFunc->getType());
   auto outTypeRealization =
-      isGen ? transform(sirFuncType->getRType())
-            : transform(
+      isGen ? transform(
                   std::static_pointer_cast<types::Generator>(sirFuncType->getRType())
-                      ->getBase());
+                      ->getBase())
+            : transform(sirFuncType->getRType());
 
   auto typeRealization = transform(sirFuncType);
   auto *funcPtrType = cast<PointerType>(typeRealization->llvmType);
@@ -312,7 +318,9 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   auto *func = cast<Function>(module->getOrInsertFunction(name, funcType));
   varResult = func;
 
-  if (sirFunc->isInternal()) {
+  if (sirFunc->isExternal())
+    return;
+  else if (sirFunc->isInternal()) {
     transform(sirFunc->getParentType())
         ->getMagicBuilder(getMagicSignature(sirFunc->getMagicName(),
                                             sirFuncType->getArgTypes()))(func);
@@ -352,6 +360,9 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   frame.func = func;
   frame.irFunc = sirFunc;
   frame.isGenerator = isGen;
+  frame.outReal = outTypeRealization;
+
+  auto *preamble = llvm::BasicBlock::Create(context, "preamble", func);
 
   // Stub blocks
   for (auto &b : sirFunc->getBlocks()) {
@@ -359,21 +370,21 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
     ctx->registerBlock(b, llvm::BasicBlock::Create(context, blockName, func));
   }
 
-  auto *preamble = llvm::BasicBlock::Create(context, "preamble", func);
-
   IRBuilder<> builder(preamble);
   frame.curBlock = preamble;
 
   // Register vars
-  for (auto &v : sirFunc->getVars())
-    transform(v);
+  for (auto &v : sirFunc->getVars()) {
+    transform(v)->setName(v->getName());
+  }
 
   // Register arg vars
   auto argIter = func->arg_begin();
   for (auto &a : sirFunc->getArgVars()) {
     auto *var = transform(a);
+    var->setName(a->getName());
     builder.SetInsertPoint(frame.curBlock);
-    builder.CreateStore(var, argIter++);
+    builder.CreateStore(argIter++, var);
   }
 
   auto *padType = getPadType(context);
@@ -406,6 +417,7 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   } else if (!funcType->getReturnType()->isVoidTy()) {
     builder.SetInsertPoint(frame.curBlock);
     frame.rValPtr = outTypeRealization->alloc(builder, true);
+    builder.CreateStore(outTypeRealization->getDefaultValue(builder), frame.rValPtr);
   }
 
   llvm::BasicBlock *allocBlock = nullptr;
@@ -546,7 +558,7 @@ void CodegenVisitor::visit(std::shared_ptr<MemberRvalue> memberRval) {
   auto var = transform(memberRval->getVar());
 
   IRBuilder<> builder(ctx->getFrame().curBlock);
-  rvalResult = transform(memberRval->getType())
+  rvalResult = transform(memberRval->getVar()->getType())
                    ->extractMember(var, memberRval->getField(), builder);
 }
 
@@ -645,7 +657,7 @@ void CodegenVisitor::visit(std::shared_ptr<VarLvalue> varLvalue) {
 }
 
 void CodegenVisitor::visit(std::shared_ptr<VarMemberLvalue> varMemberLvalue) {
-  auto typeRealization = transform(varMemberLvalue->getType());
+  auto typeRealization = transform(varMemberLvalue->getVar()->getType());
   auto var = transform(varMemberLvalue->getVar());
 
   IRBuilder<> builder(ctx->getFrame().curBlock);
@@ -698,33 +710,37 @@ void CodegenVisitor::visit(std::shared_ptr<LiteralOperand> literalOperand) {
     opResult = ConstantInt::get(literalType, literalOperand->getIval());
   } else if (contentType == FLOAT) {
     opResult = ConstantFP::get(literalType, literalOperand->getFval());
+  } else if (contentType == BOOL) {
+    opResult = ConstantInt::get(literalType, literalOperand->getBval());
   } else {
     assert(false);
   }
 }
 
-void CodegenVisitor::visit(std::shared_ptr<LLVMOperand> llvmOperand) {
+void CodegenVisitor::visit(std::shared_ptr<common::LLVMOperand> llvmOperand) {
   opResult = llvmOperand->getValue();
 }
 
 void CodegenVisitor::visit(std::shared_ptr<WildcardPattern> wildcardPattern) {
   auto *var = transform(wildcardPattern->getVar());
 
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    IRBuilder<> builder(ctx->getFrame().curBlock);
+    IRBuilder<> builder(codegenCtx->getFrame().curBlock);
     builder.CreateStore(val, var);
-    return ConstantInt::get(IntegerType::getInt1Ty(ctx->getLLVMContext()), 1);
+    return ConstantInt::get(IntegerType::getInt1Ty(codegenCtx->getLLVMContext()), 1);
   };
 }
 
 void CodegenVisitor::visit(std::shared_ptr<BoundPattern> boundPattern) {
   auto *var = transform(boundPattern->getVar());
 
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    IRBuilder<> builder(ctx->getFrame().curBlock);
+    IRBuilder<> builder(codegenCtx->getFrame().curBlock);
 
     builder.CreateStore(val, var);
-    return ConstantInt::get(IntegerType::getInt1Ty(ctx->getLLVMContext()), 1);
+    return ConstantInt::get(IntegerType::getInt1Ty(codegenCtx->getLLVMContext()), 1);
   };
 }
 
@@ -736,8 +752,9 @@ void CodegenVisitor::visit(std::shared_ptr<StarPattern>) {
 void CodegenVisitor::visit(std::shared_ptr<IntPattern> intPattern) {
   auto *intType = transform(types::kIntType)->llvmType;
 
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    IRBuilder<> builder(ctx->getFrame().curBlock);
+    IRBuilder<> builder(codegenCtx->getFrame().curBlock);
 
     Value *pat = ConstantInt::get(intType, intPattern->getValue());
     return builder.CreateICmpEQ(val, pat);
@@ -747,8 +764,9 @@ void CodegenVisitor::visit(std::shared_ptr<IntPattern> intPattern) {
 void CodegenVisitor::visit(std::shared_ptr<BoolPattern> boolPattern) {
   auto *boolType = transform(types::kBoolType)->llvmType;
 
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    IRBuilder<> builder(ctx->getFrame().curBlock);
+    IRBuilder<> builder(codegenCtx->getFrame().curBlock);
 
     Value *pat = ConstantInt::get(boolType, (uint64_t)boolPattern->getValue());
     return builder.CreateICmpEQ(val, pat);
@@ -758,11 +776,12 @@ void CodegenVisitor::visit(std::shared_ptr<BoolPattern> boolPattern) {
 void CodegenVisitor::visit(std::shared_ptr<StrPattern> strPattern) {
   auto typeRealization = transform(types::kStringType);
 
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    IRBuilder<> builder(ctx->getFrame().curBlock);
+    IRBuilder<> builder(codegenCtx->getFrame().curBlock);
 
-    auto &context = ctx->getLLVMContext();
-    auto *module = ctx->getModule();
+    auto &context = codegenCtx->getLLVMContext();
+    auto *module = codegenCtx->getModule();
     auto string = strPattern->getValue();
 
     auto *strVar = new GlobalVariable(
@@ -777,7 +796,8 @@ void CodegenVisitor::visit(std::shared_ptr<StrPattern> strPattern) {
     auto *compStr = typeRealization->makeNew(
         {builder.CreateBitCast(strVar, IntegerType::getInt8PtrTy(context)), len},
         builder);
-    return builder.CreateCall(ctx->getBuiltinStub("_str_eq")->func, {val, compStr});
+    return builder.CreateCall(codegenCtx->getBuiltinStub("_str_eq")->func,
+                              {val, compStr});
   };
 }
 
@@ -790,10 +810,11 @@ void CodegenVisitor::visit(std::shared_ptr<RecordPattern> recordPattern) {
   auto recordType = recordPattern->getType();
   auto recordRealization = transform(recordType);
 
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    IRBuilder<> builder(ctx->getFrame().curBlock);
+    IRBuilder<> builder(codegenCtx->getFrame().curBlock);
 
-    auto &context = ctx->getLLVMContext();
+    auto &context = codegenCtx->getLLVMContext();
     Value *result = ConstantInt::get(IntegerType::getInt1Ty(context), 1);
 
     std::vector<std::string> fields(recordRealization->fields.size());
@@ -805,7 +826,7 @@ void CodegenVisitor::visit(std::shared_ptr<RecordPattern> recordPattern) {
     for (auto &pat : recordPattern->getPatterns()) {
       auto *mem = recordRealization->extractMember(val, fields[i++], builder);
       auto *patResult = transform(pat)(mem);
-      builder.SetInsertPoint(ctx->getFrame().curBlock);
+      builder.SetInsertPoint(codegenCtx->getFrame().curBlock);
       result = builder.CreateAnd(result, patResult);
     }
     return result;
@@ -817,10 +838,11 @@ void CodegenVisitor::visit(std::shared_ptr<ArrayPattern> arrayPattern) {
   auto arrTypeRealization = transform(arrayPattern->getType());
   auto baseTypeRealization = transform(arrayType->getBase());
 
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    IRBuilder<> builder(ctx->getFrame().curBlock);
+    IRBuilder<> builder(codegenCtx->getFrame().curBlock);
 
-    auto &context = ctx->getLLVMContext();
+    auto &context = codegenCtx->getLLVMContext();
     auto *base = builder.GetInsertBlock()->getParent();
 
     auto hasStar = false;
@@ -855,7 +877,7 @@ void CodegenVisitor::visit(std::shared_ptr<ArrayPattern> arrayPattern) {
     auto *start = builder.GetInsertBlock();
     builder.CreateCondBr(lenOk, lenMatch, patternDone);
 
-    ctx->getFrame().curBlock = lenMatch;
+    codegenCtx->getFrame().curBlock = lenMatch;
     builder.SetInsertPoint(lenMatch);
 
     Value *checkResult = ConstantInt::get(IntegerType::getInt1Ty(context), 1);
@@ -867,7 +889,7 @@ void CodegenVisitor::visit(std::shared_ptr<ArrayPattern> arrayPattern) {
         auto *sub = arrTypeRealization->callMagic(getItem, {val, idx}, builder);
         auto *subRes = transform(patterns[i])(sub);
         builder.SetInsertPoint(
-            ctx->getFrame()
+            codegenCtx->getFrame()
                 .curBlock); // recall that pattern codegen can change the block
         checkResult = builder.CreateAnd(checkResult, subRes);
       }
@@ -880,7 +902,7 @@ void CodegenVisitor::visit(std::shared_ptr<ArrayPattern> arrayPattern) {
         auto *sub = arrTypeRealization->callMagic(getItem, {val, idx}, builder);
         auto *subRes = transform(patterns[i])(sub);
         builder.SetInsertPoint(
-            ctx->getFrame()
+            codegenCtx->getFrame()
                 .curBlock); // recall that pattern codegen can change the block
         checkResult = builder.CreateAnd(checkResult, subRes);
       }
@@ -890,7 +912,7 @@ void CodegenVisitor::visit(std::shared_ptr<ArrayPattern> arrayPattern) {
         auto *sub = arrTypeRealization->callMagic(getItem, {val, idx}, builder);
         auto *subRes = transform(patterns[i])(sub);
         builder.SetInsertPoint(
-            ctx->getFrame()
+            codegenCtx->getFrame()
                 .curBlock); // recall that pattern codegen can change the block
         checkResult = builder.CreateAnd(checkResult, subRes);
       }
@@ -901,7 +923,7 @@ void CodegenVisitor::visit(std::shared_ptr<ArrayPattern> arrayPattern) {
     builder.SetInsertPoint(finalBlock);
     builder.CreateBr(patternDone);
 
-    ctx->getFrame().curBlock = patternDone;
+    codegenCtx->getFrame().curBlock = patternDone;
     builder.SetInsertPoint(patternDone);
 
     auto *lenMatchResult = builder.CreatePHI(IntegerType::getInt1Ty(context), 2);
@@ -914,10 +936,11 @@ void CodegenVisitor::visit(std::shared_ptr<ArrayPattern> arrayPattern) {
 }
 
 void CodegenVisitor::visit(std::shared_ptr<RangePattern> rangePattern) {
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    IRBuilder<> builder(ctx->getFrame().curBlock);
+    IRBuilder<> builder(codegenCtx->getFrame().curBlock);
 
-    auto &context = ctx->getLLVMContext();
+    auto &context = codegenCtx->getLLVMContext();
     auto *a =
         ConstantInt::get(seqIntLLVM(context), (uint64_t)rangePattern->getLower(), true);
     auto *b = ConstantInt::get(seqIntLLVM(context), (uint64_t)rangePattern->getHigher(),
@@ -930,15 +953,16 @@ void CodegenVisitor::visit(std::shared_ptr<RangePattern> rangePattern) {
 
 void CodegenVisitor::visit(std::shared_ptr<OrPattern> orPattern) {
   auto patterns = orPattern->getPatterns();
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    IRBuilder<> builder(ctx->getFrame().curBlock);
+    IRBuilder<> builder(codegenCtx->getFrame().curBlock);
 
-    auto &context = ctx->getLLVMContext();
+    auto &context = codegenCtx->getLLVMContext();
     Value *result = ConstantInt::get(IntegerType::getInt1Ty(context), 0);
 
     for (auto &pattern : patterns) {
       auto *subRes = transform(pattern)(val);
-      builder.SetInsertPoint(ctx->getFrame().curBlock);
+      builder.SetInsertPoint(codegenCtx->getFrame().curBlock);
       result = builder.CreateOr(result, subRes);
     }
 
@@ -949,12 +973,12 @@ void CodegenVisitor::visit(std::shared_ptr<OrPattern> orPattern) {
 void CodegenVisitor::visit(std::shared_ptr<GuardedPattern> guardedPattern) {
   auto pattern = guardedPattern->getPattern();
   auto op = guardedPattern->getOperand();
-
+  auto codegenCtx = ctx;
   patResult = [=](llvm::Value *val) -> llvm::Value * {
-    LLVMContext &context = ctx->getLLVMContext();
+    LLVMContext &context = codegenCtx->getLLVMContext();
 
     auto *patternResult = transform(pattern)(val);
-    auto *startBlock = ctx->getFrame().curBlock;
+    auto *startBlock = codegenCtx->getFrame().curBlock;
     auto *block = startBlock;
 
     IRBuilder<> builder(block);
@@ -962,10 +986,10 @@ void CodegenVisitor::visit(std::shared_ptr<GuardedPattern> guardedPattern) {
                                      block->getParent()); // guard eval block
     auto *branch = builder.CreateCondBr(patternResult, block, block);
 
-    ctx->getFrame().curBlock = block;
+    codegenCtx->getFrame().curBlock = block;
     auto *guardResult = transform(op);
 
-    llvm::BasicBlock *checkBlock = ctx->getFrame().curBlock;
+    llvm::BasicBlock *checkBlock = codegenCtx->getFrame().curBlock;
     builder.SetInsertPoint(checkBlock);
     guardResult = builder.CreateTrunc(guardResult, IntegerType::getInt1Ty(context));
 
@@ -980,7 +1004,7 @@ void CodegenVisitor::visit(std::shared_ptr<GuardedPattern> guardedPattern) {
                              startBlock);              // pattern didn't match
     resultFinal->addIncoming(guardResult, checkBlock); // result of guard
 
-    ctx->getFrame().curBlock = block;
+    codegenCtx->getFrame().curBlock = block;
     return resultFinal;
   };
 }
@@ -1039,9 +1063,12 @@ void CodegenVisitor::visit(std::shared_ptr<ReturnTerminator> returnTerminator) {
 
       IRBuilder<> builder(ctx->getFrame().curBlock);
       builder.CreateRet(opVal);
-    } else {
+    } else if (ctx->getFrame().func->getReturnType()->isVoidTy()) {
       IRBuilder<> builder(ctx->getFrame().curBlock);
       builder.CreateRetVoid();
+    } else {
+      IRBuilder<> builder(ctx->getFrame().curBlock);
+      builder.CreateRet(ctx->getFrame().outReal->getDefaultValue(builder));
     }
     return;
   }
@@ -1152,9 +1179,10 @@ void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> assertTerminator) {
   auto &context = ctx->getLLVMContext();
   auto *module = ctx->getModule();
   auto *func = ctx->getFrame().func;
-  const auto test = ctx->getFrame()
-                        .curIRBlock->getAttribute<FuncAttribute>(kFuncAttribute)
-                        ->has("test");
+  auto funcAttr =
+      ctx->getFrame().curIRBlock->getAttribute<FuncAttribute>(kFuncAttribute);
+
+  const auto test = funcAttr && funcAttr->has("test");
 
   auto *check = transform(assertTerminator->getOperand());
   auto *msgVal =
@@ -1187,13 +1215,13 @@ void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> assertTerminator) {
     auto excType =
         std::static_pointer_cast<types::FuncType>(builtin->sirFunc->getType())
             ->getRType();
-    auto exc = std::make_shared<LLVMOperand>(excType, excVal);
+    auto exc = std::make_shared<common::LLVMOperand>(excType, excVal);
 
     auto term = std::make_shared<ThrowTerminator>(exc);
-    term->setAttribute(
-        kSrcInfoAttribute,
-        std::make_shared<SrcInfoAttribute>(
-            term->getAttribute<SrcInfoAttribute>(kSrcInfoAttribute)->info));
+    auto srcInfoAttr = term->getAttribute<SrcInfoAttribute>(kSrcInfoAttribute);
+    auto newSrcInfo =
+        std::make_shared<SrcInfoAttribute>(srcInfoAttr ? srcInfoAttr->info : SrcInfo());
+    term->setAttribute(kSrcInfoAttribute, newSrcInfo);
     transform(term);
   }
 }
@@ -1203,27 +1231,28 @@ void CodegenVisitor::visit(std::shared_ptr<FinallyTerminator> finallyTerminator)
   ctx->getFrame().curBlock->getInstList().push_back(meta->finallyBr);
 }
 
+void CodegenVisitor::visit(std::shared_ptr<types::Type> type) {
+  if (auto real = ctx->getTypeRealization(type)) {
+    typeResult = real;
+    return;
+  }
+  throw std::runtime_error("cannot codegen non-derived type.");
+}
+
 void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
   if (auto real = ctx->getTypeRealization(memberedType)) {
     typeResult = real;
     return;
   }
 
-  auto *llvmType = StructType::get(ctx->getLLVMContext());
-
   std::vector<Type *> body;
   std::vector<std::shared_ptr<TypeRealization>> bodyRealizations;
   for (auto &bodyType : memberedType->getMemberTypes()) {
-    if (bodyType->getId() == memberedType->getId()) {
-      body.push_back(llvmType);
-      bodyRealizations.push_back(nullptr);
-    }
     auto realization = transform(bodyType);
     bodyRealizations.push_back(realization);
     body.push_back(realization->llvmType);
   }
-
-  llvmType->setBody(body);
+  auto *llvmType = StructType::get(ctx->getLLVMContext(), body);
   llvmType->setName(memberedType->getName());
 
   auto dfltBuilder = [bodyRealizations, llvmType](IRBuilder<> &builder) -> Value * {
@@ -1258,6 +1287,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
     }
   }
 
+  auto codegenCtx = ctx;
   if (!heterogeneous) {
     nonInlineMagicFuncs[getMagicSignature(
         "__getitem__", {memberedType, types::kIntType})] = [=](Function *func) {
@@ -1268,7 +1298,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
       Value *self = iter++;
       Value *idx = iter;
       llvm::BasicBlock *entry =
-          llvm::BasicBlock::Create(ctx->getLLVMContext(), "entry", func);
+          llvm::BasicBlock::Create(codegenCtx->getLLVMContext(), "entry", func);
 
       IRBuilder<> b(entry);
       b.SetInsertPoint(entry);
@@ -1316,7 +1346,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::RefType> refType) {
        [contentsRealization, refType, llvmType](std::vector<Value *>,
                                                 IRBuilder<> &builder) -> Value * {
          assert(refType->getContents());
-         auto *self = contentsRealization->alloc(nullptr, builder, false);
+         auto *self = contentsRealization->alloc(builder, false);
          self = builder.CreateBitCast(self, llvmType);
          return self;
        }},
@@ -1330,30 +1360,29 @@ void CodegenVisitor::visit(std::shared_ptr<types::RefType> refType) {
   auto fieldIndex = 0;
   for (auto &name : refType->getMemberNames()) {
     fields[name] = fieldIndex;
-    customGetters[name] = [fieldIndex](llvm::Value *refVal,
-                                       llvm::IRBuilder<> &builder) -> Value * {
+    customGetters[name] = [fieldIndex,
+                           contentsRealization](llvm::Value *refVal,
+                                                llvm::IRBuilder<> &builder) -> Value * {
+      refVal =
+          builder.CreateBitCast(refVal, contentsRealization->llvmType->getPointerTo());
       return builder.CreateExtractValue(builder.CreateLoad(refVal), fieldIndex);
     };
     ++fieldIndex;
   }
 
   TypeRealization::MemberPointerFunc memberPointerFunc =
-      [](llvm::Value *ptr, int field, llvm::IRBuilder<> &builder) -> llvm::Value * {
-    return builder.CreateGEP(builder.CreateLoad(ptr),
-                             ConstantInt::get(builder.getInt8Ty(), field));
-  };
-
-  TypeRealization::CustomLoader loader =
-      [contentsRealization](llvm::Value *ptr,
+      [contentsRealization](llvm::Value *ptr, int field,
                             llvm::IRBuilder<> &builder) -> llvm::Value * {
-    return builder.CreateBitCast(builder.CreateLoad(ptr),
-                                 contentsRealization->llvmType->getPointerTo());
+    ptr = builder.CreateBitCast(builder.CreateLoad(ptr),
+                                contentsRealization->llvmType->getPointerTo());
+    return builder.CreateBitCast(
+        builder.CreateGEP(ptr, ConstantInt::get(builder.getInt8Ty(), field)),
+        contentsRealization->llvmType->getContainedType(field)->getPointerTo());
   };
 
   auto typeRealization = std::make_shared<TypeRealization>(
       refType, llvmType, dfltBuilder, inlineMagics, newSig,
-      TypeRealization::NonInlineMagics(), fields, customGetters, memberPointerFunc,
-      loader);
+      TypeRealization::NonInlineMagics(), fields, customGetters, memberPointerFunc);
   ctx->registerType(refType, typeRealization);
   typeResult = typeRealization;
 }
@@ -1380,6 +1409,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::FuncType> funcType) {
   auto callArgs = funcType->getArgTypes();
   callArgs.insert(callArgs.begin(), funcType);
 
+  auto codegenCtx = ctx;
   auto newSig = "__new__[Pointer[byte]]";
   TypeRealization::InlineMagics inlineMagicFuncs = {
       {newSig,
@@ -1388,7 +1418,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::FuncType> funcType) {
        }},
       {getMagicSignature("__str__", {funcType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return ctx->codegenStr(args[0], "generator", builder.GetInsertBlock());
+         return codegenCtx->codegenStr(args[0], "generator", builder.GetInsertBlock());
        }},
       {getMagicSignature("__call__", callArgs),
        [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
@@ -1454,13 +1484,15 @@ void CodegenVisitor::visit(std::shared_ptr<types::Optional> optType) {
                        : StructType::get(IntegerType::getInt1Ty(ctx->getLLVMContext()),
                                          baseRealization->llvmType);
 
+  auto codegenCtx = ctx;
   auto dfltBuilder = [=](IRBuilder<> &builder) -> Value * {
     if (baseType->isRef()) {
       return ConstantPointerNull::get(cast<PointerType>(llvmType));
     } else {
       Value *self = UndefValue::get(llvmType);
       self = builder.CreateInsertValue(
-          self, ConstantInt::get(IntegerType::getInt1Ty(ctx->getLLVMContext()), 0), 0);
+          self,
+          ConstantInt::get(IntegerType::getInt1Ty(codegenCtx->getLLVMContext()), 0), 0);
       return self;
     }
   };
@@ -1474,7 +1506,9 @@ void CodegenVisitor::visit(std::shared_ptr<types::Optional> optType) {
          else {
            Value *self = UndefValue::get(llvmType);
            self = builder.CreateInsertValue(
-               self, ConstantInt::get(IntegerType::getInt1Ty(ctx->getLLVMContext()), 1),
+               self,
+               ConstantInt::get(IntegerType::getInt1Ty(codegenCtx->getLLVMContext()),
+                                1),
                0);
            self = builder.CreateInsertValue(self, args[0], 1);
            return self;
@@ -1491,8 +1525,8 @@ void CodegenVisitor::visit(std::shared_ptr<types::Optional> optType) {
                args[0], ConstantPointerNull::get(cast<PointerType>(llvmType)));
          } else {
            return builder.CreateZExt(
-               builder.CreateExtractValue(args[0], 1),
-               ctx->getTypeRealization(types::kBoolType)->llvmType);
+               builder.CreateExtractValue(args[0], 0),
+               codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
          }
        }},
       {getMagicSignature("__invert__", {optType}),
@@ -1535,9 +1569,9 @@ void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
 
   auto *llvmType = StructType::get(seqIntLLVM(ctx->getLLVMContext()),
                                    PointerType::get(baseLLVMType, 0));
-
+  auto codegenCtx = ctx;
   auto dfltBuilder = [=](IRBuilder<> &builder) -> Value * {
-    auto &context = ctx->getLLVMContext();
+    auto &context = codegenCtx->getLLVMContext();
     Value *self = UndefValue::get(llvmType);
     self = builder.CreateInsertValue(self, zeroLLVM(context), 0);
     self = builder.CreateInsertValue(
@@ -1554,8 +1588,8 @@ void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
                                        IRBuilder<> &builder) -> Value * {
          auto *ptr = baseTypeRealization->alloc(args[0], builder, false);
          Value *self = UndefValue::get(llvmType);
-         self = builder.CreateInsertValue(self, args[0], 1);
-         self = builder.CreateInsertValue(self, ptr, 0);
+         self = builder.CreateInsertValue(self, args[0], 0);
+         self = builder.CreateInsertValue(self, ptr, 1);
          return self;
        }},
       {newSig,
@@ -1566,7 +1600,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
          return self;
        }},
       {getMagicSignature("__copy__", {arrayType}),
-       [llvmType, baseTypeRealization, baseLLVMType](std::vector<Value *> args,
+       [llvmType, baseTypeRealization, baseLLVMType, codegenCtx](std::vector<Value *> args,
                                                      IRBuilder<> &builder) -> Value * {
          Value *len = builder.CreateExtractValue(args[0], 0);
          Value *otherPtr = builder.CreateExtractValue(args[0], 1);
@@ -1577,8 +1611,9 @@ void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
          self = builder.CreateInsertValue(self, len, 0);
          self = builder.CreateInsertValue(self, ptr, 1);
 
-         auto *bytes = builder.CreateMul(len, ConstantExpr::getSizeOf(baseLLVMType));
-         makeMemCpy(ptr, otherPtr, bytes, builder.GetInsertBlock());
+         auto size = codegenCtx->getModule()->getDataLayout().getTypeAllocSize(llvmType);
+         auto *numBytes = builder.CreateMul(ConstantInt::get(seqIntLLVM(codegenCtx->getLLVMContext()), size), len);
+         makeMemCpy(ptr, otherPtr, numBytes, builder.GetInsertBlock());
 
          return self;
        }},
@@ -1589,9 +1624,10 @@ void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
       {getMagicSignature("__bool__", {arrayType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          Value *len = builder.CreateExtractValue(args[0], 0);
-         Value *zero = ConstantInt::get(seqIntLLVM(ctx->getLLVMContext()), 0);
-         return builder.CreateZExt(builder.CreateICmpNE(len, zero),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
+         Value *zero = ConstantInt::get(seqIntLLVM(codegenCtx->getLLVMContext()), 0);
+         return builder.CreateZExt(
+             builder.CreateICmpNE(len, zero),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("__getitem__", {arrayType, types::kIntType}),
        [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
@@ -1669,16 +1705,17 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
     return ConstantPointerNull::get(llvmType);
   };
   auto newSig = "__new__[Pointer[byte]]";
-
+  auto codegenCtx = ctx;
   TypeRealization::InlineMagics inlineMagics = {
       {getMagicSignature("__elemsize__", {}),
-       [baseLLVMType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return ConstantExpr::getSizeOf(baseLLVMType);
+       [baseLLVMType, codegenCtx](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         return ConstantInt::get(seqIntLLVM(codegenCtx->getLLVMContext()), codegenCtx->getModule()->getDataLayout().getTypeAllocSize(baseLLVMType));
        }},
       {getMagicSignature("__atomic__", {}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return ConstantInt::get(ctx->getTypeRealization(types::kBoolType)->llvmType,
-                                 baseType->isAtomic() ? 1 : 0);
+         return ConstantInt::get(
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType,
+             baseType->isAtomic() ? 1 : 0);
        }},
       {getMagicSignature("__new__", {}),
        [dfltBuilder](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
@@ -1697,14 +1734,16 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
        }},
       {getMagicSignature("__int__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return builder.CreatePtrToInt(args[0], seqIntLLVM(ctx->getLLVMContext()));
+         return builder.CreatePtrToInt(args[0],
+                                       seqIntLLVM(codegenCtx->getLLVMContext()));
        }},
       {getMagicSignature("__copy__", {pointerType}),
        [](std::vector<Value *> args, IRBuilder<> &) -> Value * { return args[0]; }},
       {getMagicSignature("__bool__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return builder.CreateZExt(builder.CreateIsNotNull(args[0]),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
+         return builder.CreateZExt(
+             builder.CreateIsNotNull(args[0]),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("__getitem__", {pointerType, types::kIntType}),
        [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
@@ -1727,42 +1766,39 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
        }},
       {getMagicSignature("__eq__", {pointerType, pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return builder.CreateZExt(builder.CreateICmpEQ(args[0], args[1]),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
+         return builder.CreateZExt(
+             builder.CreateICmpEQ(args[0], args[1]),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("__ne__", {pointerType, pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return builder.CreateZExt(builder.CreateICmpNE(args[0], args[1]),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
+         return builder.CreateZExt(
+             builder.CreateICmpNE(args[0], args[1]),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("__lt__", {pointerType, pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return builder.CreateZExt(builder.CreateICmpSLT(args[0], args[1]),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
+         return builder.CreateZExt(
+             builder.CreateICmpSLT(args[0], args[1]),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("__gt__", {pointerType, pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return builder.CreateZExt(builder.CreateICmpSGT(args[0], args[1]),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
+         return builder.CreateZExt(
+             builder.CreateICmpSGT(args[0], args[1]),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("__le__", {pointerType, pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return builder.CreateZExt(builder.CreateICmpSLE(args[0], args[1]),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
+         return builder.CreateZExt(
+             builder.CreateICmpSLE(args[0], args[1]),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("__ge__", {pointerType, pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return builder.CreateZExt(builder.CreateICmpSGE(args[0], args[1]),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
-       }},
-      {getMagicSignature("__prefetch_r0__", {pointerType}),
-       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
-         Function *prefetch =
-             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
-         builder.CreateCall(prefetch, {self, builder.getInt32(0), builder.getInt32(0),
-                                       builder.getInt32(1)});
-         return nullptr;
+         return builder.CreateZExt(
+             builder.CreateICmpSGE(args[0], args[1]),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
 
       /*
@@ -1770,11 +1806,20 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
        * locality. Instruction cache prefetch is not supported.
        * https://llvm.org/docs/LangRef.html#llvm-prefetch-intrinsic
        */
+      {getMagicSignature("__prefetch_r0__", {pointerType}),
+       [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+         auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
+         Function *prefetch =
+             Intrinsic::getDeclaration(codegenCtx->getModule(), Intrinsic::prefetch);
+         builder.CreateCall(prefetch, {self, builder.getInt32(0), builder.getInt32(0),
+                                       builder.getInt32(1)});
+         return nullptr;
+       }},
       {getMagicSignature("__prefetch_r1__", {pointerType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
          Function *prefetch =
-             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+             Intrinsic::getDeclaration(codegenCtx->getModule(), Intrinsic::prefetch);
          builder.CreateCall(prefetch, {self, builder.getInt32(0), builder.getInt32(1),
                                        builder.getInt32(1)});
          return nullptr;
@@ -1783,7 +1828,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
          Function *prefetch =
-             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+             Intrinsic::getDeclaration(codegenCtx->getModule(), Intrinsic::prefetch);
          builder.CreateCall(prefetch, {self, builder.getInt32(0), builder.getInt32(2),
                                        builder.getInt32(1)});
          return nullptr;
@@ -1792,7 +1837,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
          Function *prefetch =
-             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+             Intrinsic::getDeclaration(codegenCtx->getModule(), Intrinsic::prefetch);
          builder.CreateCall(prefetch, {self, builder.getInt32(0), builder.getInt32(3),
                                        builder.getInt32(1)});
          return nullptr;
@@ -1801,7 +1846,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
          Function *prefetch =
-             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+             Intrinsic::getDeclaration(codegenCtx->getModule(), Intrinsic::prefetch);
          builder.CreateCall(prefetch, {self, builder.getInt32(1), builder.getInt32(0),
                                        builder.getInt32(1)});
          return nullptr;
@@ -1810,7 +1855,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
          Function *prefetch =
-             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+             Intrinsic::getDeclaration(codegenCtx->getModule(), Intrinsic::prefetch);
          builder.CreateCall(prefetch, {self, builder.getInt32(1), builder.getInt32(1),
                                        builder.getInt32(1)});
          return nullptr;
@@ -1819,7 +1864,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
          Function *prefetch =
-             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+             Intrinsic::getDeclaration(codegenCtx->getModule(), Intrinsic::prefetch);
          builder.CreateCall(prefetch, {self, builder.getInt32(1), builder.getInt32(2),
                                        builder.getInt32(1)});
          return nullptr;
@@ -1828,7 +1873,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          auto *self = builder.CreateBitCast(args[0], builder.getInt8PtrTy());
          Function *prefetch =
-             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::prefetch);
+             Intrinsic::getDeclaration(codegenCtx->getModule(), Intrinsic::prefetch);
          builder.CreateCall(prefetch, {self, builder.getInt32(1), builder.getInt32(3),
                                        builder.getInt32(1)});
          return nullptr;
@@ -1855,7 +1900,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Generator> genType) {
   auto dfltBuilder = [llvmType](IRBuilder<> &builder) -> Value * {
     return ConstantPointerNull::get(llvmType);
   };
-
+  auto codegenCtx = ctx;
   TypeRealization::InlineMagics inlineMagics = {
       {getMagicSignature("__iter__", {genType}),
        [](std::vector<Value *> args, IRBuilder<> &) -> Value * { return args[0]; }},
@@ -1863,14 +1908,16 @@ void CodegenVisitor::visit(std::shared_ptr<types::Generator> genType) {
        [](std::vector<Value *> args, IRBuilder<> &) -> Value * { return args[0]; }},
       {getMagicSignature("__done__", {genType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return builder.CreateZExt(generatorDone(args[0], builder.GetInsertBlock()),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
+         return builder.CreateZExt(
+             generatorDone(args[0], builder.GetInsertBlock()),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("done", {genType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          generatorResume(args[0], builder.GetInsertBlock(), nullptr, nullptr);
-         return builder.CreateZExt(generatorDone(args[0], builder.GetInsertBlock()),
-                                   ctx->getTypeRealization(types::kBoolType)->llvmType);
+         return builder.CreateZExt(
+             generatorDone(args[0], builder.GetInsertBlock()),
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("__promise__", {genType}),
        [baseLLVMType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
@@ -1889,7 +1936,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Generator> genType) {
        }},
       {getMagicSignature("__str__", {genType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         return ctx->codegenStr(args[0], "generator", builder.GetInsertBlock());
+         return codegenCtx->codegenStr(args[0], "generator", builder.GetInsertBlock());
        }},
       {getMagicSignature("destroy", {genType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
@@ -1902,11 +1949,12 @@ void CodegenVisitor::visit(std::shared_ptr<types::Generator> genType) {
       {getMagicSignature("next", {genType}), [=](Function *func) {
          func->setLinkage(GlobalValue::PrivateLinkage);
          func->setDoesNotThrow();
-         func->setPersonalityFn(makePersonalityFunc(ctx->getModule()));
+         func->setPersonalityFn(makePersonalityFunc(codegenCtx->getModule()));
          func->addFnAttr(llvm::Attribute::AlwaysInline);
 
          Value *arg = func->arg_begin();
-         auto *entry = llvm::BasicBlock::Create(ctx->getLLVMContext(), "entry", func);
+         auto *entry =
+             llvm::BasicBlock::Create(codegenCtx->getLLVMContext(), "entry", func);
          auto *val = generatorPromise(arg, entry, baseLLVMType);
          IRBuilder<> builder(entry);
          builder.CreateRet(val);
@@ -1930,6 +1978,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::IntNType> intNType) {
   };
 
   auto newSig = "__new__[int]";
+  auto codegenCtx = ctx;
   TypeRealization::InlineMagics inlineMagicFuncs = {
       {"__new__[]",
        [dfltBuilder](std::vector<Value *>, IRBuilder<> &builder) -> Value * {
@@ -1949,25 +1998,27 @@ void CodegenVisitor::visit(std::shared_ptr<types::IntNType> intNType) {
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          return intNType->isSigned()
                     ? builder.CreateSExtOrTrunc(
-                          args[0], ctx->getTypeRealization(types::kIntType)->llvmType)
+                          args[0],
+                          codegenCtx->getTypeRealization(types::kIntType)->llvmType)
                     : builder.CreateZExtOrTrunc(
-                          args[0], ctx->getTypeRealization(types::kIntType)->llvmType);
+                          args[0],
+                          codegenCtx->getTypeRealization(types::kIntType)->llvmType);
        }},
       {getMagicSignature("__copy__", {intNType}),
        [](std::vector<Value *> args, IRBuilder<> &) -> Value * { return args[0]; }},
       {getMagicSignature("__hash__", {intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          return intNType->isSigned()
-                    ? builder.CreateSExtOrTrunc(args[0],
-                                                seqIntLLVM(ctx->getLLVMContext()))
-                    : builder.CreateZExtOrTrunc(args[0],
-                                                seqIntLLVM(ctx->getLLVMContext()));
+                    ? builder.CreateSExtOrTrunc(
+                          args[0], seqIntLLVM(codegenCtx->getLLVMContext()))
+                    : builder.CreateZExtOrTrunc(
+                          args[0], seqIntLLVM(codegenCtx->getLLVMContext()));
        }},
       {getMagicSignature("__bool__", {intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
          return builder.CreateZExt(
              builder.CreateICmpEQ(args[0], ConstantInt::get(llvmType, 0)),
-             ctx->getTypeRealization(types::kBoolType)->llvmType);
+             codegenCtx->getTypeRealization(types::kBoolType)->llvmType);
        }},
       {getMagicSignature("__pos__", {intNType}),
        [](std::vector<Value *> args, IRBuilder<> &) -> Value * { return args[0]; }},
@@ -1994,7 +2045,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::IntNType> intNType) {
        }},
       {getMagicSignature("__truediv__", {intNType, intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *floatType = ctx->getTypeRealization(types::kFloatType)->llvmType;
+         auto *floatType = codegenCtx->getTypeRealization(types::kFloatType)->llvmType;
 
          args[0] = intNType->isSigned() ? builder.CreateSIToFP(args[0], floatType)
                                         : builder.CreateUIToFP(args[0], floatType);
@@ -2021,38 +2072,38 @@ void CodegenVisitor::visit(std::shared_ptr<types::IntNType> intNType) {
        }},
       {getMagicSignature("__eq__", {intNType, intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *boolType = ctx->getTypeRealization(types::kBoolType)->llvmType;
+         auto *boolType = codegenCtx->getTypeRealization(types::kBoolType)->llvmType;
          return builder.CreateZExt(builder.CreateICmpEQ(args[0], args[1]), boolType);
        }},
       {getMagicSignature("__ne__", {intNType, intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *boolType = ctx->getTypeRealization(types::kBoolType)->llvmType;
+         auto *boolType = codegenCtx->getTypeRealization(types::kBoolType)->llvmType;
          return builder.CreateZExt(builder.CreateICmpNE(args[0], args[1]), boolType);
        }},
       {getMagicSignature("__lt__", {intNType, intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *boolType = ctx->getTypeRealization(types::kBoolType)->llvmType;
+         auto *boolType = codegenCtx->getTypeRealization(types::kBoolType)->llvmType;
          auto *value = intNType->isSigned() ? builder.CreateICmpSLT(args[0], args[1])
                                             : builder.CreateICmpULT(args[0], args[1]);
          return builder.CreateZExt(value, boolType);
        }},
       {getMagicSignature("__gt__", {intNType, intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *boolType = ctx->getTypeRealization(types::kBoolType)->llvmType;
+         auto *boolType = codegenCtx->getTypeRealization(types::kBoolType)->llvmType;
          auto *value = intNType->isSigned() ? builder.CreateICmpSGT(args[0], args[1])
                                             : builder.CreateICmpUGT(args[0], args[1]);
          return builder.CreateZExt(value, boolType);
        }},
       {getMagicSignature("__le__", {intNType, intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *boolType = ctx->getTypeRealization(types::kBoolType)->llvmType;
+         auto *boolType = codegenCtx->getTypeRealization(types::kBoolType)->llvmType;
          auto *value = intNType->isSigned() ? builder.CreateICmpSLE(args[0], args[1])
                                             : builder.CreateICmpULE(args[0], args[1]);
          return builder.CreateZExt(value, boolType);
        }},
       {getMagicSignature("__ge__", {intNType, intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *boolType = ctx->getTypeRealization(types::kBoolType)->llvmType;
+         auto *boolType = codegenCtx->getTypeRealization(types::kBoolType)->llvmType;
          auto *value = intNType->isSigned() ? builder.CreateICmpSLE(args[0], args[1])
                                             : builder.CreateICmpULE(args[0], args[1]);
          return builder.CreateZExt(value, boolType);
@@ -2071,41 +2122,42 @@ void CodegenVisitor::visit(std::shared_ptr<types::IntNType> intNType) {
        }},
       {fmt::format(FMT_STRING("__pickle__[{}, Pointer[byte]]"), intNType->getName()),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *gzWrite = cast<Function>(ctx->getModule()->getOrInsertFunction(
-             "gzwrite", IntegerType::getInt32Ty(ctx->getLLVMContext()),
-             IntegerType::getInt8PtrTy(ctx->getLLVMContext()),
-             IntegerType::getInt8PtrTy(ctx->getLLVMContext()),
-             IntegerType::getInt32Ty(ctx->getLLVMContext())));
+         auto *gzWrite = cast<Function>(codegenCtx->getModule()->getOrInsertFunction(
+             "gzwrite", IntegerType::getInt32Ty(codegenCtx->getLLVMContext()),
+             IntegerType::getInt8PtrTy(codegenCtx->getLLVMContext()),
+             IntegerType::getInt8PtrTy(codegenCtx->getLLVMContext()),
+             IntegerType::getInt32Ty(codegenCtx->getLLVMContext())));
          gzWrite->setDoesNotThrow();
          Value *buf = builder.CreateAlloca(llvmType);
          builder.CreateStore(args[0], buf);
          Value *ptr = builder.CreateBitCast(
-             buf, IntegerType::getInt8PtrTy(ctx->getLLVMContext()));
-         Value *size = ConstantExpr::getSizeOf(llvmType);
+             buf, IntegerType::getInt8PtrTy(codegenCtx->getLLVMContext()));
+         Value *size = ConstantInt::get(seqIntLLVM(codegenCtx->getLLVMContext()), codegenCtx->getModule()->getDataLayout().getTypeAllocSize(llvmType));
          builder.CreateCall(gzWrite, {args[1], ptr, size});
          return nullptr;
        }},
       {"__unpickle__[Pointer[byte]]",
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         auto *gzRead = cast<Function>(ctx->getModule()->getOrInsertFunction(
-             "gzread", IntegerType::getInt32Ty(ctx->getLLVMContext()),
-             IntegerType::getInt8PtrTy(ctx->getLLVMContext()),
-             IntegerType::getInt8PtrTy(ctx->getLLVMContext()),
-             IntegerType::getInt32Ty(ctx->getLLVMContext())));
+         auto *gzRead = cast<Function>(codegenCtx->getModule()->getOrInsertFunction(
+             "gzread", IntegerType::getInt32Ty(codegenCtx->getLLVMContext()),
+             IntegerType::getInt8PtrTy(codegenCtx->getLLVMContext()),
+             IntegerType::getInt8PtrTy(codegenCtx->getLLVMContext()),
+             IntegerType::getInt32Ty(codegenCtx->getLLVMContext())));
          gzRead->setDoesNotThrow();
          Value *buf = builder.CreateAlloca(llvmType);
          Value *ptr = builder.CreateBitCast(
-             buf, IntegerType::getInt8PtrTy(ctx->getLLVMContext()));
-         Value *size = ConstantExpr::getSizeOf(llvmType);
+             buf, IntegerType::getInt8PtrTy(codegenCtx->getLLVMContext()));
+         Value *size = ConstantInt::get(seqIntLLVM(codegenCtx->getLLVMContext()), codegenCtx->getModule()->getDataLayout().getTypeAllocSize(llvmType));
          builder.CreateCall(gzRead, {args[0], ptr, size});
          return builder.CreateLoad(buf);
        }},
       {getMagicSignature("popcnt", {intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         Function *popcnt =
-             Intrinsic::getDeclaration(ctx->getModule(), Intrinsic::ctpop, {llvmType});
+         Function *popcnt = Intrinsic::getDeclaration(codegenCtx->getModule(),
+                                                      Intrinsic::ctpop, {llvmType});
          Value *count = builder.CreateCall(args[0]);
-         return builder.CreateZExtOrTrunc(count, seqIntLLVM(ctx->getLLVMContext()));
+         return builder.CreateZExtOrTrunc(count,
+                                          seqIntLLVM(codegenCtx->getLLVMContext()));
        }},
   };
 
@@ -2117,7 +2169,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::IntNType> intNType) {
         [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
       auto *self = typeRealization->callMagic(getMagicSignature("__int__", {intNType}),
                                               {args[0]}, builder);
-      return ctx->getTypeRealization(types::kIntType)
+      return codegenCtx->getTypeRealization(types::kIntType)
           ->callMagic("__str__[int]", {self}, builder);
     };
   }

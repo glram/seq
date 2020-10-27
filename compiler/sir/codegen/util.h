@@ -45,7 +45,7 @@ llvm::StructType *getTypeInfoType(llvm::LLVMContext &ctx);
 llvm::StructType *getPadType(llvm::LLVMContext &ctx);
 llvm::StructType *getExcType(llvm::LLVMContext &ctx);
 
-llvm::Module *compile(std::shared_ptr<IRModule> module);
+llvm::Module *compile(llvm::LLVMContext &context, std::shared_ptr<IRModule> module);
 
 } // namespace codegen
 } // namespace ir

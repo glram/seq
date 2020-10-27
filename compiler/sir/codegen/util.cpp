@@ -68,7 +68,8 @@ Function *makeCanonicalMainFunc(Function *realMain,
   auto *str = strReal->makeNew({arg, argLen}, builder);
   Value *idx = builder.CreateZExt(control, seqIntLLVM(context));
   arrReal->callMagic(codegen::getMagicSignature(
-                         "__setitem__", {ir::types::kIntType, ir::types::kStringType}),
+                         "__setitem__", {ir::types::kStringArrayType,
+                                         ir::types::kIntType, ir::types::kStringType}),
                      {arr, idx, str}, builder);
   builder.CreateBr(loop);
 
@@ -78,9 +79,9 @@ Function *makeCanonicalMainFunc(Function *realMain,
   auto *exit = llvm::BasicBlock::Create(context, "exit", func);
   branch->setSuccessor(1, exit);
 
+  builder.SetInsertPoint(exit);
   auto *argVar = ctx->getVar(irModule->getArgVar());
   builder.CreateStore(arr, argVar);
-  builder.SetInsertPoint(exit);
 
   auto *initFunc =
       cast<Function>(module->getOrInsertFunction("seq_init", Type::getVoidTy(context)));
@@ -319,8 +320,7 @@ llvm::StructType *getExcType(LLVMContext &ctx) {
   return StructType::get(getTypeInfoType(ctx), IntegerType::getInt8PtrTy(ctx));
 }
 
-llvm::Module *compile(std::shared_ptr<IRModule> module) {
-  LLVMContext context;
+llvm::Module *compile(LLVMContext &context, std::shared_ptr<IRModule> module) {
   auto *llvmModule = new Module(module->getName(), context);
   auto codegenCtx = std::make_shared<Context>(llvmModule);
 
@@ -330,10 +330,10 @@ llvm::Module *compile(std::shared_ptr<IRModule> module) {
   auto *realMain = llvmModule->getFunction("seq.main");
   auto *main = makeCanonicalMainFunc(realMain, codegenCtx, module);
   verifyModuleFailFast(*llvmModule);
-  optimizeModule(llvmModule);
+//  optimizeModule(llvmModule);
   applyGCTransformations(llvmModule);
-  verifyModuleFailFast(*llvmModule);
-  optimizeModule(llvmModule);
+//  verifyModuleFailFast(*llvmModule);
+//  optimizeModule(llvmModule);
   verifyModuleFailFast(*llvmModule);
 #if SEQ_HAS_TAPIR
   tapir::resetOMPABI();

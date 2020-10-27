@@ -44,10 +44,12 @@ int main(int argc, char **argv) {
     return EXIT_SUCCESS;
   }
 
-  SeqModule *s = parse(argv[0], input.c_str(), "", false, false);
+  auto s = parse(argv[0], input.c_str(), "", false, false);
   if (output.getValue().empty()) {
-    argsVec.insert(argsVec.begin(), input);
-    execute(s, argsVec, libsVec, debug.getValue());
+//    argsVec.insert(argsVec.begin(), input);
+//    execute(s, argsVec, libsVec, debug.getValue());
+    // TODO
+    assert(false);
   } else {
     if (!libsVec.empty())
       compilationWarning("ignoring libraries during compilation");

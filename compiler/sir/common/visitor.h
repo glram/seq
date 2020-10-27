@@ -27,6 +27,8 @@ namespace ir {
 namespace common {
 using namespace seq::ir;
 
+class LLVMOperand;
+
 class IRVisitor {
 public:
   DEFAULT_VISIT(IRModule);
@@ -59,6 +61,7 @@ public:
   DEFAULT_VISIT(VarOperand);
   DEFAULT_VISIT(VarPointerOperand);
   DEFAULT_VISIT(LiteralOperand);
+  DEFAULT_VISIT(LLVMOperand);
 
   DEFAULT_VISIT(Pattern);
   DEFAULT_VISIT(WildcardPattern);
@@ -94,6 +97,25 @@ public:
   DEFAULT_VISIT(types::Pointer);
   DEFAULT_VISIT(types::Generator);
   DEFAULT_VISIT(types::IntNType);
+};
+
+class LLVMOperand : public Operand {
+private:
+  std::shared_ptr<types::Type> type;
+  llvm::Value *val;
+
+public:
+  LLVMOperand(std::shared_ptr<types::Type> type, llvm::Value *val)
+      : type(std::move(type)), val(val) {}
+
+  void accept(common::IRVisitor &v) override {
+    v.visit(std::static_pointer_cast<LLVMOperand>(getShared()));
+  }
+
+  std::shared_ptr<types::Type> getType() override { return type; }
+  llvm::Value *getValue() { return val; }
+
+  std::string textRepresentation() const override { return "internal"; }
 };
 
 template <typename Derived, typename Context, typename ModuleResult,

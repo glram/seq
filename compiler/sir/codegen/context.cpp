@@ -55,7 +55,8 @@ Value *TypeRealization::getMemberPointer(Value *ptr, const std::string &field,
     return memberPointerFunc(ptr, it->second, builder);
 
   auto *index = ConstantInt::get(seqIntLLVM(builder.getContext()), it->second);
-  return builder.CreateGEP(ptr, index);
+  return builder.CreateBitCast(builder.CreateGEP(ptr, index),
+                               llvmType->getContainedType(it->second)->getPointerTo());
 }
 
 Value *TypeRealization::getDefaultValue(IRBuilder<> &builder) const {
@@ -102,7 +103,10 @@ TypeRealization::getMagicBuilder(const std::string &sig) const {
 
 Value *TypeRealization::makeNew(std::vector<llvm::Value *> args,
                                 llvm::IRBuilder<> &builder) const {
-  return maker ? maker(std::move(args), builder) : dfltBuilder(builder);
+  if (!maker.empty()) {
+    return inlineMagicFuncs.find(maker)->second(args, builder);
+  }
+  return dfltBuilder(builder);
 }
 
 Value *TypeRealization::load(llvm::Value *ptr, llvm::IRBuilder<> &builder) const {
@@ -114,9 +118,13 @@ Value *TypeRealization::alloc(Value *count, llvm::IRBuilder<> &builder,
   if (stack) {
     return builder.CreateAlloca(llvmType, count);
   } else {
-    auto *allocFn = makeAllocFunc(builder.GetInsertBlock()->getModule(), false);
-    auto *numBytes = builder.CreateMul(ConstantExpr::getSizeOf(llvmType), count);
-    return builder.CreateBitCast(builder.CreateCall(allocFn, numBytes), llvmType);
+    auto &context = builder.GetInsertBlock()->getContext();
+    auto *module = builder.GetInsertBlock()->getModule();
+    auto *allocFn = makeAllocFunc(module, false);
+    auto size = module->getDataLayout().getTypeAllocSize(llvmType);
+    auto *numBytes = builder.CreateMul(ConstantInt::get(seqIntLLVM(context), size), count);
+    return builder.CreateBitCast(builder.CreateCall(allocFn, numBytes),
+                                 llvmType->getPointerTo());
   }
 }
 
@@ -172,9 +180,12 @@ void Context::registerBlock(std::shared_ptr<BasicBlock> sirBlock,
 }
 
 llvm::Value *Context::getVar(std::shared_ptr<Var> sirVar) {
-  auto &frame = getFrame();
-  auto it = frame.varRealizations.find(sirVar->getId());
-  return it == frame.varRealizations.end() ? nullptr : it->second;
+  for (auto &frame : getFrames()) {
+    auto it = frame.varRealizations.find(sirVar->getId());
+    if (it != frame.varRealizations.end())
+      return it->second;
+  }
+  return nullptr;
 }
 
 llvm::BasicBlock *Context::getBlock(std::shared_ptr<BasicBlock> sirBlock) {
@@ -206,10 +217,10 @@ void Context::initTypeRealizations() {
 
     TypeRealization::InlineMagics inlineMagicFuncs = {
         {"__new__[Pointer[byte], int]",
-         [this, strType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-           auto *self = UndefValue::get(strType);
-           builder.CreateInsertValue(self, args[1], 0);
-           builder.CreateInsertValue(self, args[0], 1);
+         [strType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+           Value *self = UndefValue::get(strType);
+           self = builder.CreateInsertValue(self, args[1], 0);
+           self = builder.CreateInsertValue(self, args[0], 1);
            return self;
          }},
     };
@@ -319,6 +330,14 @@ void Context::initTypeRealizations() {
         {"__ge__[bool, bool]",
          [boolType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
            return builder.CreateZExt(builder.CreateICmpUGE(args[0], args[1]), boolType);
+         }},
+        {"__and__[bool, bool]",
+         [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+           return builder.CreateAnd(args[0], args[1]);
+         }},
+        {"__or__[bool, bool]",
+         [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+           return builder.CreateOr(args[0], args[1]);
          }},
         {"__xor__[bool, bool]",
          [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
@@ -537,6 +556,8 @@ void Context::initTypeRealizations() {
          [intType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
            return builder.CreateZExt(args[0], intType);
          }},
+        {"__int__[int]",
+         [](std::vector<Value *> args, IRBuilder<> &) -> Value * { return args[0]; }},
         {"__str__[int]",
          [this, intType, strType](std::vector<Value *> args,
                                   IRBuilder<> &builder) -> Value * {
@@ -561,6 +582,16 @@ void Context::initTypeRealizations() {
         {"__neg__[int]",
          [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
            return builder.CreateNeg(args[0]);
+         }},
+        {"__invert__[int]",
+         [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+           return builder.CreateNot(args[0]);
+         }},
+        {"__abs__[int]",
+         [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+           auto *pos = builder.CreateICmpSGT(args[0], zeroLLVM(builder.getContext()));
+           auto *neg = builder.CreateNeg(args[0]);
+           return builder.CreateSelect(pos, args[0], neg);
          }},
         // int-int binary
         {"__add__[int, int]",
@@ -620,6 +651,18 @@ void Context::initTypeRealizations() {
         {"__ge__[int, int]",
          [boolType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
            return builder.CreateZExt(builder.CreateICmpSLE(args[0], args[1]), boolType);
+         }},
+        {"__and__[int, int]",
+         [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+           return builder.CreateAnd(args[0], args[1]);
+         }},
+        {"__or__[int, int]",
+         [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+           return builder.CreateOr(args[0], args[1]);
+         }},
+        {"__xor__[int, int]",
+         [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+           return builder.CreateXor(args[0], args[1]);
          }},
         // int-float
         {"__add__[int, float]",
@@ -700,11 +743,11 @@ void Context::initTypeRealizations() {
          }},
     };
     for (unsigned i = 1; i <= types::IntNType::MAX_LEN; ++i) {
-      inlineMagicFuncs[fmt::format(FMT_STRING("Int{}"), i)] =
+      inlineMagicFuncs[fmt::format(FMT_STRING("__new__[Int{}]"), i)] =
           [intType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
         return builder.CreateSExtOrTrunc(args[0], intType);
       };
-      inlineMagicFuncs[fmt::format(FMT_STRING("UInt{}"), i)] =
+      inlineMagicFuncs[fmt::format(FMT_STRING("__new__[UInt{}]"), i)] =
           [intType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
         return builder.CreateZExtOrTrunc(args[0], intType);
       };

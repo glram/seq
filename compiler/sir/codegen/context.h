@@ -25,6 +25,8 @@ class Type;
 
 namespace codegen {
 
+struct TypeRealization;
+
 struct TryCatchMetadata {
   llvm::SwitchInst *finallyBr = nullptr;
   llvm::BasicBlock *exceptionBlock = nullptr;
@@ -46,6 +48,8 @@ struct CodegenFrame {
   llvm::Function *func = nullptr;
   std::shared_ptr<Func> irFunc;
   std::unordered_map<int, std::shared_ptr<TryCatchMetadata>> tryCatchMeta;
+
+  std::shared_ptr<TypeRealization> outReal;
 
   bool isGenerator = false;
 
@@ -98,7 +102,7 @@ public:
   using NonInlineMagics = std::unordered_map<std::string, NonInlineMagicBuilder>;
   NonInlineMagics nonInlineMagicFuncs;
 
-  InlineMagicBuilder maker;
+  std::string maker;
 
   using CustomLoader = std::function<llvm::Value *(llvm::Value *, llvm::IRBuilder<> &)>;
   CustomLoader customLoader;
@@ -119,7 +123,7 @@ public:
         dfltBuilder(std::move(dfltBuilder)),
         inlineMagicFuncs(std::move(inlineMagicFuncs)),
         nonInlineMagicFuncs(std::move(nonInlineMagicFuncs)),
-        maker(newSig.empty() ? nullptr : inlineMagicFuncs[newSig]),
+        maker(newSig),
         customLoader(std::move(customLoader)) {}
 
   llvm::Value *extractMember(llvm::Value *self, const std::string &field,
@@ -142,6 +146,7 @@ public:
 struct BuiltinStub {
   std::shared_ptr<Func> sirFunc;
   llvm::Function *func;
+  bool doneGen = false;
 
   BuiltinStub(std::shared_ptr<Func> sirFunc, llvm::Function *func)
       : sirFunc(std::move(sirFunc)), func(func) {}

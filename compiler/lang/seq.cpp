@@ -86,6 +86,7 @@ void verifyModuleFailFast(Module &module) {
     assert(0);
   }
 }
+
 TargetMachine *getTargetMachine(Triple triple, StringRef cpuStr, StringRef featuresStr,
                                 const TargetOptions &options) {
   std::string err;
