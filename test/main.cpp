@@ -4,7 +4,6 @@
 #include <fstream>
 #include <gc.h>
 #include <iostream>
-#include <fstream>
 #include <sstream>
 #include <string>
 #include <sys/types.h>
@@ -26,9 +25,9 @@
 #include "parser/ocaml.h"
 #include "parser/parser.h"
 
-#include "sir/var.h"
 #include "sir/bblock.h"
 #include "sir/trycatch.h"
+#include "sir/var.h"
 
 using namespace seq;
 using namespace std;
@@ -281,8 +280,8 @@ INSTANTIATE_TEST_SUITE_P(
 //                      testing::Values(true, false)),
 //     getTestNameFromParam);
 
-class SIRTest: public testing::TestWithParam<
-    tuple<string /*filename*/, string /* case name */>> {
+class SIRTest : public testing::TestWithParam<
+                    tuple<string /*filename*/, string /* case name */>> {
   std::string buf;
 
 public:
@@ -320,8 +319,7 @@ INSTANTIATE_TEST_SUITE_P(SIRTest, SIRTest,
                                             {"sir/loopgen", "loopgen"},
                                             {"sir/trycatch", "trycatch"},
                                             {"sir/controlflow", "controlflow"}}),
-                         [&](const auto &info)
-                            { return get<1>(info.param); });
+                         [&](const auto &info) { return get<1>(info.param); });
 
 TEST_P(SIRTest, RUN) {
   const string file = get<0>(GetParam());
@@ -331,7 +329,7 @@ TEST_P(SIRTest, RUN) {
   std::ifstream t;
   t.open(getExpectedFilename(file));
   std::string expected((std::istreambuf_iterator<char>(t)),
-                  std::istreambuf_iterator<char>());
+                       std::istreambuf_iterator<char>());
   t.close();
   EXPECT_EQ(expected, output);
 }

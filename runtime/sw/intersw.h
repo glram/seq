@@ -16,9 +16,9 @@ extern "C" void seq_free(void *p);
 
 void pv(const char *tag, __m256i var) {
   int16_t *val = (int16_t *)&var;
-  printf("%s: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", tag, val[0],
-         val[1], val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9],
-         val[10], val[11], val[12], val[13], val[14], val[15]);
+  printf("%s: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", tag, val[0], val[1],
+         val[2], val[3], val[4], val[5], val[6], val[7], val[8], val[9], val[10],
+         val[11], val[12], val[13], val[14], val[15]);
 }
 
 struct SeqPair {
@@ -106,13 +106,9 @@ template <> struct SIMD<128, 8> {
 
   static inline Vec abs(Vec a) { return _mm_abs_epi8(a); }
 
-  static inline Vec blend(Vec a, Vec b, Cmp c) {
-    return _mm_blendv_epi8(a, b, c);
-  }
+  static inline Vec blend(Vec a, Vec b, Cmp c) { return _mm_blendv_epi8(a, b, c); }
 
-  static inline bool all(Cmp c) {
-    return (_mm_movemask_epi8(c) & DMASK) == DMASK;
-  }
+  static inline bool all(Cmp c) { return (_mm_movemask_epi8(c) & DMASK) == DMASK; }
 
   static inline bool none(Cmp c) { return (_mm_movemask_epi8(c) & DMASK) == 0; }
 };
@@ -168,17 +164,11 @@ template <> struct SIMD<256, 8> {
 
   static inline Vec abs(Vec a) { return _mm256_abs_epi8(a); }
 
-  static inline Vec blend(Vec a, Vec b, Cmp c) {
-    return _mm256_blendv_epi8(a, b, c);
-  }
+  static inline Vec blend(Vec a, Vec b, Cmp c) { return _mm256_blendv_epi8(a, b, c); }
 
-  static inline bool all(Cmp c) {
-    return (_mm256_movemask_epi8(c) & DMASK) == DMASK;
-  }
+  static inline bool all(Cmp c) { return (_mm256_movemask_epi8(c) & DMASK) == DMASK; }
 
-  static inline bool none(Cmp c) {
-    return (_mm256_movemask_epi8(c) & DMASK) == 0;
-  }
+  static inline bool none(Cmp c) { return (_mm256_movemask_epi8(c) & DMASK) == 0; }
 };
 
 template <> struct SIMD<512, 8> {
@@ -292,13 +282,9 @@ template <> struct SIMD<128, 16> {
 
   static inline Vec abs(Vec a) { return _mm_abs_epi16(a); }
 
-  static inline Vec blend(Vec a, Vec b, Cmp c) {
-    return _mm_blendv_epi8(a, b, c);
-  }
+  static inline Vec blend(Vec a, Vec b, Cmp c) { return _mm_blendv_epi8(a, b, c); }
 
-  static inline bool all(Cmp c) {
-    return (_mm_movemask_epi8(c) & DMASK) == DMASK;
-  }
+  static inline bool all(Cmp c) { return (_mm_movemask_epi8(c) & DMASK) == DMASK; }
 
   static inline bool none(Cmp c) { return (_mm_movemask_epi8(c) & DMASK) == 0; }
 };
@@ -354,17 +340,11 @@ template <> struct SIMD<256, 16> {
 
   static inline Vec abs(Vec a) { return _mm256_abs_epi16(a); }
 
-  static inline Vec blend(Vec a, Vec b, Cmp c) {
-    return _mm256_blendv_epi8(a, b, c);
-  }
+  static inline Vec blend(Vec a, Vec b, Cmp c) { return _mm256_blendv_epi8(a, b, c); }
 
-  static inline bool all(Cmp c) {
-    return (_mm256_movemask_epi8(c) & DMASK) == DMASK;
-  }
+  static inline bool all(Cmp c) { return (_mm256_movemask_epi8(c) & DMASK) == DMASK; }
 
-  static inline bool none(Cmp c) {
-    return (_mm256_movemask_epi8(c) & DMASK) == 0;
-  }
+  static inline bool none(Cmp c) { return (_mm256_movemask_epi8(c) & DMASK) == 0; }
 };
 
 template <> struct SIMD<512, 16> {
@@ -437,8 +417,8 @@ public:
           int8_t w_match, int8_t w_ambig, int8_t w_mismatch);
   ~InterSW();
 
-  void SW(SeqPair *pairArray, uint8_t *seqBufRef, uint8_t *seqBufQer,
-          int32_t numPairs, int bandwidth);
+  void SW(SeqPair *pairArray, uint8_t *seqBufRef, uint8_t *seqBufQer, int32_t numPairs,
+          int bandwidth);
 
 private:
   static inline SeqPair getp(SeqPair *p, int idx, int numPairs) {
@@ -446,23 +426,18 @@ private:
     return idx < numPairs ? p[idx] : empty;
   }
 
-  static inline int64_t idr(const SeqPair &sp) {
-    return (int64_t)sp.id * LEN_LIMIT;
-  }
+  static inline int64_t idr(const SeqPair &sp) { return (int64_t)sp.id * LEN_LIMIT; }
 
-  static inline int64_t idq(const SeqPair &sp) {
-    return (int64_t)sp.id * LEN_LIMIT;
-  }
+  static inline int64_t idq(const SeqPair &sp) { return (int64_t)sp.id * LEN_LIMIT; }
 
-  void SWCore(uint_t seq1SoA[], uint_t seq2SoA[], uint_t nrow, uint_t ncol,
-              SeqPair *p, SeqPair *endp, uint_t h0[], int32_t numPairs,
-              int zdrop, uint_t w, uint_t qlen[], uint_t myband[], uint_t z[],
-              uint_t off[]);
+  void SWCore(uint_t seq1SoA[], uint_t seq2SoA[], uint_t nrow, uint_t ncol, SeqPair *p,
+              SeqPair *endp, uint_t h0[], int32_t numPairs, int zdrop, uint_t w,
+              uint_t qlen[], uint_t myband[], uint_t z[], uint_t off[]);
 
-  void SWBacktrace(bool is_rot, bool is_rev, int min_intron_len,
-                   const uint_t *p, const uint_t *off, const uint_t *off_end,
-                   size_t n_col, int_t i0, int_t j0, int *m_cigar_,
-                   int *n_cigar_, uint32_t **cigar_, int offset);
+  void SWBacktrace(bool is_rot, bool is_rev, int min_intron_len, const uint_t *p,
+                   const uint_t *off, const uint_t *off_end, size_t n_col, int_t i0,
+                   int_t j0, int *m_cigar_, int *n_cigar_, uint32_t **cigar_,
+                   int offset);
 
   int end_bonus, zdrop;
   int o_del, o_ins, e_del, e_ins;
@@ -476,9 +451,9 @@ private:
 
 template <unsigned W, unsigned N, bool CIGAR>
 InterSW<W, N, CIGAR>::InterSW(const int o_del, const int e_del, const int o_ins,
-                              const int e_ins, const int zdrop,
-                              const int end_bonus, const int8_t w_match,
-                              const int8_t w_mismatch, const int8_t w_ambig) {
+                              const int e_ins, const int zdrop, const int end_bonus,
+                              const int8_t w_match, const int8_t w_mismatch,
+                              const int8_t w_ambig) {
   this->end_bonus = end_bonus;
   this->zdrop = zdrop;
   this->o_del = o_del;
@@ -513,8 +488,7 @@ template <unsigned W, unsigned N, bool CIGAR> InterSW<W, N, CIGAR>::~InterSW() {
 
 template <unsigned W, unsigned N, bool CIGAR>
 void InterSW<W, N, CIGAR>::SW(SeqPair *pairArray, uint8_t *seqBufRef,
-                              uint8_t *seqBufQer, int32_t numPairs,
-                              int bandwidth) {
+                              uint8_t *seqBufQer, int32_t numPairs, int bandwidth) {
   using S = SIMD<W, N>;
   using Vec = typename S::Vec;
   using Cmp = typename S::Cmp;
@@ -523,33 +497,27 @@ void InterSW<W, N, CIGAR>::SW(SeqPair *pairArray, uint8_t *seqBufRef,
   constexpr int SIMD_WIDTH = W / N;
   constexpr uint_t FF = (1 << N) - 1;
 
-  const uint_t w =
-      (bandwidth > (int)FF || bandwidth < 0) ? FF : (uint_t)bandwidth;
+  const uint_t w = (bandwidth > (int)FF || bandwidth < 0) ? FF : (uint_t)bandwidth;
 
-  uint_t *seq1SoA =
-      (uint_t *)_mm_malloc(MAX_SEQ_LEN * SIMD_WIDTH * sizeof(uint_t), 64);
-  uint_t *seq2SoA =
-      (uint_t *)_mm_malloc(MAX_SEQ_LEN * SIMD_WIDTH * sizeof(uint_t), 64);
+  uint_t *seq1SoA = (uint_t *)_mm_malloc(MAX_SEQ_LEN * SIMD_WIDTH * sizeof(uint_t), 64);
+  uint_t *seq2SoA = (uint_t *)_mm_malloc(MAX_SEQ_LEN * SIMD_WIDTH * sizeof(uint_t), 64);
 
   uint_t *z = nullptr;
   uint_t *off = nullptr;
   size_t offlen = 0;
   if (CIGAR) {
     // TODO: make alloc smaller based on bandwidth and lengths
-    z = (uint_t *)_mm_malloc(
-        LEN_LIMIT * LEN_LIMIT * SIMD_WIDTH * sizeof(uint_t), 64);
+    z = (uint_t *)_mm_malloc(LEN_LIMIT * LEN_LIMIT * SIMD_WIDTH * sizeof(uint_t), 64);
     offlen = LEN_LIMIT * SIMD_WIDTH * sizeof(uint_t);
     off = (uint_t *)_mm_malloc(offlen, 64);
   }
 
   if (seq1SoA == nullptr || seq2SoA == nullptr) {
-    fprintf(stderr,
-            "failed to allocate memory for inter-sequence alignment (SoA)\n");
+    fprintf(stderr, "failed to allocate memory for inter-sequence alignment (SoA)\n");
     exit(EXIT_FAILURE);
   }
 
-  int32_t roundNumPairs =
-      ((numPairs + SIMD_WIDTH - 1) / SIMD_WIDTH) * SIMD_WIDTH;
+  int32_t roundNumPairs = ((numPairs + SIMD_WIDTH - 1) / SIMD_WIDTH) * SIMD_WIDTH;
 
   int eb = end_bonus;
   {
@@ -689,8 +657,7 @@ void InterSW<W, N, CIGAR>::SW(SeqPair *pairArray, uint8_t *seqBufRef,
       if (CIGAR)
         memset(off, '\0', offlen);
       SWCore(mySeq1SoA, mySeq2SoA, maxLen1, maxLen2, pairArray + i,
-             pairArray + numPairs, h0, numPairs, zdrop, bsize, qlen, myband, z,
-             off);
+             pairArray + numPairs, h0, numPairs, zdrop, bsize, qlen, myband, z, off);
     }
   }
 
@@ -703,10 +670,9 @@ void InterSW<W, N, CIGAR>::SW(SeqPair *pairArray, uint8_t *seqBufRef,
 }
 
 template <unsigned W, unsigned N, bool CIGAR>
-void InterSW<W, N, CIGAR>::SWCore(uint_t seq1SoA[], uint_t seq2SoA[],
-                                  uint_t nrow, uint_t ncol, SeqPair *p,
-                                  SeqPair *endp, uint_t h0[], int32_t numPairs,
-                                  int zdrop, uint_t w, uint_t qlen[],
+void InterSW<W, N, CIGAR>::SWCore(uint_t seq1SoA[], uint_t seq2SoA[], uint_t nrow,
+                                  uint_t ncol, SeqPair *p, SeqPair *endp, uint_t h0[],
+                                  int32_t numPairs, int zdrop, uint_t w, uint_t qlen[],
                                   uint_t myband[], uint_t z[], uint_t off[]) {
   using S = SIMD<W, N>;
   using Vec = typename S::Vec;
@@ -1143,11 +1109,10 @@ static inline uint32_t *push_cigar(int *n_cigar, int *m_cigar, uint32_t *cigar,
 }
 
 template <unsigned W, unsigned N, bool CIGAR>
-void InterSW<W, N, CIGAR>::SWBacktrace(bool is_rot, bool is_rev,
-                                       int min_intron_len, const uint_t *p,
-                                       const uint_t *off, const uint_t *off_end,
-                                       size_t n_col, int_t i0, int_t j0,
-                                       int *m_cigar_, int *n_cigar_,
+void InterSW<W, N, CIGAR>::SWBacktrace(bool is_rot, bool is_rev, int min_intron_len,
+                                       const uint_t *p, const uint_t *off,
+                                       const uint_t *off_end, size_t n_col, int_t i0,
+                                       int_t j0, int *m_cigar_, int *n_cigar_,
                                        uint32_t **cigar_, int offset) {
   constexpr int SIMD_WIDTH = W / N;
   int n_cigar = 0, m_cigar = *m_cigar_, i = i0, j = j0, r, state = 0;
@@ -1162,22 +1127,19 @@ void InterSW<W, N, CIGAR>::SWBacktrace(bool is_rot, bool is_rev,
         force_state = 2;
       if (off_end && i > off_end[r])
         force_state = 1;
-      tmp = force_state < 0
-                ? p[((size_t)r * n_col + i - off_val) * SIMD_WIDTH + offset]
-                : 0;
+      tmp = force_state < 0 ? p[((size_t)r * n_col + i - off_val) * SIMD_WIDTH + offset]
+                            : 0;
     } else {
       uint_t off_val = off[i * SIMD_WIDTH + offset];
       if (j < off_val)
         force_state = 2;
       if (off_end && j > off_end[i])
         force_state = 1;
-      tmp = force_state < 0
-                ? p[((size_t)i * n_col + j - off_val) * SIMD_WIDTH + offset]
-                : 0;
+      tmp = force_state < 0 ? p[((size_t)i * n_col + j - off_val) * SIMD_WIDTH + offset]
+                            : 0;
     }
     if (state == 0)
-      state =
-          tmp & 7; // if requesting the H state, find state one maximizes it.
+      state = tmp & 7; // if requesting the H state, find state one maximizes it.
     else if (!(tmp >> (state + 2) & 1))
       state = 0; // if requesting other states, _state_ stays the same if it is
                  // a continuation; otherwise, set to H
@@ -1203,8 +1165,7 @@ void InterSW<W, N, CIGAR>::SWBacktrace(bool is_rot, bool is_rev,
     cigar = push_cigar(&n_cigar, &m_cigar, cigar, 1, j + 1); // first insertion
   if (!is_rev)
     for (i = 0; i < (n_cigar >> 1); ++i) // reverse CIGAR
-      tmp = cigar[i], cigar[i] = cigar[n_cigar - 1 - i],
-      cigar[n_cigar - 1 - i] = tmp;
+      tmp = cigar[i], cigar[i] = cigar[n_cigar - 1 - i], cigar[n_cigar - 1 - i] = tmp;
   *m_cigar_ = m_cigar, *n_cigar_ = n_cigar, *cigar_ = cigar;
 }
 

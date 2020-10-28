@@ -54,9 +54,8 @@ Value *TypeRealization::getMemberPointer(Value *ptr, const std::string &field,
   if (memberPointerFunc)
     return memberPointerFunc(ptr, it->second, builder);
 
-  auto *index = ConstantInt::get(seqIntLLVM(builder.getContext()), it->second);
-  return builder.CreateBitCast(builder.CreateGEP(ptr, index),
-                               llvmType->getContainedType(it->second)->getPointerTo());
+  auto *zeroIndex = builder.getInt32(0);
+  return builder.CreateInBoundsGEP(ptr, {zeroIndex, builder.getInt32(it->second)});
 }
 
 Value *TypeRealization::getDefaultValue(IRBuilder<> &builder) const {
@@ -122,7 +121,8 @@ Value *TypeRealization::alloc(Value *count, llvm::IRBuilder<> &builder,
     auto *module = builder.GetInsertBlock()->getModule();
     auto *allocFn = makeAllocFunc(module, false);
     auto size = module->getDataLayout().getTypeAllocSize(llvmType);
-    auto *numBytes = builder.CreateMul(ConstantInt::get(seqIntLLVM(context), size), count);
+    auto *numBytes =
+        builder.CreateMul(ConstantInt::get(seqIntLLVM(context), size), count);
     return builder.CreateBitCast(builder.CreateCall(allocFn, numBytes),
                                  llvmType->getPointerTo());
   }
@@ -575,7 +575,7 @@ void Context::initTypeRealizations() {
          [intType, boolType](std::vector<Value *> args,
                              IRBuilder<> &builder) -> Value * {
            return builder.CreateZExt(
-               builder.CreateICmpEQ(args[0], ConstantInt::get(intType, 0)), boolType);
+               builder.CreateICmpNE(args[0], ConstantInt::get(intType, 0)), boolType);
          }},
         {"__pos__[int]",
          [](std::vector<Value *> args, IRBuilder<> &) -> Value * { return args[0]; }},
@@ -650,7 +650,7 @@ void Context::initTypeRealizations() {
          }},
         {"__ge__[int, int]",
          [boolType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-           return builder.CreateZExt(builder.CreateICmpSLE(args[0], args[1]), boolType);
+           return builder.CreateZExt(builder.CreateICmpSGE(args[0], args[1]), boolType);
          }},
         {"__and__[int, int]",
          [](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
@@ -788,7 +788,7 @@ void Context::initTypeRealizations() {
          [byteType, boolType](std::vector<Value *> args,
                               IRBuilder<> &builder) -> Value * {
            Value *zero = ConstantInt::get(byteType, 0);
-           return builder.CreateZExt(builder.CreateFCmpONE(args[0], zero), boolType);
+           return builder.CreateZExt(builder.CreateICmpNE(args[0], zero), boolType);
          }},
         {"__eq__[byte, byte]",
          [boolType](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {

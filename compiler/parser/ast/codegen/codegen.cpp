@@ -776,6 +776,7 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
   auto end = newBlock();
   auto body = newBlock();
   body->setTryCatch(newTc);
+  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), body));
 
   ctx->addLevel();
   ctx->addBlock(body);
@@ -794,7 +795,8 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
                     c.var, cBlock);
     ctx->addLevel();
     ctx->getBase()->addVar(newTc->getVar(varIdx));
-    ctx->addVar(c.var, newTc->getVar(varIdx));
+    if (!c.var.empty())
+      ctx->addVar(c.var, newTc->getVar(varIdx));
     ctx->addBlock(cBlock);
     transform(c.suite);
     condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), end));

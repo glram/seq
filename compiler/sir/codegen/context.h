@@ -122,8 +122,7 @@ public:
         memberPointerFunc(std::move(memberPointerFunc)),
         dfltBuilder(std::move(dfltBuilder)),
         inlineMagicFuncs(std::move(inlineMagicFuncs)),
-        nonInlineMagicFuncs(std::move(nonInlineMagicFuncs)),
-        maker(newSig),
+        nonInlineMagicFuncs(std::move(nonInlineMagicFuncs)), maker(newSig),
         customLoader(std::move(customLoader)) {}
 
   llvm::Value *extractMember(llvm::Value *self, const std::string &field,
