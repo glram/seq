@@ -403,6 +403,8 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
       auto *promise = outTypeRealization->alloc(builder, true);
       promise->setName("promise");
 
+      frame.promise = promise;
+
       auto *promiseRaw =
           builder.CreateBitCast(promise, IntegerType::getInt8PtrTy(context));
       id = builder.CreateCall(idFn,
@@ -1058,7 +1060,10 @@ void CodegenVisitor::visit(std::shared_ptr<ReturnTerminator> returnTerminator) {
   auto tcPath =
       curTc ? curTc->getPath(nullptr) : std::vector<std::shared_ptr<TryCatch>>();
   if (tcPath.empty()) {
-    if (returnTerminator->getOperand()) {
+    if (ctx->getFrame().isGenerator) {
+      IRBuilder<> builder(ctx->getFrame().curBlock);
+      builder.CreateBr(ctx->getFrame().exit);
+    } else if (returnTerminator->getOperand()) {
       auto *opVal = transform(returnTerminator->getOperand());
 
       IRBuilder<> builder(ctx->getFrame().curBlock);
@@ -1073,7 +1078,7 @@ void CodegenVisitor::visit(std::shared_ptr<ReturnTerminator> returnTerminator) {
     return;
   }
 
-  if (returnTerminator->getOperand()) {
+  if (!ctx->getFrame().isGenerator && returnTerminator->getOperand()) {
     auto *opVal = transform(returnTerminator->getOperand());
 
     IRBuilder<> builder(ctx->getFrame().curBlock);
@@ -1097,7 +1102,7 @@ void CodegenVisitor::visit(std::shared_ptr<YieldTerminator> yieldTerminator) {
     funcYieldIn(ctx->getFrame(), ptr, ctx->getFrame().curBlock, dst);
   } else {
     auto *op = transform(yieldTerminator->getResult());
-    funcYieldIn(ctx->getFrame(), op, ctx->getFrame().curBlock, dst);
+    funcYield(ctx->getFrame(), op, ctx->getFrame().curBlock, dst);
   }
 }
 

@@ -31,7 +31,7 @@ llvm::Value *generatorDone(llvm::Value *self, llvm::BasicBlock *block);
 void generatorResume(llvm::Value *self, llvm::BasicBlock *block,
                      llvm::BasicBlock *normal, llvm::BasicBlock *unwind);
 llvm::Value *generatorPromise(llvm::Value *self, llvm::BasicBlock *block,
-                              llvm::Type *outType, bool returnPtr = true);
+                              llvm::Type *outType, bool returnPtr = false);
 void generatorSend(llvm::Value *self, llvm::Value *val, llvm::BasicBlock *block,
                    llvm::Type *outType);
 void generatorDestroy(llvm::Value *self, llvm::BasicBlock *block);

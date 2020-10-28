@@ -236,13 +236,13 @@ INSTANTIATE_TEST_SUITE_P(
         "core/range.seq",
         "core/bltin.seq",
         "core/arguments.seq",
+        "core/match.seq",
         "core/kmers.seq",
-        // F: "core/match.seq", // needs list & seq fixes
-        // "core/align.seq",
-        // "core/bwtsa.seq",
-        // "core/formats.seq",
-        // "core/proteins.seq",  // auto-cast int[32] to int
-        // "core/serialization.seq",  // auto-cast int[32] to int
+        "core/formats.seq",
+        "core/proteins.seq",
+        "core/align.seq",
+        "core/serialization.seq",
+        "core/bwtsa.seq",
         "core/empty.seq"
       ),
       testing::Values(true),
@@ -251,7 +251,6 @@ INSTANTIATE_TEST_SUITE_P(
       testing::Values(0)
     ),
     getTestNameFromParam);
-// clang-format on
 
 // INSTANTIATE_TEST_SUITE_P(
 //     PipelineTests, SeqTest,
@@ -266,13 +265,24 @@ INSTANTIATE_TEST_SUITE_P(
 // INSTANTIATE_TEST_SUITE_P(
 //     StdlibTests, SeqTest,
 //     testing::Combine(
-//         testing::Values("stdlib/str_test.seq", "stdlib/math_test.seq",
-//                         "stdlib/itertools_test.seq",
-//                         "stdlib/bisect_test.seq", "stdlib/sort_test.seq",
-//                         "stdlib/random_test.seq", "stdlib/heapq_test.seq",
-//                         "stdlib/statistics_test.seq"),
-//         testing::Values(true, false)),
+//       testing::Values(
+//         "stdlib/str_test.seq",
+//         "stdlib/math_test.seq",
+//         "stdlib/itertools_test.seq",
+//         "stdlib/bisect_test.seq",
+//         "stdlib/sort_test.seq",
+//         "stdlib/random_test.seq",
+//         "stdlib/heapq_test.seq",
+//         "stdlib/statistics_test.seq",
+//         "python/pybridge.seq"
+//       ),
+//       testing::Values(true),
+//       testing::Values(""),
+//       testing::Values(""),
+//       testing::Values(0)
+//     ),
 //     getTestNameFromParam);
+// clang-format on
 
 // INSTANTIATE_TEST_SUITE_P(
 //     PythonTests, SeqTest,

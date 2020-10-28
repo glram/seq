@@ -330,10 +330,10 @@ llvm::Module *compile(LLVMContext &context, std::shared_ptr<IRModule> module) {
   auto *realMain = llvmModule->getFunction("seq.main");
   auto *main = makeCanonicalMainFunc(realMain, codegenCtx, module);
   verifyModuleFailFast(*llvmModule);
-  //  optimizeModule(llvmModule);
+  optimizeModule(llvmModule);
   applyGCTransformations(llvmModule);
-  //  verifyModuleFailFast(*llvmModule);
-  //  optimizeModule(llvmModule);
+  verifyModuleFailFast(*llvmModule);
+  optimizeModule(llvmModule);
   verifyModuleFailFast(*llvmModule);
 #if SEQ_HAS_TAPIR
   tapir::resetOMPABI();

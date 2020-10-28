@@ -35,7 +35,9 @@ typedef std::shared_ptr<LinkType> LinkTypePtr;
 struct Unification {
   std::vector<LinkTypePtr> linked;
   std::vector<std::pair<LinkTypePtr, int>> leveled;
+  bool isMatch;
   void undo();
+  Unification() : isMatch(false) {}
 };
 
 std::string v2b(const std::vector<char> &c);
@@ -44,10 +46,15 @@ struct Generic {
   std::string name;
   int id;
   TypePtr type;
+  std::shared_ptr<Expr> deflt;
+
   // -1 is for tuple "generics"
-  Generic() : name(""), id(-1), type(nullptr) {}
-  Generic(const std::string name, TypePtr type, int id)
-      : name(name), id(id), type(type) {}
+  Generic() : name(""), id(-1), type(nullptr), deflt(nullptr) {}
+  Generic(const std::string name, TypePtr type, int id,
+          std::shared_ptr<Expr> deflt = nullptr)
+      : name(name), id(id), type(type), deflt(deflt) {}
+  Generic(const std::string name, TypePtr type, int id, std::unique_ptr<Expr> deflt)
+      : name(name), id(id), type(type), deflt(move(deflt)) {}
 };
 
 struct Type : public seq::SrcObject, public std::enable_shared_from_this<Type> {

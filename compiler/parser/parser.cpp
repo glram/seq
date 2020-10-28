@@ -130,8 +130,6 @@ void compile(std::shared_ptr<ir::IRModule> module, const string &out, bool debug
     std::error_code err;
     llvm::raw_fd_ostream stream(out, err, llvm::sys::fs::F_None);
 
-    std::cout << module->textRepresentation();
-
 #if LLVM_VERSION_MAJOR >= 7
     WriteBitcodeToFile(*module, stream);
 #else

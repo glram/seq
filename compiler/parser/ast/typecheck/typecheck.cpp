@@ -204,6 +204,9 @@ void TypecheckVisitor::visit(const BinaryExpr *expr) {
     resultExpr = N<BinaryExpr>(move(le), expr->op, move(re));
     resultExpr->setType(
         forceUnify(expr, ctx->addUnbound(getSrcInfo(), ctx->typecheckLevel)));
+  } else if (expr->op == "&&" || expr->op == "||") {
+    resultExpr = N<BinaryExpr>(move(le), expr->op, move(re));
+    resultExpr->setType(forceUnify(expr, ctx->findInternal(".bool")));
   } else if (expr->op == "is") {
     if (CAST(expr->rexpr, NoneExpr)) {
       if (le->getType()->getClass()->name != ".Optional") {
@@ -415,9 +418,21 @@ void TypecheckVisitor::visit(const SliceExpr *expr) {
 }
 
 void TypecheckVisitor::visit(const IndexExpr *expr) {
-  auto getTupleIndex = [&](auto tuple, const auto &expr, const auto &index) -> ExprPtr {
-    if (!startswith(tuple->name, ".Tuple."))
+  auto getTupleIndex = [&](ClassTypePtr tuple, const auto &expr,
+                           const auto &index) -> ExprPtr {
+    if (!tuple->isRecord())
       return nullptr;
+    if (tuple->name == ".Ptr" || tuple->name == ".Array" || tuple->name == ".Optional")
+      return nullptr;
+    if (!startswith(tuple->name, ".Tuple.")) { // avoid if there is a __getitem__ here
+      auto m = ctx->findMethod(tuple->name, "__getitem__");
+      if (m && m->size() > 1)
+        return nullptr;
+      // TODO : be smarter! there might be a compatible getitem?
+    }
+    // LOG("getting index for {}", tuple->name);
+    auto mm = ctx->cache->classMembers.find(tuple->name);
+    assert(mm != ctx->cache->classMembers.end());
     auto getInt = [](seq_int_t *o, const ExprPtr &e) {
       if (!e)
         return true;
@@ -432,7 +447,7 @@ void TypecheckVisitor::visit(const IndexExpr *expr) {
       int i = translateIndex(ex->intValue, e);
       if (i < 0 || i >= e)
         error("tuple index out of range (expected 0..{}, got {})", e, i);
-      return transform(N<DotExpr>(clone(expr), format("a{}", i + 1)));
+      return transform(N<DotExpr>(clone(expr), mm->second[i].first));
     } else if (auto i = CAST(index, SliceExpr)) {
       if (!getInt(&s, i->st) || !getInt(&e, i->ed) || !getInt(&st, i->step))
         return nullptr;
@@ -446,7 +461,7 @@ void TypecheckVisitor::visit(const IndexExpr *expr) {
         if (i < 0 || i >= tuple->args.size())
           error("tuple index out of range (expected 0..{}, got {})", tuple->args.size(),
                 i);
-        te.push_back(N<DotExpr>(clone(expr), format("a{}", i + 1)));
+        te.push_back(N<DotExpr>(clone(expr), mm->second[i].first));
       }
       return transform(N<CallExpr>(
           N<DotExpr>(N<IdExpr>(format(".Tuple.{}", te.size())), "__new__"), move(te)));
@@ -659,6 +674,8 @@ ExprPtr TypecheckVisitor::parseCall(const CallExpr *expr, types::TypePtr inType,
     error("unexpected name '{}' (function pointers have argument names elided)",
           namedArgs.begin()->first);
   }
+
+  bool unificationsDone = true;
   for (int i = 0, ra = reorderedArgs.size(); i < availableArguments.size(); i++) {
     if (i >= ra) {
       assert(ast);
@@ -684,8 +701,10 @@ ExprPtr TypecheckVisitor::parseCall(const CallExpr *expr, types::TypePtr inType,
     auto &arg = reorderedArgs[i].value;
     auto c = arg->getType()->getClass();
     if (targetType && (targetType->isTrait || targetType->name == ".Optional")) {
-      if (!c) // do not unify if not yet known
+      if (!c) { // do not unify if not yet known
+        unificationsDone = false;
         continue;
+      }
       if (targetType->name == ".Generator") {
         if (c->name != targetType->name) {
           if (!extraStage) // do not do this in pipelines
@@ -700,8 +719,9 @@ ExprPtr TypecheckVisitor::parseCall(const CallExpr *expr, types::TypePtr inType,
           if (extraStage && CAST(arg, EllipsisExpr)) {
             *extraStage = N<DotExpr>(N<IdExpr>(".Optional"), "__new__");
             return expr->clone();
-          } else
+          } else {
             arg = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(arg)));
+          }
         }
       } else {
         error("cannot handle trait {}", targetType->name);
@@ -710,9 +730,14 @@ ExprPtr TypecheckVisitor::parseCall(const CallExpr *expr, types::TypePtr inType,
       if (extraStage && CAST(arg, EllipsisExpr)) {
         *extraStage = N<IdExpr>(".unwrap");
         return expr->clone();
-      } else
+      } else {
         arg = transform(N<CallExpr>(N<IdExpr>(".unwrap"), move(arg)));
+      }
     }
+
+    // if (ast)
+    //   LOG("-- {} : force {} -> {}", ast->name, reorderedArgs[i].value->toString(),
+    //       typ->toString());
     forceUnify(reorderedArgs[i].value, typ);
   }
   for (auto &i : namedArgs)
@@ -736,10 +761,26 @@ ExprPtr TypecheckVisitor::parseCall(const CallExpr *expr, types::TypePtr inType,
       auto r = realizeFunc(ra.value->getType());
       fix(ra.value, r->realizeString());
     }
-  if (c->canRealize() && c->getFunc()) {
-    auto r = realizeFunc(c->getFunc());
-    if (knownTypes.empty())
-      fix(e, r->realizeString());
+  if (auto f = c->getFunc()) {
+    // Fetch the AST
+    auto ast = (FunctionStmt *)(ctx->cache->asts[f->name].get());
+    assert(ast);
+    for (int i = 0; i < f->explicits.size(); i++)
+      if (auto l = f->explicits[i].type->getLink()) {
+        if (unificationsDone && l && l->kind == LinkType::Unbound &&
+            ast->generics[i].deflt) {
+          // untouched unbound
+          // LOG("-- transform {} -> {}", f->name, f->explicits[i].name,
+          // ast->generics[i].deflt->toString());
+          auto t = transformType(ast->generics[i].deflt);
+          forceUnify(l, t->getType());
+        }
+      }
+    if (c->canRealize()) {
+      auto r = realizeFunc(f);
+      if (knownTypes.empty())
+        fix(e, r->realizeString());
+    }
   }
 
   // Emit final call
@@ -904,23 +945,25 @@ void TypecheckVisitor::visit(const AssignMemberStmt *stmt) {
   auto lc = lh->getType()->getClass();
   auto rc = rh->getType()->getClass();
 
-  auto mm = ctx->findMember(lc->name, stmt->member);
-  if (!mm && lc->name == ".Optional") {
-    resultStmt = transform(N<AssignMemberStmt>(
-        N<CallExpr>(N<IdExpr>(".unwrap"), clone(stmt->lhs)), stmt->member, move(rh)));
-    return;
+  if (lc) {
+    auto mm = ctx->findMember(lc->name, stmt->member);
+    if (!mm && lc->name == ".Optional") {
+      resultStmt = transform(N<AssignMemberStmt>(
+          N<CallExpr>(N<IdExpr>(".unwrap"), clone(stmt->lhs)), stmt->member, move(rh)));
+      return;
+    }
+    if (!mm)
+      error("cannot find '{}'", stmt->member);
+
+    if (lc && lc->isRecord())
+      error("records are read-only ^ {} , {}", lc->toString(), lh->toString());
+
+    auto t = ctx->instantiate(getSrcInfo(), mm, lc);
+    lc = t->getClass();
+    if (lc && lc->name == ".Optional" && rc && rc->name != lc->name)
+      rh = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(rh)));
+    forceUnify(t, rh->getType());
   }
-  if (!mm)
-    error("cannot find '{}'", stmt->member);
-
-  if (lc && lc->isRecord())
-    error("records are read-only ^ {} , {}", lc->toString(), lh->toString());
-
-  auto t = ctx->instantiate(getSrcInfo(), mm, lc);
-  lc = t->getClass();
-  if (lc && lc->name == ".Optional" && rc && rc->name != lc->name)
-    rh = transform(N<CallExpr>(N<IdExpr>(".Optional"), move(rh)));
-  forceUnify(t, rh->getType());
 
   resultStmt = N<AssignMemberStmt>(move(lh), stmt->member, move(rh));
 }
@@ -1025,10 +1068,17 @@ void TypecheckVisitor::visit(const MatchStmt *stmt) {
   auto matchTypeClass = matchType->getClass();
 
   auto unifyType = [&](TypePtr t) {
-    auto tc = t->getClass();
-    if (tc && tc->name == ".seq" && matchTypeClass && matchTypeClass->name == ".Kmer")
-      return;
-    forceUnify(t, matchType);
+    // auto tc = t->getClass();
+    // if (tc && tc->name == ".seq" && matchTypeClass && matchTypeClass->name ==
+    // ".Kmer")
+    //   return;
+    assert(t && matchType);
+    types::Unification us;
+    us.isMatch = true;
+    if (t->unify(matchType, us) < 0) {
+      us.undo();
+      error("cannot unify {} and {}", t->toString(), matchType->toString());
+    }
   };
 
   vector<PatternPtr> patterns;
@@ -1540,11 +1590,11 @@ vector<types::Generic> TypecheckVisitor::parseGenerics(const vector<Param> &gene
   auto genericTypes = vector<types::Generic>();
   for (auto &g : generics) {
     assert(!g.name.empty());
-    if (g.type && g.type->toString() != "(#id int)")
-      error("only int generic types are allowed");
+    if (g.type && g.type->toString() != "(#id .int)")
+      error("only int generic types are allowed / {}", g.type->toString());
     auto tp = ctx->addUnbound(getSrcInfo(), level, true, bool(g.type));
     genericTypes.push_back(
-        {g.name, tp->generalize(level), ctx->cache->unboundCount - 1});
+        {g.name, tp->generalize(level), ctx->cache->unboundCount - 1, clone(g.deflt)});
     LOG7("[generic] {} -> {} {}", g.name, tp->toString(0), bool(g.type));
     ctx->add(TypecheckItem::Type, g.name, tp, false, true, bool(g.type));
   }
@@ -1602,6 +1652,18 @@ types::TypePtr TypecheckVisitor::realizeFunc(types::TypePtr tt) {
                                                          ctx->bases.end());
     while (ctx->bases.size() > depth)
       ctx->bases.pop_back();
+
+    if (startswith(t->name, ".Tuple.") &&
+        (endswith(t->name, ".__iter__") || endswith(t->name, ".__getitem__"))) {
+      auto u = t->args[1]->getClass();
+      string s;
+      for (auto &a : u->args) {
+        if (s.empty())
+          s = a->realizeString();
+        else if (s != a->realizeString())
+          error("cannot iterate a heterogenous tuple");
+      }
+    }
 
     LOG7("[realize] fn {} -> {} : base {} ; depth = {}", t->name, t->realizeString(),
          ctx->getBase(), depth);
@@ -1726,11 +1788,15 @@ StmtPtr TypecheckVisitor::realizeBlock(const StmtPtr &stmt, bool keepLast) {
     if (ctx->activeUnbounds.empty() || !newUnbounds) {
       break;
     } else {
+
       if (newUnbounds >= prevSize) {
         TypePtr fu = nullptr;
         int count = 0;
         for (auto &ub : ctx->activeUnbounds)
           if (ub->getLink()->id >= minUnbound) {
+            // Attempt to use default generics here
+            // TODO: this is awfully inefficient way to do it
+            // if (ctx->...)
             if (!fu)
               fu = ub;
             LOG7("[realizeBlock] dangling {} @ {}", ub->toString(), ub->getSrcInfo());

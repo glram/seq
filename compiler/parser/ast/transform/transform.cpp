@@ -80,7 +80,7 @@ StmtPtr TransformVisitor::apply(shared_ptr<Cache> cache, StmtPtr s) {
       vector<Param> generics;
       generics.push_back({"T",
                           string(name) == "Int" || string(name) == "UInt"
-                              ? make_unique<IdExpr>("int")
+                              ? make_unique<IdExpr>(".int")
                               : nullptr,
                           nullptr});
       auto c = make_unique<ClassStmt>(true, canonical, move(generics), vector<Param>(),
@@ -244,7 +244,7 @@ void TransformVisitor::visit(const FStringExpr *expr) {
 void TransformVisitor::visit(const KmerExpr *expr) {
   resultExpr = transform(
       N<CallExpr>(N<IndexExpr>(N<IdExpr>(".Kmer"), N<IntExpr>(expr->value.size())),
-                  N<SeqExpr>(expr->value)));
+                  N<StringExpr>(expr->value)));
 }
 
 void TransformVisitor::visit(const SeqExpr *expr) {
@@ -407,7 +407,11 @@ void TransformVisitor::visit(const UnaryExpr *expr) {
 }
 
 void TransformVisitor::visit(const BinaryExpr *expr) {
-  if (expr->op == "is not") {
+  if (expr->op == "&&" || expr->op == "||") {
+    resultExpr = N<BinaryExpr>(
+        transform(N<CallExpr>(N<DotExpr>(clone(expr->lexpr), "__bool__"))), expr->op,
+        transform(N<CallExpr>(N<DotExpr>(clone(expr->rexpr), "__bool__"))));
+  } else if (expr->op == "is not") {
     resultExpr = transform(N<CallExpr>(N<DotExpr>(
         N<BinaryExpr>(clone(expr->lexpr), "is", clone(expr->rexpr)), "__invert__")));
   } else if (expr->op == "not in") {
@@ -954,8 +958,11 @@ void TransformVisitor::visit(const FunctionStmt *stmt) {
 
   ctx->bases.push_back({canonicalName});
   ctx->addBlock();
-  for (auto &g : stmt->generics)
+  vector<Param> newGenerics;
+  for (auto &g : stmt->generics) {
     ctx->add(TransformItem::Type, g.name, "", false, true, g.type != nullptr);
+    newGenerics.push_back({g.name, transformType(g.type), transform(g.deflt, true)});
+  }
 
   vector<Param> args;
   for (int ia = 0; ia < stmt->args.size(); ia++) {
@@ -999,8 +1006,8 @@ void TransformVisitor::visit(const FunctionStmt *stmt) {
     if (isMethod)
       attributes[".method"] = "";
   }
-  resultStmt = N<FunctionStmt>(canonicalName, move(ret), clone_nop(stmt->generics),
-                               move(args), move(suite), attributes);
+  resultStmt = N<FunctionStmt>(canonicalName, move(ret), move(newGenerics), move(args),
+                               move(suite), attributes);
   ctx->cache->asts[canonicalName] = clone(resultStmt);
 }
 
@@ -1013,6 +1020,7 @@ void TransformVisitor::visit(const ClassStmt *stmt) {
     ctx->add(TransformItem::Type, stmt->name, canonicalName, ctx->isToplevel());
   ctx->bases.push_back({canonicalName});
   ctx->bases.back().ast = N<IdExpr>(stmt->name);
+
   if (stmt->generics.size()) {
     vector<ExprPtr> genAst;
     for (auto &g : stmt->generics)
@@ -1022,8 +1030,13 @@ void TransformVisitor::visit(const ClassStmt *stmt) {
   }
 
   ctx->addBlock();
-  for (auto &g : stmt->generics)
+  vector<Param> newGenerics;
+  for (auto &g : stmt->generics) {
+    if (g.deflt)
+      error("default generics not supported in types");
     ctx->add(TransformItem::Type, g.name, "", false, true, g.type != nullptr);
+    newGenerics.push_back({g.name, transformType(g.type), transform(g.deflt, true)});
+  }
   unordered_set<string> seenMembers;
   vector<Param> args;
   for (auto &a : stmt->args) {
@@ -1047,7 +1060,7 @@ void TransformVisitor::visit(const ClassStmt *stmt) {
   }
 
   ctx->cache->asts[canonicalName] =
-      N<ClassStmt>(stmt->isRecord, canonicalName, clone_nop(stmt->generics), move(args),
+      N<ClassStmt>(stmt->isRecord, canonicalName, move(newGenerics), move(args),
                    N<SuiteStmt>(vector<StmtPtr>()), stmt->attributes);
 
   vector<StmtPtr> fns;
@@ -1440,9 +1453,8 @@ StmtPtr TransformVisitor::codegenMagic(const string &op, const ExprPtr &typExpr,
   } else if (op == "iter") {
     fargs.push_back({"self", clone(typExpr)});
     ret = N<IndexExpr>(I("Generator"), args.size() ? clone(args[0].type) : I("void"));
-    for (int i = 0; i < args.size(); i++) {
-      stmts.push_back(N<YieldStmt>(N<DotExpr>(I("self"), args[i].name)));
-    }
+    for (int i = 0; i < args.size(); i++)
+      stmts.push_back(N<YieldStmt>(N<DotExpr>(N<IdExpr>("self"), args[i].name)));
   } else if (op == "eq") {
     fargs.push_back({"self", clone(typExpr)});
     fargs.push_back({"other", clone(typExpr)});
