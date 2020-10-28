@@ -117,9 +117,14 @@ void execute(seq::SeqModule *module, vector<string> args, vector<string> libs,
 }
 
 void compile(seq::SeqModule *module, const string &out, bool debug) {
+  using namespace std::chrono;
   config::config().debug = debug;
   try {
+    auto t = high_resolution_clock::now();
     module->compile(out);
+    fmt::print(stderr, "[T] compile   = {:.1f}\n",
+               duration_cast<milliseconds>(high_resolution_clock::now() - t).count() /
+               1000.0);
   } catch (exc::SeqException &e) {
     compilationError(e.what(), e.getSrcInfo().file, e.getSrcInfo().line,
                      e.getSrcInfo().col);
