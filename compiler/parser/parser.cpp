@@ -142,7 +142,7 @@ void compile(std::shared_ptr<ir::IRModule> module, const string &out, bool debug
 
     fmt::print(stderr, "[T] compile   = {:.1f}\n",
                duration_cast<milliseconds>(high_resolution_clock::now() - t).count() /
-               1000.0);
+                   1000.0);
     if (err) {
       std::cerr << "error: " << err.message() << std::endl;
       exit(err.value());

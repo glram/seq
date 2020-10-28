@@ -801,8 +801,9 @@ void CodegenVisitor::visit(std::shared_ptr<StrPattern> strPattern) {
     auto *compStr = typeRealization->makeNew(
         {builder.CreateBitCast(strVar, IntegerType::getInt8PtrTy(context)), len},
         builder);
-    return builder.CreateTrunc(builder.CreateCall(codegenCtx->getBuiltinStub("_str_eq")->func,
-                              {val, compStr}), builder.getInt1Ty());
+    return builder.CreateTrunc(
+        builder.CreateCall(codegenCtx->getBuiltinStub("_str_eq")->func, {val, compStr}),
+        builder.getInt1Ty());
   };
 }
 
