@@ -630,8 +630,11 @@ void CodegenVisitor::visit(std::shared_ptr<OperandRvalue> opRval) {
 
 void CodegenVisitor::visit(std::shared_ptr<MatchRvalue> matchRval) {
   auto *op = transform(matchRval->getOperand());
+  auto boolReal = transform(types::kBoolType);
 
-  rvalResult = transform(matchRval->getPattern())(op);
+  auto patResult = transform(matchRval->getPattern())(op);
+  IRBuilder<> builder(ctx->getFrame().curBlock);
+  rvalResult = builder.CreateZExt(patResult, boolReal->llvmType);
 }
 
 void CodegenVisitor::visit(std::shared_ptr<PipelineRvalue> node) {
@@ -798,8 +801,8 @@ void CodegenVisitor::visit(std::shared_ptr<StrPattern> strPattern) {
     auto *compStr = typeRealization->makeNew(
         {builder.CreateBitCast(strVar, IntegerType::getInt8PtrTy(context)), len},
         builder);
-    return builder.CreateCall(codegenCtx->getBuiltinStub("_str_eq")->func,
-                              {val, compStr});
+    return builder.CreateTrunc(builder.CreateCall(codegenCtx->getBuiltinStub("_str_eq")->func,
+                              {val, compStr}), builder.getInt1Ty());
   };
 }
 
@@ -939,6 +942,7 @@ void CodegenVisitor::visit(std::shared_ptr<ArrayPattern> arrayPattern) {
 
 void CodegenVisitor::visit(std::shared_ptr<RangePattern> rangePattern) {
   auto codegenCtx = ctx;
+
   patResult = [=](llvm::Value *val) -> llvm::Value * {
     IRBuilder<> builder(codegenCtx->getFrame().curBlock);
 

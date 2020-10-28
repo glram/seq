@@ -245,13 +245,6 @@ void CodegenVisitor::visit(const IdExpr *expr) {
     result = CodegenResult(val->getType());
 }
 
-void CodegenVisitor::visit(const BinaryExpr *expr) {
-  assert(expr->op == "&&" || expr->op == "||");
-  auto op = expr->op == "&&" ? ShortCircuitExpr::AND : ShortCircuitExpr::OR;
-  resultExpr =
-      new seq::ShortCircuitExpr(op, transform(expr->lexpr), transform(expr->rexpr));
-}
-
 void CodegenVisitor::visit(const IfExpr *expr) {
   auto var = Ns<ir::Var>(expr->getSrcInfo(), temporaryName("if_res"),
                          realizeType(expr->getType()->getClass()));

@@ -328,7 +328,7 @@ llvm::Module *compile(LLVMContext &context, std::shared_ptr<IRModule> module) {
   module->accept(v);
 
   auto *realMain = llvmModule->getFunction("seq.main");
-  auto *main = makeCanonicalMainFunc(realMain, codegenCtx, module);
+  makeCanonicalMainFunc(realMain, codegenCtx, module);
   verifyModuleFailFast(*llvmModule);
   optimizeModule(llvmModule);
   applyGCTransformations(llvmModule);

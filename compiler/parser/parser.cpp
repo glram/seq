@@ -123,8 +123,12 @@ std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string 
 //}
 
 void compile(std::shared_ptr<ir::IRModule> module, const string &out, bool debug) {
+  using namespace std::chrono;
+  auto t = high_resolution_clock::now();
+
   config::config().debug = debug;
   try {
+
     llvm::LLVMContext context;
     auto *llvmModule = seq::ir::codegen::compile(context, module);
     std::error_code err;
@@ -136,6 +140,9 @@ void compile(std::shared_ptr<ir::IRModule> module, const string &out, bool debug
     llvm::WriteBitcodeToFile(llvmModule, stream);
 #endif
 
+    fmt::print(stderr, "[T] compile   = {:.1f}\n",
+               duration_cast<milliseconds>(high_resolution_clock::now() - t).count() /
+               1000.0);
     if (err) {
       std::cerr << "error: " << err.message() << std::endl;
       exit(err.value());
