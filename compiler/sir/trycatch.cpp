@@ -24,21 +24,28 @@ void TryCatch::addCatch(std::shared_ptr<types::Type> catchType, std::string name
                         std::weak_ptr<BasicBlock> handler) {
   catchTypes.push_back(catchType);
   catchBlocks.push_back(handler);
-  catchVars.push_back(std::make_shared<Var>(name, catchType));
+  if (!name.empty()) {
+    catchVars.push_back(std::make_shared<Var>(name, catchType));
+  } else {
+    catchVars.push_back(nullptr);
+  }
   catchVarNames.push_back(name);
 }
 
 std::vector<std::shared_ptr<TryCatch>>
 TryCatch::getPath(std::shared_ptr<TryCatch> dst) {
   auto cur = getShared();
-  std::vector<std::shared_ptr<TryCatch>> ret = {cur};
+  std::vector<std::shared_ptr<TryCatch>> ret = {};
   for (; cur; cur = cur->getParent().lock()) {
-    ret.push_back(cur);
     if (dst && cur->getId() == dst->getId())
       return ret;
+    ret.push_back(cur);
   }
-  if (!dst)
+  if (!dst) {
+    if (cur)
+      ret.push_back(cur);
     return ret;
+  }
 
   return {};
 }
@@ -55,7 +62,8 @@ std::string TryCatch::textRepresentation() const {
   }
   fmt::format_to(buf, FMT_STRING("]{{\n"));
   for (int i = 0; i < catchBlocks.size(); i++) {
-    fmt::format_to(buf, FMT_STRING("{}{}{}: {}\n"), catchTypes[i]->referenceString(),
+    fmt::format_to(buf, FMT_STRING("{}{}{}: {}\n"),
+                   catchTypes[i] ? catchTypes[i]->referenceString() : "*",
                    catchVars[i] ? " -> " : "",
                    catchVars[i] ? catchVars[i]->referenceString() : "",
                    catchBlocks[i].lock()->referenceString());

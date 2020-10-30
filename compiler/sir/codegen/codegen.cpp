@@ -31,7 +31,7 @@ std::string getLLVMFuncName(std::shared_ptr<Func> f) {
 /*
  * Recursively extract the function and args from a partial call.
  */
-std::tuple<llvm::Value *, std::vector<Value *>>
+std::tuple<Value *, std::vector<Value *>>
 processPartial(Value *self, const std::vector<Value *> &args,
                std::shared_ptr<types::PartialFuncType> p, IRBuilder<> b) {
   std::vector<Value *> argsFull;
@@ -166,7 +166,16 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
   for (auto i = 0; i < handlersFull.size(); ++i) {
     if (tc->getVar(i))
       vars.push_back(transform(tc->getVar(i)));
-    vars.push_back(nullptr);
+    else
+      vars.push_back(nullptr);
+
+    if (!catchTypesFull[i]) {
+      if (catchAll) {
+        assert(false);
+      } else {
+        catchAll = handlersFull[i];
+      }
+    }
   }
 
   auto checkMatch = [](std::vector<std::shared_ptr<types::Type>> &all,
@@ -220,10 +229,10 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
   caughtResult->setCleanup(true);
 
   for (auto &catchType : catchTypesFull) {
+    auto id = catchType ? catchType->getId() : 0;
     auto *tidx = new GlobalVariable(
         *module, getTypeInfoType(context), true, GlobalValue::PrivateLinkage,
-        ConstantStruct::get(getTypeInfoType(context),
-                            builder.getInt32(catchType->getId())));
+        ConstantStruct::get(getTypeInfoType(context), builder.getInt32(id)));
     caughtResult->addClause(tidx);
   }
 

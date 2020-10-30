@@ -790,13 +790,13 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
     auto cBlock = newBlock();
     cBlock->setTryCatch(newTc, true);
 
-    newTc->addCatch(c.exc->getType() ? realizeType(c.exc->getType()->getClass())
-                                     : nullptr,
-                    c.var, cBlock);
+    newTc->addCatch(c.exc ? realizeType(c.exc->getType()->getClass()) : nullptr, c.var,
+                    cBlock);
     ctx->addLevel();
-    ctx->getBase()->addVar(newTc->getVar(varIdx));
-    if (!c.var.empty())
+    if (!c.var.empty()) {
       ctx->addVar(c.var, newTc->getVar(varIdx));
+      ctx->getBase()->addVar(newTc->getVar(varIdx));
+    }
     ctx->addBlock(cBlock);
     transform(c.suite);
     condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), end));
