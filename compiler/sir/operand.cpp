@@ -8,26 +8,24 @@
 namespace seq {
 namespace ir {
 
-void Operand::accept(common::IRVisitor &v) { v.visit(getShared()); }
+void Operand::accept(common::SIRVisitor &v) { v.visit(getShared()); }
 
-void VarOperand::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<VarOperand>(getShared()));
-}
+void VarOperand::accept(common::SIRVisitor &v) { v.visit(getShared<VarOperand>()); }
 
-std::shared_ptr<types::Type> VarOperand::getType() { return var->getType(); }
+std::shared_ptr<types::Type> VarOperand::opType() { return var->getType(); }
 
 std::string VarOperand::textRepresentation() const { return var->referenceString(); }
 
-void VarPointerOperand::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<VarPointerOperand>(getShared()));
+void VarPointerOperand::accept(common::SIRVisitor &v) {
+  v.visit(getShared<VarPointerOperand>());
 }
 
 std::string VarPointerOperand::textRepresentation() const {
   return fmt::format(FMT_STRING("&{}"), var->referenceString());
 }
 
-void LiteralOperand::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<LiteralOperand>(getShared()));
+void LiteralOperand::accept(common::SIRVisitor &v) {
+  v.visit(getShared<LiteralOperand>());
 }
 
 std::string LiteralOperand::textRepresentation() const {

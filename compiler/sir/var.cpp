@@ -11,7 +11,7 @@ int Var::currentId = 0;
 
 void Var::resetId() { currentId = 0; }
 
-void Var::accept(common::IRVisitor &v) { v.visit(getShared()); }
+void Var::accept(common::SIRVisitor &v) { v.visit(getShared()); }
 
 std::string Var::textRepresentation() const {
   return fmt::format(FMT_STRING("{}: {}; {};"), referenceString(),

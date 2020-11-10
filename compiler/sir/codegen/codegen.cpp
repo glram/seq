@@ -47,10 +47,9 @@ processPartial(Value *self, const std::vector<Value *> &args,
     }
   }
 
-  if (std::static_pointer_cast<types::FuncType>(p->getCallee())->isPartial()) {
-    return processPartial(
-        func, argsFull,
-        std::static_pointer_cast<types::PartialFuncType>(p->getCallee()), b);
+  if (p->getCallee()->as<types::FuncType>()->isPartial()) {
+    return processPartial(func, argsFull, p->getCallee()->as<types::PartialFuncType>(),
+                          b);
   }
   return {func, argsFull};
 }
@@ -62,9 +61,11 @@ namespace codegen {
 
 using namespace llvm;
 
-void CodegenVisitor::visit(std::shared_ptr<IRModule> module) {
+void CodegenVisitor::visit(std::shared_ptr<SIRModule> module) {
+  // New frame for the module (should only contain globals)
   ctx->pushFrame();
 
+  // Ensure that we have builtin types
   transform(types::kBoolType);
   transform(types::kFloatType);
   transform(types::kIntType);
@@ -76,99 +77,127 @@ void CodegenVisitor::visit(std::shared_ptr<IRModule> module) {
   transform(types::kStringArrayType);
   // transform(types::kNoArgVoidFuncType);
 
+  // Transform all globals except for non-builtin functions
   for (auto &g : module->getGlobals()) {
-    if (g->isFunc() && std::static_pointer_cast<Func>(g)->isBuiltin()) {
-      auto fn = std::static_pointer_cast<Func>(g);
+    // Stub builtins
+    if (g->isFunc() && g->as<Func>()->isBuiltin()) {
+      auto fn = g->as<Func>();
 
       auto *funcPtrType = cast<PointerType>(transform(fn->getType())->llvmType);
       auto *funcType = cast<FunctionType>(funcPtrType->getElementType());
 
       auto *llvmFunc =
-          ctx->getModule()->getOrInsertFunction(fn->getMagicName(), funcType);
+          ctx->getModule()->getOrInsertFunction(fn->getUnmangledName(), funcType);
       ctx->stubBuiltin(fn, std::make_shared<BuiltinStub>(fn, cast<Function>(llvmFunc)));
     } else if (!g->isFunc()) {
       transform(g);
     }
   }
 
+  // Transform all functions
   for (auto &g : module->getGlobals())
     transform(g);
 
-  transform(module->getBase(), "seq.main");
+  // Transform main
+  transform(module->getMain(), "seq.main");
 }
 
 void CodegenVisitor::visit(std::shared_ptr<BasicBlock> block) {
+  // Get the previously stubbed start block
   auto *llvmBlock = ctx->getBlock(block);
+
+  // Set up context
   ctx->getFrame().curBlock = llvmBlock;
   ctx->getFrame().curIRBlock = block;
 
+  // Transform the instructions
   for (auto &inst : block->getInstructions())
     transform(inst);
 
+  // Transform the terminator
   auto term = block->getTerminator();
   transform(term);
 }
 
 void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
-  auto meta = ctx->getTryCatchMeta(tc);
+  // Get the try catch realization if it exists
+  auto realization = ctx->getTryCatchRealization(tc);
 
-  if (meta) {
-    tcResult = meta;
+  // If so, we can just return out
+  if (realization) {
+    tcResult = realization;
     return;
   }
 
-  meta = std::make_shared<TryCatchMetadata>();
-  tcResult = meta;
-  ctx->registerTryCatch(tc, meta);
+  // Make a new realization and set it to be the result
+  realization = std::make_shared<TryCatchRealization>();
+  tcResult = realization;
 
+  // Need to register this here to avoid infinite loops
+  ctx->registerTryCatch(tc, realization);
+
+  // Get the current function/LLVM data
   auto &context = ctx->getLLVMContext();
   auto *module = ctx->getModule();
   auto *func = ctx->getFrame().func;
 
+  // By default, a finally branch should go to an unreachable dst
   auto *unreachable = llvm::BasicBlock::Create(context, "", func);
   IRBuilder<> builder(unreachable);
   builder.CreateUnreachable();
 
-  meta->excFlag = transform(tc->getFlagVar());
-  meta->finallyBr = SwitchInst::Create(builder.getInt32(0), unreachable, 10);
+  // Setup the flag variable and finally branch instruction
+  realization->excFlag = transform(tc->getFlagVar());
+  realization->finallyBr = SwitchInst::Create(builder.getInt32(0), unreachable, 10);
 
+  // Get exception types
   StructType *padType = getPadType(context);
   StructType *unwindType =
       StructType::get(IntegerType::getInt64Ty(context)); // header only
   StructType *excType = getExcType(context);
 
-  meta->exceptionBlock = llvm::BasicBlock::Create(context, "exception", func);
-  meta->exceptionRouteBlock =
+  // Setup try catch LLVM blocks
+  realization->exceptionBlock = llvm::BasicBlock::Create(context, "exception", func);
+  auto *exceptionRouteBlock =
       llvm::BasicBlock::Create(context, "exception_route", func);
-  meta->finallyStart = ctx->getBlock(tc->getFinallyBlock().lock());
-
+  realization->finallyStart = ctx->getBlock(tc->getFinallyBlock().lock());
   auto *externalExceptionBlock =
       llvm::BasicBlock::Create(context, "external_exception", func);
   auto *unwindResumeBlock = llvm::BasicBlock::Create(context, "unwind_resume", func);
 
   using Path = std::vector<std::shared_ptr<TryCatch>>;
   llvm::BasicBlock *catchAll = nullptr;
+
+  // Path to catch all
   Path catchAllPath;
+
+  // Path to base
   Path totalPath = tc->getPath(nullptr);
 
+  // Load the exception and rethrow
   builder.SetInsertPoint(unwindResumeBlock);
   builder.CreateResume(builder.CreateLoad(ctx->getFrame().catchStore));
 
+  // Get all handlers in the current try catch
   for (auto &handler : tc->getCatchBlocks()) {
-    meta->handlers.push_back(ctx->getBlock(handler.lock()));
+    realization->handlers.push_back(ctx->getBlock(handler.lock()));
   }
 
+  // Containers for parent handlers
   std::vector<std::shared_ptr<types::Type>> catchTypesFull(tc->getCatchTypes());
-  std::vector<llvm::BasicBlock *> handlersFull(meta->handlers);
+  std::vector<llvm::BasicBlock *> handlersFull(realization->handlers);
   std::vector<Path> paths(catchTypesFull.size());
   std::vector<llvm::Value *> vars;
 
+  // Load variables and catch all
   for (auto i = 0; i < handlersFull.size(); ++i) {
+    // If there is a variable, get the pointer
     if (tc->getVar(i))
       vars.push_back(transform(tc->getVar(i)));
     else
       vars.push_back(nullptr);
 
+    // Should only ever be one catch all
     if (!catchTypesFull[i]) {
       if (catchAll) {
         assert(false);
@@ -178,6 +207,7 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
     }
   }
 
+  // Check if any of the catches match
   auto checkMatch = [](std::vector<std::shared_ptr<types::Type>> &all,
                        std::shared_ptr<types::Type> &t) -> bool {
     for (auto &cur : all)
@@ -188,17 +218,22 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
 
   Path pathStub = {tc};
   auto cur = tc->getParent().lock();
+
+  // Loop over all parents
   while (cur) {
     if (catchAll)
       break;
 
-    auto curMeta = transform(cur);
+    // Get the realization
+    auto curRealization = transform(cur);
     auto curCatchTypes = cur->getCatchTypes();
 
     for (auto i = 0; i < curCatchTypes.size(); ++i) {
       auto t = curCatchTypes[i];
+
+      // Catch all in parent
       if (!t && !catchAll) {
-        catchAll = curMeta->handlers[i];
+        catchAll = curRealization->handlers[i];
         catchAllPath = Path(pathStub.begin(), pathStub.end());
         catchTypesFull.push_back(t);
         handlersFull.push_back(catchAll);
@@ -208,9 +243,11 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
           vars.push_back(transform(cur->getVar(i)));
         else
           vars.push_back(nullptr);
-      } else if (!checkMatch(catchTypesFull, t)) {
+      }
+      // If we don't already have a handler for this type
+      else if (!checkMatch(catchTypesFull, t)) {
         catchTypesFull.push_back(t);
-        handlersFull.push_back(curMeta->handlers[i]);
+        handlersFull.push_back(curRealization->handlers[i]);
         paths.emplace_back(pathStub.begin(), pathStub.end());
 
         if (cur->getVar(i))
@@ -223,11 +260,13 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
     cur = cur->getParent().lock();
   }
 
-  builder.SetInsertPoint(meta->exceptionBlock);
+  // Route the exception
+  builder.SetInsertPoint(realization->exceptionBlock);
   auto *caughtResult =
       builder.CreateLandingPad(padType, (unsigned)catchTypesFull.size());
   caughtResult->setCleanup(true);
 
+  // Add cases to the switch
   for (auto &catchType : catchTypesFull) {
     auto id = catchType ? catchType->getId() : 0;
     auto *tidx = new GlobalVariable(
@@ -247,14 +286,14 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
       builder.CreateICmpEQ(
           unwindExceptionClass,
           ConstantInt::get(IntegerType::getInt64Ty(context), seq_exc_class())),
-      meta->exceptionRouteBlock, externalExceptionBlock);
+      exceptionRouteBlock, externalExceptionBlock);
 
   // External exception
   builder.SetInsertPoint(externalExceptionBlock);
   builder.CreateUnreachable();
 
   // reroute Seq exceptions:
-  builder.SetInsertPoint(meta->exceptionRouteBlock);
+  builder.SetInsertPoint(exceptionRouteBlock);
   unwindException =
       builder.CreateExtractValue(builder.CreateLoad(ctx->getFrame().catchStore), 0);
   auto *excVal = builder.CreatePointerCast(
@@ -266,6 +305,8 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
   objType = builder.CreateExtractValue(objType, 0);
   auto *objPtr = builder.CreateExtractValue(loadedExc, 1);
 
+  // If we have a catch all, route to that
+  // Otherwise jump through all finally blocks and resume unwinding
   llvm::BasicBlock *dfltRoute = llvm::BasicBlock::Create(context, "dflt", func);
   ctx->getFrame().curBlock = dfltRoute;
   if (catchAll)
@@ -273,12 +314,15 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
   else
     codegenTcJump(unwindResumeBlock, totalPath);
 
-  builder.SetInsertPoint(meta->exceptionRouteBlock);
+  builder.SetInsertPoint(exceptionRouteBlock);
   auto switchToCatch =
       builder.CreateSwitch(objType, dfltRoute, (unsigned)handlersFull.size());
+
   for (auto i = 0; i < handlersFull.size(); ++i) {
     auto *catchSetup =
         llvm::BasicBlock::Create(context, fmt::format(FMT_STRING("catch{}"), i), func);
+
+    // Store the exception to the variable and tcjump to the handler
     ctx->getFrame().curBlock = catchSetup;
     builder.SetInsertPoint(catchSetup);
     if (vars[i]) {
@@ -287,6 +331,8 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
           vars[i]);
     }
     codegenTcJump(handlersFull[i], paths[i]);
+
+    // If not a catch all
     if (catchTypesFull[i]) {
       switchToCatch->addCase(builder.getInt32(catchTypesFull[i]->getId()), catchSetup);
     }
@@ -294,44 +340,51 @@ void CodegenVisitor::visit(std::shared_ptr<TryCatch> tc) {
 }
 
 void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
+  // Get the LLVM name using the following rules:
+  //  1) nameOverride is not empty? use it
+  //  1) builtin or external? use the unmangled name
+  //  2) use the default name builder
   auto name = nameOverride.empty() ? (sirFunc->isBuiltin() || sirFunc->isExternal()
                                           ? sirFunc->getName()
                                           : getLLVMFuncName(sirFunc))
                                    : nameOverride;
 
+  // Lookup the function
   if (auto *llvmFunc = ctx->getModule()->getFunction(name)) {
+    // If not a builtin or we've already generated it, return the function
     if (!sirFunc->isBuiltin() ||
-        ctx->getBuiltinStub(sirFunc->getMagicName())->doneGen) {
+        ctx->getBuiltinStub(sirFunc->getUnmangledName())->doneGen) {
       varResult = llvmFunc;
       return;
     } else if (sirFunc->isBuiltin()) {
-      ctx->getBuiltinStub(sirFunc->getMagicName())->doneGen = true;
+      ctx->getBuiltinStub(sirFunc->getUnmangledName())->doneGen = true;
     }
   }
 
   auto *module = ctx->getModule();
+  auto &context = ctx->getLLVMContext();
+
   auto isGen = sirFunc->isGenerator();
 
-  auto sirFuncType = std::static_pointer_cast<types::FuncType>(sirFunc->getType());
+  // Get type realizations associated with the function
+  auto sirFuncType = sirFunc->getType()->as<types::FuncType>();
   auto outTypeRealization =
-      isGen ? transform(
-                  std::static_pointer_cast<types::Generator>(sirFuncType->getRType())
-                      ->getBase())
+      isGen ? transform(sirFuncType->getRType()->as<types::GeneratorType>()->getBase())
             : transform(sirFuncType->getRType());
-
   auto typeRealization = transform(sirFuncType);
   auto *funcPtrType = cast<PointerType>(typeRealization->llvmType);
   auto *funcType = cast<FunctionType>(funcPtrType->getElementType());
-  auto *outLLVMType = outTypeRealization->llvmType;
 
+  // Insert the function
   auto *func = cast<Function>(module->getOrInsertFunction(name, funcType));
   varResult = func;
 
+  // Don't fill in the body of external functions
   if (sirFunc->isExternal())
     return;
   else if (sirFunc->isInternal()) {
     transform(sirFunc->getParentType())
-        ->getMagicBuilder(getMagicSignature(sirFunc->getMagicName(),
+        ->getMagicBuilder(getMagicSignature(sirFunc->getUnmangledName(),
                                             sirFuncType->getArgTypes()))(func);
     return;
   }
@@ -362,8 +415,7 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   // TODO profiling
   func->setPersonalityFn(makePersonalityFunc(module));
 
-  auto &context = ctx->getLLVMContext();
-
+  // Get and setup the frame
   ctx->pushFrame();
   auto &frame = ctx->getFrame();
   frame.func = func;
@@ -397,9 +449,13 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   }
 
   auto *padType = getPadType(context);
-  if (sirFunc->getTryCatch()) {
+
+  // If we have try catches
+  auto tryCatches = sirFunc->getTryCatches();
+  if (!tryCatches.empty()) {
     frame.catchStore = makeAlloca(ConstantAggregateZero::get(padType), preamble);
-    transform(sirFunc->getTryCatch());
+    for (auto &tc : tryCatches)
+      transform(tc);
   }
 
   // General generator primitives
@@ -491,7 +547,8 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
     builder.CreateRet(handle);
 
     frame.exit = llvm::BasicBlock::Create(context, "final", func);
-    funcYield(frame, nullptr, frame.exit, nullptr);
+    generatorYield(nullptr, frame.exit, nullptr, frame.promise, frame.suspend,
+                   frame.cleanup);
   } else {
     frame.exit = llvm::BasicBlock::Create(context, "final", func);
     builder.SetInsertPoint(frame.exit);
@@ -501,9 +558,10 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
       builder.CreateRet(builder.CreateLoad(frame.rValPtr));
   }
 
-  if (sirFunc->isGenerator()) {
+  if (isGen) {
     auto *newEntry = llvm::BasicBlock::Create(context, "actualEntry", func);
-    funcYield(frame, nullptr, entry, newEntry);
+    generatorYield(nullptr, entry, newEntry, frame.promise, frame.suspend,
+                   frame.cleanup);
     entry = newEntry;
   }
 
@@ -514,7 +572,7 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   builder.CreateBr(ctx->getBlock(sirFunc->getBlocks().front()));
 
   builder.SetInsertPoint(preamble);
-  if (sirFunc->isGenerator()) {
+  if (isGen) {
     Function *allocFn = Intrinsic::getDeclaration(module, Intrinsic::coro_alloc);
     Value *needAlloc = builder.CreateCall(allocFn, id);
     builder.CreateCondBr(needAlloc, allocBlock, entryActual);
@@ -531,6 +589,7 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
 }
 
 void CodegenVisitor::visit(std::shared_ptr<Var> var) {
+  // Try to look the variable up
   if (auto *val = ctx->getVar(var)) {
     varResult = val;
     return;
@@ -541,10 +600,12 @@ void CodegenVisitor::visit(std::shared_ptr<Var> var) {
   auto *llvmType = typeRealization->llvmType;
   Value *val;
   if (var->isGlobal()) {
+    // Globals get added to module
     val = new GlobalVariable(*ctx->getModule(), llvmType, false,
                              GlobalValue::PrivateLinkage,
                              Constant::getNullValue(llvmType), var->getName());
   } else {
+    // Otherwise, allocate on the stack
     IRBuilder<> builder(ctx->getFrame().curBlock);
     val = typeRealization->alloc(builder, true);
   }
@@ -558,6 +619,7 @@ void CodegenVisitor::visit(std::shared_ptr<AssignInstr> assignInstr) {
   auto *lhs = transform(assignInstr->getLhs());
 
   IRBuilder<> builder(ctx->getFrame().curBlock);
+
   instrResult = builder.CreateStore(rhs, lhs);
 }
 
@@ -577,17 +639,15 @@ void CodegenVisitor::visit(std::shared_ptr<CallRvalue> callRval) {
   auto func = transform(callRval->getFunc());
 
   // No need to transform, function declaration does
-  auto sirFuncType =
-      std::static_pointer_cast<types::FuncType>(callRval->getFunc()->getType());
+  auto sirFuncType = callRval->getFunc()->getType()->as<types::FuncType>();
 
   std::vector<Value *> args;
 
   // TODO probably no longer required
   if (sirFuncType->isPartial()) {
     IRBuilder<> builder(ctx->getFrame().curBlock);
-    std::tie(func, args) = processPartial(
-        func, args, std::static_pointer_cast<types::PartialFuncType>(sirFuncType),
-        builder);
+    std::tie(func, args) =
+        processPartial(func, args, sirFuncType->as<types::PartialFuncType>(), builder);
   } else {
     for (auto &arg : callRval->getArgs()) {
       args.push_back(transform(arg));
@@ -652,7 +712,7 @@ void CodegenVisitor::visit(std::shared_ptr<PipelineRvalue> node) {
 }
 
 void CodegenVisitor::visit(std::shared_ptr<StackAllocRvalue> stackAllocRval) {
-  auto arrIRType = std::static_pointer_cast<types::Array>(stackAllocRval->getType());
+  auto arrIRType = stackAllocRval->getType()->as<types::ArrayType>();
 
   auto arrTypeRealization = transform(arrIRType);
   auto baseTypeRealization = transform(arrIRType->getBase());
@@ -758,10 +818,7 @@ void CodegenVisitor::visit(std::shared_ptr<BoundPattern> boundPattern) {
   };
 }
 
-void CodegenVisitor::visit(std::shared_ptr<StarPattern>) {
-  // TODO
-  assert(false);
-}
+void CodegenVisitor::visit(std::shared_ptr<StarPattern>) { assert(false); }
 
 void CodegenVisitor::visit(std::shared_ptr<IntPattern> intPattern) {
   auto *intType = transform(types::kIntType)->llvmType;
@@ -849,7 +906,7 @@ void CodegenVisitor::visit(std::shared_ptr<RecordPattern> recordPattern) {
 }
 
 void CodegenVisitor::visit(std::shared_ptr<ArrayPattern> arrayPattern) {
-  auto arrayType = std::static_pointer_cast<types::Array>(arrayPattern->getType());
+  auto arrayType = arrayPattern->getType()->as<types::ArrayType>();
   auto arrTypeRealization = transform(arrayPattern->getType());
   auto baseTypeRealization = transform(arrayType->getBase());
 
@@ -1027,10 +1084,12 @@ void CodegenVisitor::visit(std::shared_ptr<GuardedPattern> guardedPattern) {
 
 void CodegenVisitor::visit(std::shared_ptr<JumpTerminator> jumpTerminator) {
   auto dstIRBlock = jumpTerminator->getDst().lock();
+
   auto curTc = ctx->getFrame().curIRBlock->getFinallyTryCatch();
   auto tcPath = curTc ? curTc->getPath(dstIRBlock->getFinallyTryCatch())
                       : std::vector<std::shared_ptr<TryCatch>>();
   auto *dst = ctx->getBlock(dstIRBlock);
+
   codegenTcJump(dst, tcPath);
 }
 
@@ -1073,6 +1132,7 @@ void CodegenVisitor::visit(std::shared_ptr<ReturnTerminator> returnTerminator) {
   auto curTc = ctx->getFrame().curIRBlock->getFinallyTryCatch();
   auto tcPath =
       curTc ? curTc->getPath(nullptr) : std::vector<std::shared_ptr<TryCatch>>();
+
   if (tcPath.empty()) {
     if (ctx->getFrame().isGenerator) {
       IRBuilder<> builder(ctx->getFrame().curBlock);
@@ -1111,12 +1171,15 @@ void CodegenVisitor::visit(std::shared_ptr<YieldTerminator> yieldTerminator) {
 
   assert(tcPath.empty());
 
+  auto &frame = ctx->getFrame();
   if (yieldTerminator->getInVar()) {
     auto *ptr = transform(yieldTerminator->getInVar());
-    funcYieldIn(ctx->getFrame(), ptr, ctx->getFrame().curBlock, dst);
+    generatorYieldIn(ptr, frame.curBlock, dst, frame.promise, frame.suspend,
+                     frame.cleanup);
   } else {
     auto *op = transform(yieldTerminator->getResult());
-    funcYield(ctx->getFrame(), op, ctx->getFrame().curBlock, dst);
+    generatorYield(op, frame.curBlock, dst, frame.promise, frame.suspend,
+                   frame.cleanup);
   }
 }
 
@@ -1134,8 +1197,7 @@ void CodegenVisitor::visit(std::shared_ptr<ThrowTerminator> throwTerminator) {
   auto excIRType = throwTerminator->getOperand()->getType();
   auto *op = transform(throwTerminator->getOperand());
 
-  auto srcInfoAttr = std::static_pointer_cast<SrcInfoAttribute>(
-      throwTerminator->getAttribute(kSrcInfoAttribute));
+  auto srcInfoAttr = throwTerminator->getAttribute<SrcInfoAttribute>(kSrcInfoAttribute);
   auto srcInfo = srcInfoAttr ? srcInfoAttr->info : SrcInfo();
 
   LLVMContext &context = ctx->getLLVMContext();
@@ -1175,7 +1237,7 @@ void CodegenVisitor::visit(std::shared_ptr<ThrowTerminator> throwTerminator) {
 
   auto tc = ctx->getFrame().curIRBlock->getHandlerTryCatch();
   if (tc) {
-    auto *unwind = ctx->getFrame().tryCatchMeta[tc->getId()]->exceptionBlock;
+    auto *unwind = ctx->getFrame().tryCatchRealizations[tc->getId()]->exceptionBlock;
     auto *parent = ctx->getFrame().func;
     auto *normal = llvm::BasicBlock::Create(context, "normal", parent);
     ctx->getFrame().curBlock = normal;
@@ -1199,7 +1261,6 @@ void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> assertTerminator) {
   assert(tcPath.empty());
 
   auto &context = ctx->getLLVMContext();
-  auto *module = ctx->getModule();
   auto *func = ctx->getFrame().func;
   auto funcAttr =
       ctx->getFrame().curIRBlock->getAttribute<FuncAttribute>(kFuncAttribute);
@@ -1220,8 +1281,8 @@ void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> assertTerminator) {
   builder.SetInsertPoint(fail);
 
   if (test) {
-    auto srcInfoAttr = std::static_pointer_cast<SrcInfoAttribute>(
-        assertTerminator->getAttribute(kSrcInfoAttribute));
+    auto srcInfoAttr =
+        assertTerminator->getAttribute<SrcInfoAttribute>(kSrcInfoAttribute);
     auto srcInfo = srcInfoAttr ? srcInfoAttr->info : SrcInfo();
 
     auto *file = transform(std::make_shared<LiteralOperand>(srcInfo.file));
@@ -1234,9 +1295,7 @@ void CodegenVisitor::visit(std::shared_ptr<AssertTerminator> assertTerminator) {
     auto builtin = ctx->getBuiltinStub("_make_assert_error");
     auto *excVal = builder.CreateCall(builtin->func, msgVal);
 
-    auto excType =
-        std::static_pointer_cast<types::FuncType>(builtin->sirFunc->getType())
-            ->getRType();
+    auto excType = builtin->sirFunc->getType()->as<types::FuncType>()->getRType();
     auto exc = std::make_shared<common::LLVMOperand>(excType, excVal);
 
     auto term = std::make_shared<ThrowTerminator>(exc);
@@ -1261,7 +1320,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Type> type) {
     typeResult = real;
     return;
   }
-  throw std::runtime_error("cannot codegen non-derived type.");
+  assert(false);
 }
 
 void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
@@ -1284,10 +1343,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::RecordType> memberedType) {
     Value *self = UndefValue::get(llvmType);
     auto i = 0;
     for (auto &bReal : bodyRealizations) {
-      if (bReal)
-        self = builder.CreateInsertValue(self, bReal->getDefaultValue(builder), i++);
-      else
-        ++i;
+      self = builder.CreateInsertValue(self, bReal->getDefaultValue(builder), i++);
     }
     return self;
   };
@@ -1496,7 +1552,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::PartialFuncType> partialFuncTy
   typeResult = typeRealization;
 }
 
-void CodegenVisitor::visit(std::shared_ptr<types::Optional> optType) {
+void CodegenVisitor::visit(std::shared_ptr<types::OptionalType> optType) {
   if (auto real = ctx->getTypeRealization(optType)) {
     typeResult = real;
     return;
@@ -1582,7 +1638,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Optional> optType) {
   typeResult = typeRealization;
 }
 
-void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
+void CodegenVisitor::visit(std::shared_ptr<types::ArrayType> arrayType) {
   if (auto real = ctx->getTypeRealization(arrayType)) {
     typeResult = real;
     return;
@@ -1625,8 +1681,8 @@ void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
          return self;
        }},
       {getMagicSignature("__copy__", {arrayType}),
-       [llvmType, baseTypeRealization, baseLLVMType,
-        codegenCtx](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
+       [llvmType, baseTypeRealization, codegenCtx](std::vector<Value *> args,
+                                                   IRBuilder<> &builder) -> Value * {
          Value *len = builder.CreateExtractValue(args[0], 0);
          Value *otherPtr = builder.CreateExtractValue(args[0], 1);
 
@@ -1716,7 +1772,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Array> arrayType) {
   typeResult = typeRealization;
 }
 
-void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
+void CodegenVisitor::visit(std::shared_ptr<types::PointerType> pointerType) {
   if (auto real = ctx->getTypeRealization(pointerType)) {
     typeResult = real;
     return;
@@ -1915,7 +1971,7 @@ void CodegenVisitor::visit(std::shared_ptr<types::Pointer> pointerType) {
   typeResult = typeRealization;
 }
 
-void CodegenVisitor::visit(std::shared_ptr<types::Generator> genType) {
+void CodegenVisitor::visit(std::shared_ptr<types::GeneratorType> genType) {
   if (auto real = ctx->getTypeRealization(genType)) {
     typeResult = real;
     return;
@@ -2187,8 +2243,6 @@ void CodegenVisitor::visit(std::shared_ptr<types::IntNType> intNType) {
        }},
       {getMagicSignature("popcnt", {intNType}),
        [=](std::vector<Value *> args, IRBuilder<> &builder) -> Value * {
-         Function *popcnt = Intrinsic::getDeclaration(codegenCtx->getModule(),
-                                                      Intrinsic::ctpop, {llvmType});
          Value *count = builder.CreateCall(args[0]);
          return builder.CreateZExtOrTrunc(count,
                                           seqIntLLVM(codegenCtx->getLLVMContext()));
@@ -2219,7 +2273,7 @@ void CodegenVisitor::codegenTcJump(llvm::BasicBlock *dst,
     return;
   }
 
-  std::shared_ptr<TryCatchMetadata> firstMeta;
+  std::shared_ptr<TryCatchRealization> firstMeta;
   auto curMeta = firstMeta;
 
   for (auto &it : tcPath) {

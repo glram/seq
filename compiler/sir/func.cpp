@@ -25,15 +25,17 @@ Func::Func(std::string name, std::vector<std::string> argNames,
   blocks.push_back(std::make_shared<BasicBlock>());
 }
 
-void Func::setArgNames(std::vector<std::string> names) { argNames = names; }
+void Func::accept(common::SIRVisitor &v) { v.visit(getShared<Func>()); }
 
-void Func::setType(std::shared_ptr<types::Type> type) {
+void Func::realize(std::shared_ptr<types::FuncType> type,
+                   std::vector<std::string> names) {
   Var::setType(type);
   argVars.clear();
   auto argTypes = std::static_pointer_cast<types::FuncType>(type)->getArgTypes();
   for (int i = 0; i < argTypes.size(); i++) {
-    argVars.push_back(std::make_shared<Var>(argNames[i], argTypes[i]));
+    argVars.push_back(std::make_shared<Var>(names[i], argTypes[i]));
   }
+  argNames = std::move(names);
 }
 
 std::shared_ptr<Var> Func::getArgVar(const std::string &name) {
@@ -58,7 +60,7 @@ std::string Func::textRepresentation() const {
   fmt::format_to(buf, FMT_STRING("]{{\n"));
   if (internal) {
     fmt::format_to(buf, FMT_STRING("internal: {}.{}\n"), parent->referenceString(),
-                   magicName);
+                   unmangledName);
   } else if (external) {
     fmt::format_to(buf, FMT_STRING("external\n"));
   } else {
@@ -66,17 +68,15 @@ std::string Func::textRepresentation() const {
       fmt::format_to(buf, FMT_STRING("{}\n"), block->textRepresentation());
     }
   }
-  if (tc)
+  for (auto &tc : tryCatches) {
     fmt::format_to(buf, FMT_STRING("{}\n"), tc->textRepresentation());
+  }
   fmt::format_to(buf, FMT_STRING("}}; {}"), attributeString());
   return std::string(buf.data(), buf.size());
 }
 
 std::string Func::referenceString() const {
   return fmt::format(FMT_STRING("f${}#{}"), name, id);
-}
-void Func::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<Func>(getShared()));
 }
 
 } // namespace ir

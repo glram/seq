@@ -32,6 +32,7 @@
 namespace seq {
 namespace ast {
 
+/// Struct containing the result of codegen for a particular AST object.
 struct CodegenResult {
   enum { OP, RVALUE, LVALUE, PATTERN, TYPE, NONE } tag;
   std::shared_ptr<seq::ir::Operand> operandResult;
@@ -54,19 +55,22 @@ struct CodegenResult {
   explicit CodegenResult(std::shared_ptr<seq::ir::types::Type> type)
       : tag(TYPE), typeResult(std::move(type)){};
 
-  void addAttribute(std::string key, std::shared_ptr<seq::ir::Attribute> att) {
+  /// Adds an attribute to the underlying SIR object.
+  /// @param key the attribute key
+  /// @param att the attribute to add
+  void addAttribute(const std::string &key, std::shared_ptr<seq::ir::Attribute> att) {
     switch (tag) {
     case OP:
-      operandResult->setAttribute(key, att);
+      operandResult->setAttribute(key, std::move(att));
       break;
     case RVALUE:
-      rvalueResult->setAttribute(key, att);
+      rvalueResult->setAttribute(key, std::move(att));
       break;
     case LVALUE:
-      lvalueResult->setAttribute(key, att);
+      lvalueResult->setAttribute(key, std::move(att));
       break;
     case PATTERN:
-      patternResult->setAttribute(key, att);
+      patternResult->setAttribute(key, std::move(att));
       break;
     default:
       break;
@@ -88,15 +92,29 @@ class CodegenVisitor
   std::shared_ptr<CodegenItem> processIdentifier(std::shared_ptr<CodegenContext> tctx,
                                                  const std::string &id);
 
+  /// Convert the result to an operand, flattening if necessary.
+  /// @param res the codegen result
+  /// @return the input as an operand
   std::shared_ptr<seq::ir::Operand> toOperand(CodegenResult res);
+
+  /// Convert the result to an rvalue, flattening if necessary.
+  /// @param res the codegen result
+  /// @return the input as an rvalue
   std::shared_ptr<seq::ir::Rvalue> toRvalue(CodegenResult res);
+
+  /// Create and insert a new block (with the same try catch/loop attributes) to the
+  /// function.
+  /// @return the new block
   std::shared_ptr<seq::ir::BasicBlock> newBlock();
+
+  /// Conditionally set the terminator if one is not already set.
+  /// @param term the new terminator
   void condSetTerminator(std::shared_ptr<seq::ir::Terminator> term);
 
 public:
   explicit CodegenVisitor(std::shared_ptr<CodegenContext> ctx);
-  static std::shared_ptr<seq::ir::IRModule> apply(std::shared_ptr<Cache> cache,
-                                                  StmtPtr stmts);
+  static std::shared_ptr<seq::ir::SIRModule> apply(std::shared_ptr<Cache> cache,
+                                                   StmtPtr stmts);
 
   CodegenResult transform(const ExprPtr &expr) override;
   CodegenResult transform(const StmtPtr &stmt) override;

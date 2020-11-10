@@ -55,7 +55,7 @@ public:
 class CodegenContext : public Context<CodegenItem> {
   std::vector<std::shared_ptr<seq::ir::Func>> bases;
   std::vector<std::shared_ptr<seq::ir::BasicBlock>> blocks;
-  std::shared_ptr<seq::ir::IRModule> module;
+  std::shared_ptr<seq::ir::SIRModule> module;
   int topBlockIndex, topBaseIndex;
 
 public:
@@ -68,7 +68,7 @@ public:
 public:
   CodegenContext(std::shared_ptr<Cache> cache,
                  std::shared_ptr<seq::ir::BasicBlock> block,
-                 std::shared_ptr<seq::ir::IRModule> module,
+                 std::shared_ptr<seq::ir::SIRModule> module,
                  std::shared_ptr<seq::ir::Func> base, std::shared_ptr<seq::SeqJIT> jit);
 
   std::shared_ptr<CodegenItem> find(const std::string &name, bool onlyLocal = false,
@@ -104,7 +104,7 @@ public:
   std::shared_ptr<seq::ir::BasicBlock> getBlock() const {
     return blocks[topBlockIndex];
   }
-  std::shared_ptr<seq::ir::IRModule> getModule() const { return module; }
+  std::shared_ptr<seq::ir::SIRModule> getModule() const { return module; }
   bool isToplevel() const { return bases.size() == 1; }
   std::shared_ptr<seq::SeqJIT> getJIT() { return jit; }
   std::shared_ptr<seq::ir::types::Type> getType(const std::string &name) const {
@@ -116,7 +116,7 @@ public:
   }
 
 private:
-  std::shared_ptr<seq::ir::types::Pointer> getPointer(types::ClassTypePtr t);
+  std::shared_ptr<seq::ir::types::PointerType> getPointer(types::ClassTypePtr t);
 };
 
 } // namespace ast

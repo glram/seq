@@ -25,11 +25,11 @@ namespace ast {
 
 CodegenContext::CodegenContext(shared_ptr<Cache> cache,
                                shared_ptr<seq::ir::BasicBlock> block,
-                               shared_ptr<seq::ir::IRModule> module,
+                               shared_ptr<seq::ir::SIRModule> module,
                                shared_ptr<seq::ir::Func> base,
                                shared_ptr<seq::SeqJIT> jit)
-    : Context<CodegenItem>(""), cache(std::move(cache)), jit(std::move(jit)),
-      module(std::move(module)) {
+    : Context<CodegenItem>(""), module(std::move(module)), cache(std::move(cache)),
+      jit(std::move(jit)) {
   stack.push_front(vector<string>());
   topBaseIndex = topBlockIndex = 0;
   if (block)
@@ -180,7 +180,7 @@ shared_ptr<seq::ir::types::Type> CodegenContext::realizeType(types::ClassTypePtr
     if (types[0]->getId() == seq::ir::types::kStringType->getId())
       handle = seq::ir::types::kStringArrayType;
     else
-      handle = make_shared<seq::ir::types::Array>(getPointer(typePtrs[0]));
+      handle = make_shared<seq::ir::types::ArrayType>(getPointer(typePtrs[0]));
   } else if (name == ".Ptr") {
     assert(types.size() == 1 && statics.size() == 0);
     if (types[0]->getId() == seq::ir::types::kByteType->getId())
@@ -188,13 +188,13 @@ shared_ptr<seq::ir::types::Type> CodegenContext::realizeType(types::ClassTypePtr
     else if (types[0]->getId() == seq::ir::types::kStringType->getId())
       handle = seq::ir::types::kStringPointerType;
     else
-      handle = make_shared<seq::ir::types::Pointer>(types[0]);
+      handle = make_shared<seq::ir::types::PointerType>(types[0]);
   } else if (name == ".Generator") {
     assert(types.size() == 1 && statics.size() == 0);
-    handle = handle = make_shared<seq::ir::types::Generator>(types[0]);
+    handle = handle = make_shared<seq::ir::types::GeneratorType>(types[0]);
   } else if (name == ".Optional") {
     assert(types.size() == 1 && statics.size() == 0);
-    handle = make_shared<seq::ir::types::Optional>(getPointer(typePtrs[0]));
+    handle = make_shared<seq::ir::types::OptionalType>(getPointer(typePtrs[0]));
   } else if (startswith(name, ".Function.")) {
     types.clear();
     for (auto &m : t->args)
@@ -237,14 +237,15 @@ shared_ptr<seq::ir::types::Type> CodegenContext::realizeType(types::ClassTypePtr
   return this->types[t->realizeString()] = handle;
 }
 
-shared_ptr<seq::ir::types::Pointer> CodegenContext::getPointer(types::ClassTypePtr t) {
+shared_ptr<seq::ir::types::PointerType>
+CodegenContext::getPointer(types::ClassTypePtr t) {
   t = t->getClass();
   auto pointerName = fmt::format(FMT_STRING(".Ptr[{}]"), t->realizeString());
   auto it = types.find(pointerName);
   if (it != types.end())
-    return std::static_pointer_cast<seq::ir::types::Pointer>(it->second);
+    return std::static_pointer_cast<seq::ir::types::PointerType>(it->second);
 
-  auto pointer = make_shared<seq::ir::types::Pointer>(realizeType(t));
+  auto pointer = make_shared<seq::ir::types::PointerType>(realizeType(t));
   this->types[pointerName] = pointer;
   return pointer;
 }

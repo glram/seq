@@ -10,31 +10,44 @@ namespace seq {
 namespace ir {
 
 namespace common {
-class IRVisitor;
+class SIRVisitor;
 }
 
 class Var;
 class Func;
 
-class IRModule : public AttributeHolder<IRModule> {
+/// SIR object representing a program.
+class SIRModule : public AttributeHolder<SIRModule> {
 private:
+  /// the global variables defined in the module
   std::vector<std::shared_ptr<Var>> globals;
+  /// the module's name
   std::string name;
-  std::shared_ptr<Func> baseFunc;
+  /// the module's "main" function
+  std::shared_ptr<Func> mainFunc;
+  /// the module's argv variable
   std::shared_ptr<Var> argVar;
 
 public:
-  explicit IRModule(std::string name);
+  /// Constructs an SIR module.
+  explicit SIRModule(std::string name);
 
-  void accept(common::IRVisitor &v);
+  void accept(common::SIRVisitor &v);
 
+  /// @return all globals defined in the module
   std::vector<std::shared_ptr<Var>> getGlobals() { return globals; }
+
+  /// Adds a global variable to the module.
+  /// @param var the variable.
   void addGlobal(std::shared_ptr<Var> var);
 
-  std::shared_ptr<Func> getBase() const { return baseFunc; }
+  /// @return the module's main function
+  std::shared_ptr<Func> getMain() const { return mainFunc; }
 
+  /// @return the module's name
   std::string getName() const { return name; }
 
+  /// @return the module's argv variable
   std::shared_ptr<Var> getArgVar() { return argVar; };
 
   std::string referenceString() const override { return "module"; };

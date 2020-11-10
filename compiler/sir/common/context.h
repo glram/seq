@@ -6,6 +6,7 @@ namespace seq {
 namespace ir {
 namespace common {
 
+/// Base for SIR visitor contexts.
 template <typename Frame> class IRContext {
 private:
   std::vector<Frame> frames;

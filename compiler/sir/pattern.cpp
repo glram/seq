@@ -13,7 +13,7 @@ int Pattern::currentId = 0;
 
 void Pattern::resetId() { Pattern::currentId = 0; }
 
-void Pattern::accept(common::IRVisitor &v) { v.visit(getShared()); }
+void Pattern::accept(common::SIRVisitor &v) { v.visit(getShared()); }
 
 std::string Pattern::referenceString() const {
   return fmt::format(FMT_STRING("p#{}"), id);
@@ -22,8 +22,8 @@ std::string Pattern::referenceString() const {
 WildcardPattern::WildcardPattern(std::shared_ptr<types::Type> type)
     : var(std::make_shared<Var>(type)) {}
 
-void WildcardPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<WildcardPattern>(getShared()));
+void WildcardPattern::accept(common::SIRVisitor &v) {
+  v.visit(getShared<WildcardPattern>());
 }
 
 std::string WildcardPattern::textRepresentation() const {
@@ -34,57 +34,45 @@ BoundPattern::BoundPattern(std::shared_ptr<Pattern> p,
                            std::shared_ptr<types::Type> type)
     : var(std::make_shared<Var>(std::move(type))), pattern(std::move(p)) {}
 
-void BoundPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<BoundPattern>(getShared()));
-}
+void BoundPattern::accept(common::SIRVisitor &v) { v.visit(getShared<BoundPattern>()); }
 
 std::string BoundPattern::textRepresentation() const {
   return fmt::format(FMT_STRING("(({}->{})#{}"), pattern->textRepresentation(),
                      var->referenceString(), getId());
 }
 
-void StarPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<StarPattern>(getShared()));
-}
+void StarPattern::accept(common::SIRVisitor &v) { v.visit(getShared<StarPattern>()); }
 
 std::string StarPattern::textRepresentation() const {
   return fmt::format(FMT_STRING("...#{}"), getId());
 }
 
-void IntPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<IntPattern>(getShared()));
-}
+void IntPattern::accept(common::SIRVisitor &v) { v.visit(getShared<IntPattern>()); }
 
 std::string IntPattern::textRepresentation() const {
   return fmt::format(FMT_STRING("{}#{}"), value, getId());
 }
 
-void BoolPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<BoolPattern>(getShared()));
-}
+void BoolPattern::accept(common::SIRVisitor &v) { v.visit(getShared<BoolPattern>()); }
 
 std::string BoolPattern::textRepresentation() const {
   return fmt::format(FMT_STRING("{}#{}"), (value) ? "true" : "false", getId());
 }
 
-void StrPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<StrPattern>(getShared()));
-}
+void StrPattern::accept(common::SIRVisitor &v) { v.visit(getShared<StrPattern>()); }
 
 std::string StrPattern::textRepresentation() const {
   return fmt::format(FMT_STRING("'{}'#{}"), value, getId());
 }
 
-void SeqPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<SeqPattern>(getShared()));
-}
+void SeqPattern::accept(common::SIRVisitor &v) { v.visit(getShared<SeqPattern>()); }
 
 std::string SeqPattern::textRepresentation() const {
   return fmt::format(FMT_STRING("s'{}'#{}"), value, getId());
 }
 
-void RecordPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<RecordPattern>(getShared()));
+void RecordPattern::accept(common::SIRVisitor &v) {
+  v.visit(getShared<RecordPattern>());
 }
 
 std::string RecordPattern::textRepresentation() const {
@@ -99,9 +87,7 @@ std::string RecordPattern::textRepresentation() const {
   return std::string(buf.data(), buf.size());
 }
 
-void ArrayPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<ArrayPattern>(getShared()));
-}
+void ArrayPattern::accept(common::SIRVisitor &v) { v.visit(getShared<ArrayPattern>()); }
 
 std::string ArrayPattern::textRepresentation() const {
   fmt::memory_buffer buf;
@@ -115,25 +101,21 @@ std::string ArrayPattern::textRepresentation() const {
   return std::string(buf.data(), buf.size());
 }
 
-void OptionalPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<OptionalPattern>(getShared()));
+void OptionalPattern::accept(common::SIRVisitor &v) {
+  v.visit(getShared<OptionalPattern>());
 }
 
 std::string OptionalPattern::textRepresentation() const {
   return fmt::format(FMT_STRING("{}?#{}"), pattern->textRepresentation(), getId());
 }
 
-void RangePattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<RangePattern>(getShared()));
-}
+void RangePattern::accept(common::SIRVisitor &v) { v.visit(getShared<RangePattern>()); }
 
 std::string RangePattern::textRepresentation() const {
   return fmt::format(FMT_STRING("{}...{}#{}"), lower, higher, getId());
 }
 
-void OrPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<OrPattern>(getShared()));
-}
+void OrPattern::accept(common::SIRVisitor &v) { v.visit(getShared<OrPattern>()); }
 
 std::string OrPattern::textRepresentation() const {
   fmt::memory_buffer buf;
@@ -146,8 +128,8 @@ std::string OrPattern::textRepresentation() const {
   return std::string(buf.data(), buf.size());
 }
 
-void GuardedPattern::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<GuardedPattern>(getShared()));
+void GuardedPattern::accept(common::SIRVisitor &v) {
+  v.visit(getShared<GuardedPattern>());
 }
 
 std::string GuardedPattern::textRepresentation() const {

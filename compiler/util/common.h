@@ -194,7 +194,7 @@ public:
   } while (0)
 
 #if defined(TAPIR_VERSION_MAJOR)
-#define SEQ_HAS_TAPIR 0
+#define SEQ_HAS_TAPIR 1
 #else
 #define SEQ_HAS_TAPIR 0
 #endif

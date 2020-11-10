@@ -29,9 +29,10 @@ using namespace seq::ir;
 
 class LLVMOperand;
 
-class IRVisitor {
+/// Base for SIR visitors
+class SIRVisitor {
 public:
-  DEFAULT_VISIT(IRModule);
+  DEFAULT_VISIT(SIRModule);
 
   DEFAULT_VISIT(BasicBlock);
 
@@ -92,38 +93,45 @@ public:
   DEFAULT_VISIT(types::RefType);
   DEFAULT_VISIT(types::FuncType);
   DEFAULT_VISIT(types::PartialFuncType);
-  DEFAULT_VISIT(types::Optional);
-  DEFAULT_VISIT(types::Array);
-  DEFAULT_VISIT(types::Pointer);
-  DEFAULT_VISIT(types::Generator);
+  DEFAULT_VISIT(types::OptionalType);
+  DEFAULT_VISIT(types::ArrayType);
+  DEFAULT_VISIT(types::PointerType);
+  DEFAULT_VISIT(types::GeneratorType);
   DEFAULT_VISIT(types::IntNType);
 };
 
+/// Special operand wrapping LLVM values
 class LLVMOperand : public Operand {
 private:
+  /// operand type
   std::shared_ptr<types::Type> type;
+  /// value
   llvm::Value *val;
 
+  std::shared_ptr<types::Type> opType() override { return type; }
+
 public:
+  /// Constructs an llvm operand.
+  /// @param type the type
+  /// @param val the internal value
   LLVMOperand(std::shared_ptr<types::Type> type, llvm::Value *val)
       : type(std::move(type)), val(val) {}
 
-  void accept(common::IRVisitor &v) override {
-    v.visit(std::static_pointer_cast<LLVMOperand>(getShared()));
-  }
+  void accept(common::SIRVisitor &v) override { v.visit(getShared<LLVMOperand>()); }
 
-  std::shared_ptr<types::Type> getType() override { return type; }
+  /// @return thh value
   llvm::Value *getValue() { return val; }
 
   std::string textRepresentation() const override { return "internal"; }
 };
 
+/// CRTP Base for SIR visitors that return from transform.
 template <typename Derived, typename Context, typename ModuleResult,
           typename BlockResult, typename TCResult, typename VarResult,
           typename InstrResult, typename RvalResult, typename LvalResult,
           typename OpResult, typename PatResult, typename TermResult,
           typename TypeResult>
-class CallbackIRVisitor : public IRVisitor {
+class CallbackIRVisitor : public SIRVisitor {
 protected:
   std::shared_ptr<Context> ctx;
   ModuleResult moduleResult{};
@@ -142,7 +150,7 @@ public:
   explicit CallbackIRVisitor(std::shared_ptr<Context> ctx) : ctx(std::move(ctx)) {}
 
   template <typename... Args>
-  ModuleResult transform(std::shared_ptr<ir::IRModule> module, Args... args) {
+  ModuleResult transform(std::shared_ptr<ir::SIRModule> module, Args... args) {
     Derived v(ctx, args...);
     module->accept(v);
     return v.moduleResult;

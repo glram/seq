@@ -18,22 +18,27 @@ class CodegenVisitor;
 using InlinePatternCheckFunc = std::function<llvm::Value *(llvm::Value *)>;
 using Parent =
     common::CallbackIRVisitor<CodegenVisitor, Context, llvm::Module *,
-                              llvm::BasicBlock *, std::shared_ptr<TryCatchMetadata>,
+                              llvm::BasicBlock *, std::shared_ptr<TryCatchRealization>,
                               llvm::Value *, llvm::Instruction *, llvm::Value *,
                               llvm::Value *, llvm::Value *, InlinePatternCheckFunc,
                               llvm::Instruction *, std::shared_ptr<TypeRealization>>;
 
+/// Visitor for converting SIR to LLVM.
 class CodegenVisitor : public Parent {
 private:
+  /// override the default name of functions
   std::string nameOverride;
 
 public:
+  /// Constructs a codegen visitor.
+  /// @param ctx the codegen context
+  /// @param nameOverride an optional name override
   explicit CodegenVisitor(std::shared_ptr<Context> ctx, std::string nameOverride = "")
       : Parent(std::move(ctx)), nameOverride(std::move(nameOverride)) {}
 
   using Parent::visit;
 
-  OVERRIDE_VISIT(IRModule);
+  OVERRIDE_VISIT(SIRModule);
 
   OVERRIDE_VISIT(BasicBlock);
 
@@ -87,10 +92,10 @@ public:
   OVERRIDE_VISIT(types::RefType);
   OVERRIDE_VISIT(types::FuncType);
   OVERRIDE_VISIT(types::PartialFuncType);
-  OVERRIDE_VISIT(types::Optional);
-  OVERRIDE_VISIT(types::Array);
-  OVERRIDE_VISIT(types::Pointer);
-  OVERRIDE_VISIT(types::Generator);
+  OVERRIDE_VISIT(types::OptionalType);
+  OVERRIDE_VISIT(types::ArrayType);
+  OVERRIDE_VISIT(types::PointerType);
+  OVERRIDE_VISIT(types::GeneratorType);
   OVERRIDE_VISIT(types::IntNType);
 
 private:

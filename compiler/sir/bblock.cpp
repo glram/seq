@@ -14,17 +14,17 @@ int BasicBlock::currentId = 0;
 
 void BasicBlock::resetId() { currentId = 0; }
 
-std::string BasicBlock::referenceString() const {
-  return fmt::format(FMT_STRING("bb#{}"), id);
-}
-
-void BasicBlock::accept(common::IRVisitor &v) { v.visit(getShared()); }
+void BasicBlock::accept(common::SIRVisitor &v) { v.visit(getShared()); }
 
 std::shared_ptr<TryCatch> BasicBlock::getHandlerTryCatch() {
   return isCatch ? tc->getParent().lock() : tc;
 }
 
 std::shared_ptr<TryCatch> BasicBlock::getFinallyTryCatch() { return tc; }
+
+std::string BasicBlock::referenceString() const {
+  return fmt::format(FMT_STRING("bb#{}"), id);
+}
 
 std::string BasicBlock::textRepresentation() const {
   fmt::memory_buffer buf;

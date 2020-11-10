@@ -18,7 +18,7 @@ TryCatch::TryCatch() : id(currentId++) {
 
 void TryCatch::resetId() { currentId = 0; }
 
-void TryCatch::accept(common::IRVisitor &v) { v.visit(getShared()); }
+void TryCatch::accept(common::SIRVisitor &v) { v.visit(getShared()); }
 
 void TryCatch::addCatch(std::shared_ptr<types::Type> catchType, std::string name,
                         std::weak_ptr<BasicBlock> handler) {

@@ -11,10 +11,10 @@
 namespace seq {
 namespace ir {
 
-void Terminator::accept(common::IRVisitor &v) { v.visit(getShared()); }
+void Terminator::accept(common::SIRVisitor &v) { v.visit(getShared()); }
 
-void JumpTerminator::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<JumpTerminator>(getShared()));
+void JumpTerminator::accept(common::SIRVisitor &v) {
+  v.visit(getShared<JumpTerminator>());
 }
 
 std::string JumpTerminator::textRepresentation() const {
@@ -22,8 +22,8 @@ std::string JumpTerminator::textRepresentation() const {
                      attributeString());
 }
 
-void CondJumpTerminator::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<CondJumpTerminator>(getShared()));
+void CondJumpTerminator::accept(common::SIRVisitor &v) {
+  v.visit(getShared<CondJumpTerminator>());
 }
 
 std::string CondJumpTerminator::textRepresentation() const {
@@ -32,8 +32,8 @@ std::string CondJumpTerminator::textRepresentation() const {
                      attributeString());
 }
 
-void ReturnTerminator::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<ReturnTerminator>(getShared()));
+void ReturnTerminator::accept(common::SIRVisitor &v) {
+  v.visit(getShared<ReturnTerminator>());
 }
 
 std::string ReturnTerminator::textRepresentation() const {
@@ -47,8 +47,8 @@ std::string ReturnTerminator::textRepresentation() const {
   return std::string(buf.data(), buf.size());
 }
 
-void YieldTerminator::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<YieldTerminator>(getShared()));
+void YieldTerminator::accept(common::SIRVisitor &v) {
+  v.visit(getShared<YieldTerminator>());
 }
 
 std::string YieldTerminator::textRepresentation() const {
@@ -68,8 +68,8 @@ std::string YieldTerminator::textRepresentation() const {
   return std::string(buf.data(), buf.size());
 }
 
-void ThrowTerminator::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<ThrowTerminator>(getShared()));
+void ThrowTerminator::accept(common::SIRVisitor &v) {
+  v.visit(getShared<ThrowTerminator>());
 }
 
 std::string ThrowTerminator::textRepresentation() const {
@@ -77,8 +77,8 @@ std::string ThrowTerminator::textRepresentation() const {
                      attributeString());
 }
 
-void AssertTerminator::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<AssertTerminator>(getShared()));
+void AssertTerminator::accept(common::SIRVisitor &v) {
+  v.visit(getShared<AssertTerminator>());
 }
 
 std::string AssertTerminator::textRepresentation() const {
@@ -87,8 +87,8 @@ std::string AssertTerminator::textRepresentation() const {
                      attributeString());
 }
 
-void FinallyTerminator::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<FinallyTerminator>(getShared()));
+void FinallyTerminator::accept(common::SIRVisitor &v) {
+  v.visit(getShared<FinallyTerminator>());
 }
 
 std::string FinallyTerminator::textRepresentation() const {

@@ -34,9 +34,9 @@ void generateDocstr(const std::string &file) {
   // ast::parse_file(file)->accept(d);
 }
 
-std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string &file,
-                                    const string &code, bool isCode, bool isTest,
-                                    int startLine) {
+std::shared_ptr<ir::SIRModule> parse(const std::string &argv0, const std::string &file,
+                                     const string &code, bool isCode, bool isTest,
+                                     int startLine) {
   try {
     auto d = getenv("SEQ_DEBUG");
     if (d)
@@ -122,7 +122,7 @@ std::shared_ptr<ir::IRModule> parse(const std::string &argv0, const std::string 
 //  // }
 //}
 
-void compile(std::shared_ptr<ir::IRModule> module, const string &out, bool debug) {
+void compile(std::shared_ptr<ir::SIRModule> module, const string &out, bool debug) {
   using namespace std::chrono;
   auto t = high_resolution_clock::now();
 

@@ -10,20 +10,16 @@
 namespace seq {
 namespace ir {
 
-void Instr::accept(common::IRVisitor &v) { v.visit(getShared()); }
+void Instr::accept(common::SIRVisitor &v) { v.visit(getShared()); }
 
-void AssignInstr::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<AssignInstr>(getShared()));
-}
+void AssignInstr::accept(common::SIRVisitor &v) { v.visit(getShared<AssignInstr>()); }
 
 std::string AssignInstr::textRepresentation() const {
   return fmt::format(FMT_STRING("{} = {}; {}"), left->textRepresentation(),
                      right->textRepresentation(), attributeString());
 }
 
-void RvalueInstr::accept(common::IRVisitor &v) {
-  v.visit(std::static_pointer_cast<RvalueInstr>(getShared()));
-}
+void RvalueInstr::accept(common::SIRVisitor &v) { v.visit(getShared<RvalueInstr>()); }
 
 std::string RvalueInstr::textRepresentation() const {
   return fmt::format("{}; {}", rvalue->textRepresentation(), attributeString());

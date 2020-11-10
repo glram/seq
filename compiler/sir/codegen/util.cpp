@@ -19,7 +19,7 @@ using namespace seq::ir;
 
 Function *makeCanonicalMainFunc(Function *realMain,
                                 std::shared_ptr<codegen::Context> ctx,
-                                std::shared_ptr<IRModule> irModule) {
+                                std::shared_ptr<SIRModule> irModule) {
 #define LLVM_I32() IntegerType::getInt32Ty(context)
   LLVMContext &context = realMain->getContext();
   Module *module = realMain->getParent();
@@ -260,18 +260,16 @@ void generatorDestroy(Value *self, llvm::BasicBlock *block) {
   builder.CreateCall(destFn, self);
 }
 
-void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
-               llvm::BasicBlock *dst) {
-  if (!meta.isGenerator) {
-    throw std::runtime_error("can only yield from generators");
-  }
+void generatorYield(llvm::Value *val, llvm::BasicBlock *block, llvm::BasicBlock *dst,
+                    llvm::Value *promise, llvm::BasicBlock *suspend,
+                    llvm::BasicBlock *cleanup) {
   LLVMContext &context = block->getContext();
   auto *module = block->getModule();
   IRBuilder<> builder(block);
 
   if (val) {
-    assert(meta.promise);
-    builder.CreateStore(val, meta.promise);
+    assert(promise);
+    builder.CreateStore(val, promise);
   }
 
   Function *suspFn = Intrinsic::getDeclaration(module, Intrinsic::coro_suspend);
@@ -280,7 +278,7 @@ void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
   Value *susp = builder.CreateCall(suspFn, {tok, final});
 
   if (!dst) {
-    dst = llvm::BasicBlock::Create(context, "", meta.func);
+    dst = llvm::BasicBlock::Create(context, "", suspend->getParent());
     builder.SetInsertPoint(dst);
     builder.CreateUnreachable();
     builder.SetInsertPoint(block);
@@ -291,20 +289,21 @@ void funcYield(CodegenFrame &meta, llvm::Value *val, llvm::BasicBlock *block,
    * so make a new block and return that to the caller.
    */
 
-  SwitchInst *inst = builder.CreateSwitch(susp, meta.suspend, 2);
+  SwitchInst *inst = builder.CreateSwitch(susp, suspend, 2);
   inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 0), dst);
-  inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 1), meta.cleanup);
+  inst->addCase(ConstantInt::get(IntegerType::getInt8Ty(context), 1), cleanup);
 }
 
-void funcYieldIn(CodegenFrame &meta, llvm::Value *ptr, llvm::BasicBlock *block,
-                 llvm::BasicBlock *dst) {
-  auto *newDst =
-      llvm::BasicBlock::Create(block->getContext(), "loadPromise", meta.func);
-  funcYield(meta, nullptr, block, newDst);
+void generatorYieldIn(llvm::Value *ptr, llvm::BasicBlock *block, llvm::BasicBlock *dst,
+                      llvm::Value *promise, llvm::BasicBlock *suspend,
+                      llvm::BasicBlock *cleanup) {
+  auto *newDst = llvm::BasicBlock::Create(block->getContext(), "loadPromise",
+                                          suspend->getParent());
+  generatorYield(nullptr, block, newDst, promise, suspend, cleanup);
 
   IRBuilder<> builder(newDst);
   builder.SetInsertPoint(newDst);
-  builder.CreateStore(builder.CreateLoad(meta.promise), ptr);
+  builder.CreateStore(builder.CreateLoad(promise), ptr);
   builder.CreateBr(dst);
 }
 
@@ -320,7 +319,7 @@ llvm::StructType *getExcType(LLVMContext &ctx) {
   return StructType::get(getTypeInfoType(ctx), IntegerType::getInt8PtrTy(ctx));
 }
 
-llvm::Module *compile(LLVMContext &context, std::shared_ptr<IRModule> module) {
+llvm::Module *compile(LLVMContext &context, std::shared_ptr<SIRModule> module) {
   auto *llvmModule = new Module(module->getName(), context);
   auto codegenCtx = std::make_shared<Context>(llvmModule);
 

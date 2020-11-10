@@ -13,7 +13,7 @@ namespace seq {
 namespace ir {
 
 namespace common {
-class IRVisitor;
+class SIRVisitor;
 }
 
 class Var;
@@ -30,7 +30,7 @@ public:
 
   static void resetId();
 
-  virtual void accept(common::IRVisitor &v);
+  virtual void accept(common::SIRVisitor &v);
 
   int getId() const { return id; }
 
@@ -43,7 +43,7 @@ class WildcardPattern : public Pattern {
 public:
   explicit WildcardPattern(std::shared_ptr<types::Type> type);
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   std::shared_ptr<Var> getVar() { return var; };
 
@@ -58,7 +58,7 @@ private:
 public:
   BoundPattern(std::shared_ptr<Pattern> p, std::shared_ptr<types::Type> type);
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   std::shared_ptr<Var> getVar() { return var; };
 
@@ -69,7 +69,7 @@ class StarPattern : public Pattern {
 public:
   StarPattern() = default;
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   std::string textRepresentation() const override;
 };
@@ -81,7 +81,7 @@ private:
 public:
   explicit IntPattern(seq_int_t value) : value(value) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   seq_int_t getValue() const { return value; }
 
@@ -95,7 +95,7 @@ private:
 public:
   explicit BoolPattern(bool value) : value(value) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   bool getValue() const { return value; }
 
@@ -109,7 +109,7 @@ private:
 public:
   explicit StrPattern(std::string value) : value(std::move(value)) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   std::string getValue() const { return value; }
 
@@ -123,7 +123,7 @@ private:
 public:
   explicit SeqPattern(std::string value) : value(std::move(value)) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   std::string getValue() const { return value; }
 
@@ -140,7 +140,7 @@ public:
                          std::shared_ptr<types::Type> type)
       : patterns(std::move(patterns)), type(std::move(type)) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   std::vector<std::shared_ptr<Pattern>> getPatterns() { return patterns; }
   std::shared_ptr<types::Type> getType() { return type; }
@@ -158,7 +158,7 @@ public:
                         std::shared_ptr<types::Type> type)
       : patterns(std::move(patterns)), type(std::move(type)) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   std::vector<std::shared_ptr<Pattern>> getPatterns() { return patterns; }
   std::shared_ptr<types::Type> getType() { return type; }
@@ -176,7 +176,7 @@ public:
                            std::shared_ptr<types::Type> type)
       : pattern(std::move(pattern)), type(std::move(type)) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
   std::shared_ptr<types::Type> getType() { return type; }
 
   std::string textRepresentation() const override;
@@ -190,7 +190,7 @@ private:
 public:
   explicit RangePattern(seq_int_t a, seq_int_t b) : lower(a), higher(b) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   seq_int_t getLower() const { return lower; }
   seq_int_t getHigher() const { return higher; }
@@ -206,7 +206,7 @@ public:
   explicit OrPattern(std::vector<std::shared_ptr<Pattern>> patterns)
       : patterns(std::move(patterns)) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   std::vector<std::shared_ptr<Pattern>> getPatterns() { return patterns; }
 
@@ -223,7 +223,7 @@ public:
                           std::shared_ptr<Operand> operand)
       : pattern(std::move(pattern)), operand(std::move(operand)) {}
 
-  void accept(common::IRVisitor &v) override;
+  void accept(common::SIRVisitor &v) override;
 
   std::shared_ptr<Pattern> getPattern() { return pattern; }
   std::shared_ptr<Operand> getOperand() { return operand; }

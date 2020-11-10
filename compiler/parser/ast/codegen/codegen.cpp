@@ -48,15 +48,15 @@ void CodegenVisitor::defaultVisit(const Pattern *n) {
 }
 
 shared_ptr<BasicBlock> CodegenVisitor::newBlock() {
-  auto templ = ctx->getBlock();
-  auto ret = make_shared<BasicBlock>(templ->getTryCatch(), templ->isCatchClause());
-
+  auto templateBlock = ctx->getBlock();
+  auto ret = make_shared<BasicBlock>(templateBlock->getTryCatch(),
+                                     templateBlock->isCatchClause());
   ctx->getBase()->addBlock(ret);
 
-  if (templ->getAttribute(kLoopAttribute))
+  if (templateBlock->getAttribute(kLoopAttribute))
     ret->setAttribute(kLoopAttribute,
                       make_shared<LoopAttribute>(
-                          *templ->getAttribute<LoopAttribute>(kLoopAttribute)));
+                          *templateBlock->getAttribute<LoopAttribute>(kLoopAttribute)));
 
   return ret;
 }
@@ -80,7 +80,7 @@ shared_ptr<Operand> CodegenVisitor::toOperand(CodegenResult res) {
     auto t = Ns<ir::Var>(srcInfo, res.typeOverride ? res.typeOverride
                                                    : res.rvalueResult->getType());
     ctx->getBase()->addVar(t);
-    ctx->getBlock()->add(
+    ctx->getBlock()->append(
         Ns<AssignInstr>(srcInfo, Ns<VarLvalue>(srcInfo, t), res.rvalueResult));
     return Ns<VarOperand>(srcInfo, t);
   }
@@ -88,7 +88,7 @@ shared_ptr<Operand> CodegenVisitor::toOperand(CodegenResult res) {
     seqassert(false, "cannot convert pattern to operand.");
     return nullptr;
   case CodegenResult::TYPE:
-    seqassert(false, "cannot convert pattern to operand.");
+    seqassert(false, "cannot convert type to operand.");
     return nullptr;
   default:
     seqassert(false, "cannot convert unknown to operand.");
@@ -143,11 +143,11 @@ CodegenResult CodegenVisitor::transform(const PatternPtr &ptr) {
   return v.result;
 }
 
-shared_ptr<IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmts) {
-  auto module = make_shared<IRModule>("module");
-  auto block = module->getBase()->getBlocks()[0];
+shared_ptr<SIRModule> CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmts) {
+  auto module = make_shared<SIRModule>("module");
+  auto block = module->getMain()->getBlocks()[0];
   auto ctx =
-      make_shared<CodegenContext>(cache, block, module, module->getBase(), nullptr);
+      make_shared<CodegenContext>(cache, block, module, module->getMain(), nullptr);
 
   // Now add all realization stubs
   for (auto &ff : cache->realizations)
@@ -184,13 +184,13 @@ shared_ptr<IRModule> CodegenVisitor::apply(shared_ptr<Cache> cache, StmtPtr stmt
           if (isdigit(name[0])) // TODO: get rid of this hack
             name = names[names.size() - 2];
           LOG7("[codegen] generating internal fn {} -> {}", ast->name, name);
-          auto fn = Ns<ir::Func>(t->getSrcInfo(), names.back(), vector<string>(),
+          auto fn = Ns<ir::Func>(t->getSrcInfo(), ast->name, vector<string>(),
                                  ir::types::kNoArgVoidFuncType);
           fn->setInternal(typ, name);
           ctx->functions[f.first] = {fn, false};
           ctx->getModule()->addGlobal(fn);
         } else {
-          auto fn = Ns<ir::Func>(t->getSrcInfo(), name, vector<string>(),
+          auto fn = Ns<ir::Func>(t->getSrcInfo(), ast->name, vector<string>(),
                                  ir::types::kNoArgVoidFuncType);
           ctx->functions[f.first] = {fn, false};
           ctx->getModule()->addGlobal(fn);
@@ -229,14 +229,7 @@ void CodegenVisitor::visit(const StringExpr *expr) {
 
 void CodegenVisitor::visit(const IdExpr *expr) {
   auto val = ctx->find(expr->value);
-  seqassert(val, "cannot find '{}'", expr->value);
-  // TODO: this makes no sense: why setAtomic on temporary expr?
-  // if (var->isGlobal() && var->getBase() == ctx->getBase() &&
-  //     ctx->hasFlag("atomic"))
-  //   dynamic_cast<seq::VarExpr *>(i->getExpr())->setAtomic();
-  //
 
-  // TODO verify
   if (auto v = val->getVar())
     result = CodegenResult(Ns<VarOperand>(expr->getSrcInfo(), v));
   else if (auto f = val->getFunc())
@@ -246,66 +239,84 @@ void CodegenVisitor::visit(const IdExpr *expr) {
 }
 
 void CodegenVisitor::visit(const IfExpr *expr) {
-  auto var = Ns<ir::Var>(expr->getSrcInfo(), temporaryName("if_res"),
-                         realizeType(expr->getType()->getClass()));
-  ctx->getBase()->addVar(var);
+  // Create a temporary variable to store the result of the if expr.
+  auto ifExprResVar = Ns<ir::Var>(expr->getSrcInfo(), temporaryName("if_res"),
+                                  realizeType(expr->getType()->getClass()));
+  ctx->getBase()->addVar(ifExprResVar);
 
+  // Create blocks for the true and fall case.
   auto tBlock = newBlock();
   auto fBlock = newBlock();
-  auto nextBlock = newBlock();
 
+  // Create a done block.
+  auto doneBlock = newBlock();
+
+  // Jump based on the cond
   auto condResultOp = toOperand(transform(expr->cond));
   ctx->getBlock()->setTerminator(
       Ns<CondJumpTerminator>(expr->getSrcInfo(), tBlock, fBlock, condResultOp));
 
+  // Assign in true block
   ctx->addBlock(tBlock);
   auto tResultOp = toOperand(transform(expr->eif));
-  ctx->getBlock()->add(
-      Ns<AssignInstr>(expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), var),
-                      Ns<OperandRvalue>(expr->getSrcInfo(), tResultOp)));
-  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(expr->getSrcInfo(), nextBlock));
+  ctx->getBlock()->append(Ns<AssignInstr>(
+      expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), ifExprResVar),
+      Ns<OperandRvalue>(expr->getSrcInfo(), tResultOp)));
+  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(expr->getSrcInfo(), doneBlock));
   ctx->popBlock();
 
+  // Assign in false block
   ctx->addBlock(fBlock);
   auto fResultOp = toOperand(transform(expr->eelse));
-  ctx->getBlock()->add(
-      Ns<AssignInstr>(expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), var),
-                      Ns<OperandRvalue>(expr->getSrcInfo(), fResultOp)));
-  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(expr->getSrcInfo(), nextBlock));
+  ctx->getBlock()->append(Ns<AssignInstr>(
+      expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), ifExprResVar),
+      Ns<OperandRvalue>(expr->getSrcInfo(), fResultOp)));
+  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(expr->getSrcInfo(), doneBlock));
   ctx->popBlock();
 
-  ctx->replaceBlock(nextBlock);
+  // Replace the current block with doneBlock
+  ctx->replaceBlock(doneBlock);
 
-  result = CodegenResult(Ns<VarOperand>(expr->getSrcInfo(), var));
+  result = CodegenResult(Ns<VarOperand>(expr->getSrcInfo(), ifExprResVar));
 }
 
 void CodegenVisitor::visit(const BinaryExpr *expr) {
+  // Only support short circuit for and/or
   assert(expr->op == "&&" || expr->op == "||");
 
-  auto var =
+  // Create a temporary to store the result of the binary op
+  auto binExprResVar =
       Ns<ir::Var>(expr->getSrcInfo(), temporaryName("bin_res"), ir::types::kBoolType);
-  ctx->getBase()->addVar(var);
+  ctx->getBase()->addVar(binExprResVar);
 
+  // Create blocks for the true/false case
   auto trueBlock = newBlock();
   auto falseBlock = newBlock();
-  auto nextBlock = newBlock();
 
+  // Create a done block
+  auto doneBlock = newBlock();
+
+  // Transform the left hand side
   auto lhsOp = toOperand(transform(expr->lexpr));
   if (expr->op == "&&") {
+    // Short circuit to falseBlock if left is false
     auto tLeftBlock = newBlock();
     ctx->getBlock()->setTerminator(
         Ns<CondJumpTerminator>(expr->getSrcInfo(), tLeftBlock, falseBlock, lhsOp));
 
+    // Jump to trueBlock if right is also true, otherwise falseBlock
     ctx->addBlock(tLeftBlock);
     auto rhsOp = toOperand(transform(expr->rexpr));
     ctx->getBlock()->setTerminator(
         Ns<CondJumpTerminator>(expr->getSrcInfo(), trueBlock, falseBlock, rhsOp));
     ctx->popBlock();
   } else {
+    // Short circuit to trueBlock if left is true
     auto fLeftBlock = newBlock();
     ctx->getBlock()->setTerminator(
         Ns<CondJumpTerminator>(expr->getSrcInfo(), trueBlock, fLeftBlock, lhsOp));
 
+    // Jump to trueBlock is right is true, otherwise falseBlock
     ctx->addBlock(fLeftBlock);
     auto rhsOp = toOperand(transform(expr->rexpr));
     ctx->getBlock()->setTerminator(
@@ -313,72 +324,43 @@ void CodegenVisitor::visit(const BinaryExpr *expr) {
     ctx->popBlock();
   }
 
+  // Set the result to true in trueBlock
   ctx->addBlock(trueBlock);
   auto trueOperand = Ns<LiteralOperand>(expr->getSrcInfo(), true);
-  ctx->getBlock()->add(
-      Ns<AssignInstr>(expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), var),
-                      Ns<OperandRvalue>(expr->getSrcInfo(), trueOperand)));
-  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(expr->getSrcInfo(), nextBlock));
+  ctx->getBlock()->append(Ns<AssignInstr>(
+      expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), binExprResVar),
+      Ns<OperandRvalue>(expr->getSrcInfo(), trueOperand)));
+  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(expr->getSrcInfo(), doneBlock));
   ctx->popBlock();
 
+  // Set the result to false in falseBlock
   ctx->addBlock(falseBlock);
   auto falseOperand = Ns<LiteralOperand>(expr->getSrcInfo(), false);
-  ctx->getBlock()->add(
-      Ns<AssignInstr>(expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), var),
-                      Ns<OperandRvalue>(expr->getSrcInfo(), falseOperand)));
-  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(expr->getSrcInfo(), nextBlock));
+  ctx->getBlock()->append(Ns<AssignInstr>(
+      expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), binExprResVar),
+      Ns<OperandRvalue>(expr->getSrcInfo(), falseOperand)));
+  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(expr->getSrcInfo(), doneBlock));
   ctx->popBlock();
 
-  ctx->replaceBlock(nextBlock);
+  // Replace the current block with doneBlock
+  ctx->replaceBlock(doneBlock);
 
-  result = CodegenResult(Ns<VarOperand>(expr->getSrcInfo(), var));
+  result = CodegenResult(Ns<VarOperand>(expr->getSrcInfo(), binExprResVar));
 }
 
 void CodegenVisitor::visit(const PipeExpr *expr) {
-  //<<<<<<< HEAD
-  //  vector<shared_ptr<Operand>> ops;
-  //  vector<bool> parallel;
-  //  for (const auto &item : expr->items) {
-  //    ops.push_back(toOperand(transform(item.expr)));
-  //    parallel.push_back(item.op == "||>");
-  //=======
-  //  vector<seq::Expr *> exprs{transform(expr->items[0].expr)};
-  //  vector<seq::types::Type *> inTypes{realizeType(expr->inTypes[0]->getClass())};
-  //  for (int i = 1; i < expr->items.size(); i++) {
-  //    auto e = CAST(expr->items[i].expr, CallExpr);
-  //    assert(e);
-  //    // LOG("{}", e->toString());
-  //
-  //    auto pfn = transform(e->expr);
-  //    // LOG(" -- {} ... {}", pfn->getType()->getName(), e->args.size());
-  //    vector<seq::Expr *> items(e->args.size(), nullptr);
-  //    vector<string> names(e->args.size(), "");
-  //    vector<seq::types::Type *> partials(e->args.size(), nullptr);
-  //    for (int ai = 0; ai < e->args.size(); ai++)
-  //      if (!CAST(e->args[ai].value, EllipsisExpr)) {
-  //        items[ai] = transform(e->args[ai].value);
-  //        partials[ai] = realizeType(e->args[ai].value->getType()->getClass());
-  //        // LOG(" -- {}: {} .. {}", ai, partials[ai]->getName(),
-  //        // items[ai]->getType()->getName());
-  //      }
-  //    auto p = new seq::PartialCallExpr(pfn, items, names);
-  //    p->setType(seq::types::PartialFuncType::get(pfn->getType(), partials));
-  //    // LOG(" ?? {}", p->getType()->getName())
-  //
-  //    exprs.push_back(p);
-  //    inTypes.push_back(realizeType(expr->inTypes[i]->getClass()));
-  //>>>>>>> af86e35772e7039640dd5ff30e1edcfd12d9eca1
-  //  }
-  //  result = CodegenResult(Ns<PipelineRvalue>(expr->getSrcInfo(), ops, parallel));
-
+  // Transform the first stage
   vector<shared_ptr<Operand>> ops = {toOperand(transform(expr->items[0].expr))};
   vector<bool> parallel = {expr->items[0].op == "||>"};
   vector<shared_ptr<ir::types::Type>> inTypes = {
       realizeType(expr->inTypes[0]->getClass())};
+
+  // Transform subsequent stages
   for (auto i = 1; i < expr->items.size(); ++i) {
     auto e = CAST(expr->items[i].expr, CallExpr);
     assert(e);
 
+    // Realize the args of the partial
     auto pfn = toOperand(transform(e->expr));
     vector<shared_ptr<Operand>> items(e->args.size(), nullptr);
     vector<string> names(e->args.size(), "");
@@ -389,37 +371,45 @@ void CodegenVisitor::visit(const PipeExpr *expr) {
         items[ai] = toOperand(transform(e->args[ai].value));
         partials[ai] = realizeType(e->args[ai].value->getType()->getClass());
       }
-    auto pType = std::static_pointer_cast<ir::types::PartialFuncType>(
-        realizeType(e->getType()->getClass()));
+
+    // Setup the partial
+    auto pType =
+        realizeType(e->getType()->getClass())->as<ir::types::PartialFuncType>();
     auto tVar = Ns<ir::Var>(expr->getSrcInfo(), pType);
     ctx->getBase()->addVar(tVar);
-    ctx->getBlock()->add(
+    ctx->getBlock()->append(
         Ns<AssignInstr>(expr->getSrcInfo(), Ns<VarLvalue>(expr->getSrcInfo(), tVar),
                         Ns<PartialCallRvalue>(expr->getSrcInfo(), pfn, items, pType)));
     ops.push_back(Ns<VarOperand>(expr->getSrcInfo(), tVar));
     inTypes.push_back(realizeType(expr->inTypes[i]->getClass()));
   }
+
   result = CodegenResult(Ns<PipelineRvalue>(expr->getSrcInfo(), ops, parallel, inTypes,
                                             realizeType(expr->getType()->getClass())));
 }
 
 void CodegenVisitor::visit(const CallExpr *expr) {
+  // Transform the function
   auto lhs = toOperand(transform(expr->expr));
   vector<shared_ptr<Operand>> items;
+
+  // Transform the args
   for (auto &&i : expr->args) {
     if (CAST(i.value, EllipsisExpr)) {
-      assert(false);
+      seqassert(false, "partials codegen only supported in pipelines");
     } else {
       items.push_back(toOperand(transform(i.value)));
     }
   }
+
   result = CodegenResult(Ns<CallRvalue>(expr->getSrcInfo(), lhs, items));
+
+  // Necessary because function may still be stubbed
   result.typeOverride = realizeType(expr->getType()->getClass());
 }
 
 void CodegenVisitor::visit(const StackAllocExpr *expr) {
-  auto arrayType = std::static_pointer_cast<ir::types::Array>(
-      realizeType(expr->getType()->getClass()));
+  auto arrayType = realizeType(expr->getType()->getClass())->as<ir::types::ArrayType>();
   auto e = CAST(expr->expr, IntExpr);
   result =
       CodegenResult(Ns<StackAllocRvalue>(expr->getSrcInfo(), arrayType, e->intValue));
@@ -435,8 +425,10 @@ void CodegenVisitor::visit(const PtrExpr *expr) {
   assert(e);
   auto v = ctx->find(e->value, true)->getVar();
   assert(v);
-  result = CodegenResult(Ns<VarPointerOperand>(
-      expr->getSrcInfo(), realizeType(expr->getType()->getClass()), v));
+
+  auto pointerType =
+      realizeType(expr->getType()->getClass())->as<ir::types::PointerType>();
+  result = CodegenResult(Ns<VarPointerOperand>(expr->getSrcInfo(), pointerType, v));
 }
 
 void CodegenVisitor::visit(const YieldExpr *expr) {
@@ -447,8 +439,8 @@ void CodegenVisitor::visit(const YieldExpr *expr) {
   ctx->getBase()->addVar(var);
 
   auto dst = newBlock();
-  ctx->getBlock()->setTerminator(
-      Ns<YieldTerminator>(expr->getSrcInfo(), dst, nullptr, var));
+  ctx->getBlock()->setTerminator(Ns<YieldTerminator>(expr->getSrcInfo(), dst, var));
+
   ctx->replaceBlock(dst);
 
   result = CodegenResult(Ns<VarOperand>(expr->getSrcInfo(), var));
@@ -489,7 +481,7 @@ void CodegenVisitor::visit(const ContinueStmt *stmt) {
 
 void CodegenVisitor::visit(const ExprStmt *stmt) {
   auto rval = toRvalue(transform(stmt->expr));
-  ctx->getBlock()->add(Ns<RvalueInstr>(stmt->getSrcInfo(), rval));
+  ctx->getBlock()->append(Ns<RvalueInstr>(stmt->getSrcInfo(), rval));
 }
 
 void CodegenVisitor::visit(const AssignStmt *stmt) {
@@ -502,7 +494,7 @@ void CodegenVisitor::visit(const AssignStmt *stmt) {
     assert(var == ".__argv__");
     ctx->addVar(var, ctx->getModule()->getArgVar());
   } else if (stmt->rhs->isType()) {
-    // ctx->addType(var, realizeType(stmt->rhs->getType()->getClass()));
+    //    seqassert(false, "assigning types is not supported");
   } else {
     auto v = Ns<ir::Var>(stmt->getSrcInfo(), var,
                          realizeType(stmt->rhs->getType()->getClass()));
@@ -510,11 +502,11 @@ void CodegenVisitor::visit(const AssignStmt *stmt) {
       ctx->getModule()->addGlobal(v);
     else
       ctx->getBase()->addVar(v);
-    ctx->addVar(var, v);
-    auto val = ctx->find(var);
+    ctx->addVar(var, v, var[0] == '.');
+
     auto rval = toRvalue(transform(stmt->rhs));
-    ctx->getBlock()->add(Ns<AssignInstr>(stmt->getSrcInfo(),
-                                         Ns<VarLvalue>(stmt->getSrcInfo(), v), rval));
+    ctx->getBlock()->append(Ns<AssignInstr>(
+        stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), v), rval));
   }
 }
 
@@ -524,7 +516,7 @@ void CodegenVisitor::visit(const AssignMemberStmt *stmt) {
 
   auto var = ctx->find(name, false);
   auto rhs = toRvalue(transform(stmt->rhs));
-  ctx->getBlock()->add(Ns<AssignInstr>(
+  ctx->getBlock()->append(Ns<AssignInstr>(
       stmt->getSrcInfo(),
       Ns<VarMemberLvalue>(stmt->getSrcInfo(), var->getVar(), stmt->member), rhs));
 }
@@ -535,8 +527,9 @@ void CodegenVisitor::visit(const UpdateStmt *stmt) {
   auto var = i->value;
   auto val = ctx->find(var, true);
   assert(val && val->getVar());
+
   auto rhs = toRvalue(transform(stmt->rhs));
-  ctx->getBlock()->add(Ns<AssignInstr>(
+  ctx->getBlock()->append(Ns<AssignInstr>(
       stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), val->getVar()), rhs));
 }
 
@@ -545,6 +538,7 @@ void CodegenVisitor::visit(const DelStmt *stmt) {
   assert(expr);
   auto v = ctx->find(expr->value, true)->getVar();
   assert(v);
+
   ctx->remove(expr->value);
 }
 
@@ -559,7 +553,7 @@ void CodegenVisitor::visit(const YieldStmt *stmt) {
   auto dst = newBlock();
   auto yieldVal = stmt->expr ? toOperand(transform(stmt->expr)) : nullptr;
   ctx->getBlock()->setTerminator(
-      Ns<YieldTerminator>(stmt->getSrcInfo(), dst, yieldVal, nullptr));
+      Ns<YieldTerminator>(stmt->getSrcInfo(), dst, yieldVal));
   ctx->replaceBlock(dst);
 }
 
@@ -571,156 +565,197 @@ void CodegenVisitor::visit(const AssertStmt *stmt) {
 }
 
 void CodegenVisitor::visit(const WhileStmt *stmt) {
+  // Create blocks for the condition, body, and end
   auto cond = newBlock();
   auto begin = newBlock();
-  auto end = newBlock();
+  auto doneBlock = newBlock();
+
   begin->setAttribute(kLoopAttribute,
                       make_shared<LoopAttribute>(weak_ptr<BasicBlock>(), cond, begin,
-                                                 weak_ptr<BasicBlock>(), end));
+                                                 weak_ptr<BasicBlock>(), doneBlock));
 
+  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), cond));
+
+  // Add a new level for variables defined in the while
   ctx->addLevel();
 
+  // Jump to end if cond is false, otherwise being
   ctx->addBlock(cond);
   auto condOp = toOperand(transform(stmt->cond));
   ctx->getBlock()->setTerminator(
-      Ns<CondJumpTerminator>(stmt->getSrcInfo(), begin, end, condOp));
+      Ns<CondJumpTerminator>(stmt->getSrcInfo(), begin, doneBlock, condOp));
   ctx->popBlock();
 
+  // Transform the loop body
   ctx->addBlock(begin);
   transform(stmt->suite);
   condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), cond));
   ctx->popBlock();
 
-  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), cond));
-
+  // Remove the new level
   ctx->removeLevel();
-  ctx->replaceBlock(end);
+
+  // Replace the current block with doneBock
+  ctx->replaceBlock(doneBlock);
 }
 
 void CodegenVisitor::visit(const ForStmt *stmt) {
+  // Create blocks for setup, cond, loop body, and end
   auto setup = newBlock();
   auto cond = newBlock();
   auto begin = newBlock();
-  auto end = newBlock();
-  begin->setAttribute(
-      kLoopAttribute,
-      make_shared<LoopAttribute>(setup, cond, begin, weak_ptr<BasicBlock>(), end));
+  auto doneBlock = newBlock();
 
+  begin->setAttribute(kLoopAttribute,
+                      make_shared<LoopAttribute>(setup, cond, begin,
+                                                 weak_ptr<BasicBlock>(), doneBlock));
+
+  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), setup));
+
+  // Add a new level for variables in for
   ctx->addLevel();
+
+  // Transform the generator object into the new level
   transform(stmt->iter);
 
+  // Create a variable for the done condition
   auto doneVar =
       Ns<ir::Var>(stmt->getSrcInfo(), temporaryName("for_done"), ir::types::kBoolType);
   ctx->getBase()->addVar(doneVar);
 
+  // Create a variable to hold the current object
   auto varId = CAST(stmt->var, IdExpr);
   auto resVar = Ns<ir::Var>(stmt->getSrcInfo(), varId->value,
                             realizeType(varId->getType()->getClass()));
   ctx->addVar(varId->value, resVar);
   ctx->getBase()->addVar(resVar);
 
+  // Setup should initialize doneVar, then jump to cond
   ctx->addBlock(setup);
   auto doneSetupRval = toRvalue(transform(stmt->done));
-  ctx->getBlock()->add(Ns<AssignInstr>(
+  ctx->getBlock()->append(Ns<AssignInstr>(
       stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), doneVar), doneSetupRval));
   ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), cond));
   ctx->popBlock();
 
+  // Cond should exit if done, jump to body if not
   ctx->addBlock(cond);
-  ctx->getBlock()->setTerminator(Ns<CondJumpTerminator>(
-      stmt->getSrcInfo(), end, begin, Ns<VarOperand>(stmt->getSrcInfo(), doneVar)));
+  ctx->getBlock()->setTerminator(
+      Ns<CondJumpTerminator>(stmt->getSrcInfo(), doneBlock, begin,
+                             Ns<VarOperand>(stmt->getSrcInfo(), doneVar)));
   ctx->popBlock();
 
+  // Begin should assign resVar, run the loop body, then assign doneVar
   ctx->addBlock(begin);
   auto nextRval = toRvalue(transform(stmt->next));
-  ctx->getBlock()->add(Ns<AssignInstr>(
+  ctx->getBlock()->append(Ns<AssignInstr>(
       stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), resVar), nextRval));
   transform(stmt->suite);
 
   auto doneRval = toRvalue(transform(stmt->done));
-  ctx->getBlock()->add(Ns<AssignInstr>(
+  ctx->getBlock()->append(Ns<AssignInstr>(
       stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), doneVar), doneRval));
   condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), cond));
   ctx->popBlock();
 
-  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), setup));
-
+  // Remove the new level
   ctx->removeLevel();
-  ctx->replaceBlock(end);
+
+  // Replace the current block with doneBlock
+  ctx->replaceBlock(doneBlock);
 }
 
 void CodegenVisitor::visit(const IfStmt *stmt) {
+  // Create blocks for the conditions
   auto firstCond = newBlock();
-  auto end = newBlock();
   auto check = firstCond;
+  auto doneBlock = newBlock();
 
   bool elseEncountered = false;
 
+  // Iterate over the conditions
   for (auto &i : stmt->ifs) {
+    // Each condition gets its own level
     ctx->addLevel();
+
+    // If not an else:
     if (i.cond) {
+      // Allocate blocks for the body and next check
       auto newCheck = newBlock();
       auto body = newBlock();
 
+      // In check, jump to body if the cond is true, otherwise newCheck
       ctx->addBlock(check);
       auto cond = toOperand(transform(i.cond));
       ctx->getBlock()->setTerminator(
           Ns<CondJumpTerminator>(stmt->getSrcInfo(), body, newCheck, cond));
       ctx->popBlock();
 
+      // Codegen body
       ctx->addBlock(body);
       transform(i.suite);
-      condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), end));
+      condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), doneBlock));
       ctx->popBlock();
 
       check = newCheck;
     } else {
+      seqassert(!elseEncountered, "only one else supported");
       elseEncountered = true;
 
-      auto body = check;
-      ctx->addBlock(body);
+      // Codegen else body
+      ctx->addBlock(check);
       transform(i.suite);
-      condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), end));
+      condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), doneBlock));
       ctx->popBlock();
     }
+
     ctx->removeLevel();
   }
 
+  // If no else, we need to direct check to the doneBlock
   if (!elseEncountered) {
     ctx->addBlock(check);
-    ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), end));
+    ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), doneBlock));
     ctx->popBlock();
   }
 
+  // Jump to first condition
   ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), firstCond));
-  ctx->replaceBlock(end);
+
+  // Replace the current block with doneBlock
+  ctx->replaceBlock(doneBlock);
 }
 
 void CodegenVisitor::visit(const MatchStmt *stmt) {
+  // Create blocks for the matches
   auto firstCond = newBlock();
-  auto end = newBlock();
   auto check = firstCond;
+  auto doneBlock = newBlock();
+
+  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), firstCond));
 
   for (auto ci = 0; ci < stmt->cases.size(); ci++) {
+    // Each match gets its own level
     ctx->addLevel();
 
     string varName;
     shared_ptr<ir::Var> var;
     shared_ptr<ir::Pattern> pat;
 
+    // Similar to if statement
     auto newCheck = newBlock();
     auto body = newBlock();
 
     ctx->addBlock(check);
     if (auto p = CAST(stmt->patterns[ci], BoundPattern)) {
-      ctx->addBlock(check);
       auto boundPat =
           Ns<ir::BoundPattern>(stmt->getSrcInfo(), transform(p->pattern).patternResult,
                                realizeType(p->pattern->getType()->getClass()));
       var = boundPat->getVar();
       ctx->getBase()->addVar(var);
       varName = p->var;
-      pat = std::static_pointer_cast<ir::Pattern>(boundPat);
+
+      pat = boundPat;
     } else {
       pat = transform(stmt->patterns[ci]).patternResult;
     }
@@ -728,10 +763,13 @@ void CodegenVisitor::visit(const MatchStmt *stmt) {
     auto t = Ns<ir::Var>(stmt->getSrcInfo(), temporaryName("match_res"),
                          ir::types::kBoolType);
     ctx->getBase()->addVar(t);
+
     auto matchOp = toOperand(transform(stmt->what));
-    ctx->getBlock()->add(
+    ctx->getBlock()->append(
         Ns<AssignInstr>(stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), t),
                         Ns<MatchRvalue>(stmt->getSrcInfo(), pat, matchOp)));
+
+    // Jump to body if match
     ctx->getBlock()->setTerminator(Ns<CondJumpTerminator>(
         stmt->getSrcInfo(), body, newCheck, Ns<VarOperand>(stmt->getSrcInfo(), t)));
     ctx->popBlock();
@@ -739,81 +777,103 @@ void CodegenVisitor::visit(const MatchStmt *stmt) {
     if (var)
       ctx->addVar(varName, var);
 
+    // Transform the body
     ctx->addBlock(body);
     transform(stmt->cases[ci]);
-    condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), end));
+    condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), doneBlock));
     ctx->popBlock();
 
     check = newCheck;
+
     ctx->removeLevel();
   }
 
+  // No catch all
   ctx->addBlock(check);
-  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), end));
+  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), doneBlock));
   ctx->popBlock();
 
-  ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), firstCond));
-
-  ctx->replaceBlock(end);
+  // Replace current block with doneBlock
+  ctx->replaceBlock(doneBlock);
 }
 
 void CodegenVisitor::visit(const TryStmt *stmt) {
   auto parentTc = ctx->getBlock()->getTryCatch() ? ctx->getBlock()->getTryCatch()
-                                                 : ctx->getBase()->getTryCatch();
+                                                 : std::shared_ptr<ir::TryCatch>();
   auto newTc = Ns<ir::TryCatch>(stmt->getSrcInfo());
 
   if (parentTc)
     parentTc->addChild(newTc);
   else
-    ctx->getBase()->setTryCatch(newTc);
+    ctx->getBase()->addTryCatch(newTc);
 
+  // Add the flag variable and initialize it to 0
   ctx->getBase()->addVar(newTc->getFlagVar());
-  ctx->getBlock()->add(Ns<AssignInstr>(
+  ctx->getBlock()->append(Ns<AssignInstr>(
       stmt->getSrcInfo(), Ns<VarLvalue>(stmt->getSrcInfo(), newTc->getFlagVar()),
       Ns<OperandRvalue>(stmt->getSrcInfo(),
                         Ns<LiteralOperand>(stmt->getSrcInfo(), int64_t(0)))));
 
-  auto end = newBlock();
+  // Create blocks for the body and end block
   auto body = newBlock();
-  body->setTryCatch(newTc);
+  auto doneBlock = newBlock();
+
   ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), body));
 
+  // Set the try catch of the body
+  body->setTryCatch(newTc);
+
+  // Body gets its own level
   ctx->addLevel();
+
   ctx->addBlock(body);
   transform(stmt->suite);
-  condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), end));
+  condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), doneBlock));
   ctx->popBlock();
+
   ctx->removeLevel();
 
   int varIdx = 0;
-  for (auto &c : stmt->catches) {
+  for (auto i = 0; i < stmt->catches.size(); ++i) {
+    auto &c = stmt->catches[i];
+
     auto cBlock = newBlock();
     cBlock->setTryCatch(newTc, true);
 
     newTc->addCatch(c.exc ? realizeType(c.exc->getType()->getClass()) : nullptr, c.var,
                     cBlock);
+
+    // Each catch gets its own level
     ctx->addLevel();
     if (!c.var.empty()) {
       ctx->addVar(c.var, newTc->getVar(varIdx));
       ctx->getBase()->addVar(newTc->getVar(varIdx));
     }
+
     ctx->addBlock(cBlock);
     transform(c.suite);
-    condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), end));
+    condSetTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), doneBlock));
+
     ctx->popBlock();
     ctx->removeLevel();
   }
   if (stmt->finally) {
+    // Each finally gets its own level
     ctx->addLevel();
+
     auto fBlock = newBlock();
     ctx->addBlock(fBlock);
     transform(stmt->finally);
     condSetTerminator(Ns<FinallyTerminator>(stmt->getSrcInfo(), newTc));
     ctx->popBlock();
+
     newTc->setFinallyBlock(fBlock);
+
     ctx->removeLevel();
   }
-  ctx->replaceBlock(end);
+
+  // Replace the current block with doneBlock
+  ctx->replaceBlock(doneBlock);
 }
 
 void CodegenVisitor::visit(const ThrowStmt *stmt) {
@@ -846,8 +906,7 @@ void CodegenVisitor::visit(const FunctionStmt *stmt) {
       types.push_back(realizeType(t->args[i]->getClass()));
       names.push_back(ast->args[i - 1].name);
     }
-    f->setArgNames(names);
-    f->setType(realizeType(t->getClass()));
+    f->realize(realizeType(t->getClass())->as<ir::types::FuncType>(), names);
     f->setAttribute(kFuncAttribute, make_shared<FuncAttribute>(ast->attributes));
     for (auto a : ast->attributes) {
       if (a.first == "atomic")

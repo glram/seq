@@ -11,14 +11,6 @@ const std::string kSrcInfoAttribute = "srcInfoAttribute";
 const std::string kLoopAttribute = "loopAttribute";
 const std::string kFuncAttribute = "funcAttributes";
 
-std::string StringAttribute::textRepresentation() const {
-  return fmt::format(FMT_STRING("\"{}\""), value);
-}
-
-std::string BoolAttribute::textRepresentation() const {
-  return fmt::format(FMT_STRING("{}"), value);
-}
-
 std::string LoopAttribute::textRepresentation() const {
   auto setupStr = setup.lock() ? setup.lock()->referenceString() : "none";
   auto condStr = cond.lock() ? cond.lock()->referenceString() : "none";

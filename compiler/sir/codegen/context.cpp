@@ -19,8 +19,8 @@ namespace codegen {
 
 using namespace llvm;
 
-void TryCatchMetadata::storeDstValue(llvm::BasicBlock *dst,
-                                     IRBuilder<> &builder) const {
+void TryCatchRealization::storeDstValue(llvm::BasicBlock *dst,
+                                        IRBuilder<> &builder) const {
   ConstantInt *val;
   val = finallyBr->findCaseDest(dst);
 
@@ -88,6 +88,9 @@ TypeRealization::getMagicBuilder(const std::string &sig) const {
         }
         auto *val = inlineFunc(args, builder);
         val ? builder.CreateRet(val) : builder.CreateRetVoid();
+
+        func->addFnAttr(llvm::Attribute::AlwaysInline);
+        func->setLinkage(GlobalValue::PrivateLinkage);
       };
     }
   }
@@ -103,7 +106,7 @@ TypeRealization::getMagicBuilder(const std::string &sig) const {
 Value *TypeRealization::makeNew(std::vector<llvm::Value *> args,
                                 llvm::IRBuilder<> &builder) const {
   if (!maker.empty()) {
-    return inlineMagicFuncs.find(maker)->second(args, builder);
+    return inlineMagicFuncs.find(maker)->second(std::move(args), builder);
   }
   return dfltBuilder(builder);
 }
@@ -147,7 +150,7 @@ Context::getTypeRealization(std::shared_ptr<types::Type> sirType) {
 
 void Context::stubBuiltin(std::shared_ptr<Func> sirFunc,
                           std::shared_ptr<BuiltinStub> stub) {
-  builtinStubs[sirFunc->getMagicName()] = std::move(stub);
+  builtinStubs[sirFunc->getUnmangledName()] = std::move(stub);
 }
 
 std::shared_ptr<BuiltinStub> Context::getBuiltinStub(const std::string &name) {
@@ -157,26 +160,21 @@ std::shared_ptr<BuiltinStub> Context::getBuiltinStub(const std::string &name) {
 }
 
 void Context::registerTryCatch(std::shared_ptr<TryCatch> tc,
-                               std::shared_ptr<TryCatchMetadata> meta) {
+                               std::shared_ptr<TryCatchRealization> real) {
   auto &frame = getFrame();
-  frame.tryCatchMeta[tc->getId()] = std::move(meta);
+  frame.tryCatchRealizations[tc->getId()] = std::move(real);
 }
-std::shared_ptr<TryCatchMetadata>
-Context::getTryCatchMeta(std::shared_ptr<TryCatch> tc) {
+
+std::shared_ptr<TryCatchRealization>
+Context::getTryCatchRealization(std::shared_ptr<TryCatch> tc) {
   auto &frame = getFrame();
-  auto it = frame.tryCatchMeta.find(tc->getId());
-  return it == frame.tryCatchMeta.end() ? nullptr : it->second;
+  auto it = frame.tryCatchRealizations.find(tc->getId());
+  return it == frame.tryCatchRealizations.end() ? nullptr : it->second;
 }
 
 void Context::registerVar(std::shared_ptr<Var> sirVar, llvm::Value *val) {
   auto &frame = getFrame();
   frame.varRealizations[sirVar->getId()] = val;
-}
-
-void Context::registerBlock(std::shared_ptr<BasicBlock> sirBlock,
-                            llvm::BasicBlock *block) {
-  auto &frame = getFrame();
-  frame.blockRealizations[sirBlock->getId()] = block;
 }
 
 llvm::Value *Context::getVar(std::shared_ptr<Var> sirVar) {
@@ -186,6 +184,12 @@ llvm::Value *Context::getVar(std::shared_ptr<Var> sirVar) {
       return it->second;
   }
   return nullptr;
+}
+
+void Context::registerBlock(std::shared_ptr<BasicBlock> sirBlock,
+                            llvm::BasicBlock *block) {
+  auto &frame = getFrame();
+  frame.blockRealizations[sirBlock->getId()] = block;
 }
 
 llvm::BasicBlock *Context::getBlock(std::shared_ptr<BasicBlock> sirBlock) {
