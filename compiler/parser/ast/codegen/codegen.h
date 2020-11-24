@@ -105,7 +105,7 @@ class CodegenVisitor
   /// Create and insert a new block (with the same try catch/loop attributes) to the
   /// function.
   /// @return the new block
-  std::shared_ptr<seq::ir::BasicBlock> newBlock();
+  std::shared_ptr<seq::ir::BasicBlock> newBlock(std::string name = "");
 
   /// Conditionally set the terminator if one is not already set.
   /// @param term the new terminator

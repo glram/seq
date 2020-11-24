@@ -79,7 +79,7 @@ void Type::resetId() {
 void Type::accept(common::SIRVisitor &v) { v.visit(getShared()); }
 
 std::string Type::referenceString() const {
-  return fmt::format(FMT_STRING("{}#{}"), name, id);
+  return fmt::format(FMT_STRING("{}.type_{}"), name, id);
 }
 
 void RecordType::accept(common::SIRVisitor &v) { v.visit(getShared<RecordType>()); }

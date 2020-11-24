@@ -24,10 +24,6 @@ namespace {
 using namespace llvm;
 using namespace seq::ir;
 
-std::string getLLVMFuncName(std::shared_ptr<Func> f) {
-  return fmt::format(FMT_STRING("seq.{}{}"), f->getName(), f->getId());
-}
-
 /*
  * Recursively extract the function and args from a partial call.
  */
@@ -345,8 +341,8 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
   //  1) builtin or external? use the unmangled name
   //  2) use the default name builder
   auto name = nameOverride.empty() ? (sirFunc->isBuiltin() || sirFunc->isExternal()
-                                          ? sirFunc->getName()
-                                          : getLLVMFuncName(sirFunc))
+                                          ? sirFunc->getUnmangledName()
+                                          : sirFunc->referenceString())
                                    : nameOverride;
 
   // Lookup the function
@@ -427,8 +423,7 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
 
   // Stub blocks
   for (auto &b : sirFunc->getBlocks()) {
-    auto blockName = fmt::format(FMT_STRING("bb{}"), b->getId());
-    ctx->registerBlock(b, llvm::BasicBlock::Create(context, blockName, func));
+    ctx->registerBlock(b, llvm::BasicBlock::Create(context, b->referenceString(), func));
   }
 
   IRBuilder<> builder(preamble);
@@ -436,14 +431,14 @@ void CodegenVisitor::visit(std::shared_ptr<Func> sirFunc) {
 
   // Register vars
   for (auto &v : sirFunc->getVars()) {
-    transform(v)->setName(v->getName());
+    transform(v)->setName(v->referenceString());
   }
 
   // Register arg vars
   auto argIter = func->arg_begin();
   for (auto &a : sirFunc->getArgVars()) {
     auto *var = transform(a);
-    var->setName(a->getName());
+    var->setName(a->referenceString());
     builder.SetInsertPoint(frame.curBlock);
     builder.CreateStore(argIter++, var);
   }

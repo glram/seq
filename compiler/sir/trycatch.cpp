@@ -51,7 +51,7 @@ TryCatch::getPath(std::shared_ptr<TryCatch> dst) {
 }
 
 std::string TryCatch::referenceString() const {
-  return fmt::format(FMT_STRING("try#{}"), id);
+  return fmt::format(FMT_STRING(".tc_{}"), id);
 }
 
 std::string TryCatch::textRepresentation() const {

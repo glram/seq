@@ -115,9 +115,11 @@ public:
       auto file = getFilename(get<0>(GetParam()));
       auto code = get<3>(GetParam());
       auto startLine = get<4>(GetParam());
-      SeqModule *module = parse(argv0, file, code, code.size() > 0,
-                                /* isTest */ true, startLine);
-      execute(module, {file}, {}, get<1>(GetParam()));
+
+      // TODO!
+//      SeqModule *module = parse(argv0, file, code, code.size() > 0,
+//                                /* isTest */ true, startLine);
+//      execute(module, {file}, {}, get<1>(GetParam()));
       fflush(stdout);
       exit(EXIT_SUCCESS);
     } else {

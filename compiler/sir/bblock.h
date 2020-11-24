@@ -23,14 +23,18 @@ private:
   /// globally shared block counter (blocks have unique ids).
   static int currentId;
 
+  /// the block's id
+  int id;
+
+  /// the block's name
+  std::string name;
+
   /// vector of instructions
   std::vector<std::shared_ptr<Instr>> instructions;
 
   /// terminator (should not be nullptr)
   std::shared_ptr<Terminator> terminator;
 
-  /// the block's id
-  int id;
 
   /// the block's try catch
   std::shared_ptr<TryCatch> tc;
@@ -42,9 +46,9 @@ public:
   /// Constructs an SIR basic block.
   /// @param tc the block's try catch
   /// @param isCatchClause true if the block is a handler.
-  explicit BasicBlock(std::shared_ptr<TryCatch> tc = nullptr,
+  explicit BasicBlock(std::string name = "", std::shared_ptr<TryCatch> tc = nullptr,
                       bool isCatchClause = false)
-      : id(currentId++), tc(std::move(tc)), isCatch(isCatchClause) {}
+      : id(currentId++), name(std::move(name)), tc(std::move(tc)), isCatch(isCatchClause) {}
 
   void accept(common::SIRVisitor &v);
 

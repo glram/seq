@@ -47,9 +47,9 @@ void CodegenVisitor::defaultVisit(const Pattern *n) {
   seqassert(false, "invalid node {}", *n);
 }
 
-shared_ptr<BasicBlock> CodegenVisitor::newBlock() {
+shared_ptr<BasicBlock> CodegenVisitor::newBlock(std::string name) {
   auto templateBlock = ctx->getBlock();
-  auto ret = make_shared<BasicBlock>(templateBlock->getTryCatch(),
+  auto ret = make_shared<BasicBlock>(std::move(name), templateBlock->getTryCatch(),
                                      templateBlock->isCatchClause());
   ctx->getBase()->addBlock(ret);
 
@@ -245,11 +245,11 @@ void CodegenVisitor::visit(const IfExpr *expr) {
   ctx->getBase()->addVar(ifExprResVar);
 
   // Create blocks for the true and fall case.
-  auto tBlock = newBlock();
-  auto fBlock = newBlock();
+  auto tBlock = newBlock("if_true");
+  auto fBlock = newBlock("if_false");
 
   // Create a done block.
-  auto doneBlock = newBlock();
+  auto doneBlock = newBlock("if_done");
 
   // Jump based on the cond
   auto condResultOp = toOperand(transform(expr->cond));
@@ -290,17 +290,17 @@ void CodegenVisitor::visit(const BinaryExpr *expr) {
   ctx->getBase()->addVar(binExprResVar);
 
   // Create blocks for the true/false case
-  auto trueBlock = newBlock();
-  auto falseBlock = newBlock();
+  auto trueBlock = newBlock("binop_true");
+  auto falseBlock = newBlock("binop_false");
 
   // Create a done block
-  auto doneBlock = newBlock();
+  auto doneBlock = newBlock("binop_done");
 
   // Transform the left hand side
   auto lhsOp = toOperand(transform(expr->lexpr));
   if (expr->op == "&&") {
     // Short circuit to falseBlock if left is false
-    auto tLeftBlock = newBlock();
+    auto tLeftBlock = newBlock("binop_cont");
     ctx->getBlock()->setTerminator(
         Ns<CondJumpTerminator>(expr->getSrcInfo(), tLeftBlock, falseBlock, lhsOp));
 
@@ -312,7 +312,7 @@ void CodegenVisitor::visit(const BinaryExpr *expr) {
     ctx->popBlock();
   } else {
     // Short circuit to trueBlock if left is true
-    auto fLeftBlock = newBlock();
+    auto fLeftBlock = newBlock("binop_cont");
     ctx->getBlock()->setTerminator(
         Ns<CondJumpTerminator>(expr->getSrcInfo(), trueBlock, fLeftBlock, lhsOp));
 
@@ -438,7 +438,7 @@ void CodegenVisitor::visit(const YieldExpr *expr) {
                          realizeType(expr->getType()->getClass()));
   ctx->getBase()->addVar(var);
 
-  auto dst = newBlock();
+  auto dst = newBlock("yield_dst");
   ctx->getBlock()->setTerminator(Ns<YieldTerminator>(expr->getSrcInfo(), dst, var));
 
   ctx->replaceBlock(dst);
@@ -550,7 +550,7 @@ void CodegenVisitor::visit(const ReturnStmt *stmt) {
 void CodegenVisitor::visit(const YieldStmt *stmt) {
   ctx->getBase()->setGenerator();
 
-  auto dst = newBlock();
+  auto dst = newBlock("yield_dst");
   auto yieldVal = stmt->expr ? toOperand(transform(stmt->expr)) : nullptr;
   ctx->getBlock()->setTerminator(
       Ns<YieldTerminator>(stmt->getSrcInfo(), dst, yieldVal));
@@ -558,7 +558,7 @@ void CodegenVisitor::visit(const YieldStmt *stmt) {
 }
 
 void CodegenVisitor::visit(const AssertStmt *stmt) {
-  auto dst = newBlock();
+  auto dst = newBlock("assert_ok");
   auto op = toOperand(transform(stmt->expr));
   ctx->getBlock()->setTerminator(Ns<AssertTerminator>(stmt->getSrcInfo(), op, dst));
   ctx->replaceBlock(dst);
@@ -566,9 +566,9 @@ void CodegenVisitor::visit(const AssertStmt *stmt) {
 
 void CodegenVisitor::visit(const WhileStmt *stmt) {
   // Create blocks for the condition, body, and end
-  auto cond = newBlock();
-  auto begin = newBlock();
-  auto doneBlock = newBlock();
+  auto cond = newBlock("while_cond");
+  auto begin = newBlock("while_begin");
+  auto doneBlock = newBlock("while_done");
 
   begin->setAttribute(kLoopAttribute,
                       make_shared<LoopAttribute>(weak_ptr<BasicBlock>(), cond, begin,
@@ -601,10 +601,10 @@ void CodegenVisitor::visit(const WhileStmt *stmt) {
 
 void CodegenVisitor::visit(const ForStmt *stmt) {
   // Create blocks for setup, cond, loop body, and end
-  auto setup = newBlock();
-  auto cond = newBlock();
-  auto begin = newBlock();
-  auto doneBlock = newBlock();
+  auto setup = newBlock("for_setup");
+  auto cond = newBlock("for_cond");
+  auto begin = newBlock("for_begin");
+  auto doneBlock = newBlock("for_done");
 
   begin->setAttribute(kLoopAttribute,
                       make_shared<LoopAttribute>(setup, cond, begin,
@@ -667,9 +667,9 @@ void CodegenVisitor::visit(const ForStmt *stmt) {
 
 void CodegenVisitor::visit(const IfStmt *stmt) {
   // Create blocks for the conditions
-  auto firstCond = newBlock();
+  auto firstCond = newBlock("if_cond");
   auto check = firstCond;
-  auto doneBlock = newBlock();
+  auto doneBlock = newBlock("if_done");
 
   bool elseEncountered = false;
 
@@ -681,8 +681,8 @@ void CodegenVisitor::visit(const IfStmt *stmt) {
     // If not an else:
     if (i.cond) {
       // Allocate blocks for the body and next check
-      auto newCheck = newBlock();
-      auto body = newBlock();
+      auto newCheck = newBlock("if_cond");
+      auto body = newBlock("if_body");
 
       // In check, jump to body if the cond is true, otherwise newCheck
       ctx->addBlock(check);
@@ -728,9 +728,9 @@ void CodegenVisitor::visit(const IfStmt *stmt) {
 
 void CodegenVisitor::visit(const MatchStmt *stmt) {
   // Create blocks for the matches
-  auto firstCond = newBlock();
+  auto firstCond = newBlock("match_cond");
   auto check = firstCond;
-  auto doneBlock = newBlock();
+  auto doneBlock = newBlock("match_done");
 
   ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), firstCond));
 
@@ -743,8 +743,8 @@ void CodegenVisitor::visit(const MatchStmt *stmt) {
     shared_ptr<ir::Pattern> pat;
 
     // Similar to if statement
-    auto newCheck = newBlock();
-    auto body = newBlock();
+    auto newCheck = newBlock("match_cond");
+    auto body = newBlock("match_body");
 
     ctx->addBlock(check);
     if (auto p = CAST(stmt->patterns[ci], BoundPattern)) {
@@ -815,8 +815,8 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
                         Ns<LiteralOperand>(stmt->getSrcInfo(), int64_t(0)))));
 
   // Create blocks for the body and end block
-  auto body = newBlock();
-  auto doneBlock = newBlock();
+  auto body = newBlock("tc_body");
+  auto doneBlock = newBlock("tc_done");
 
   ctx->getBlock()->setTerminator(Ns<JumpTerminator>(stmt->getSrcInfo(), body));
 
@@ -837,7 +837,7 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
   for (auto i = 0; i < stmt->catches.size(); ++i) {
     auto &c = stmt->catches[i];
 
-    auto cBlock = newBlock();
+    auto cBlock = newBlock("tc_catch");
     cBlock->setTryCatch(newTc, true);
 
     newTc->addCatch(c.exc ? realizeType(c.exc->getType()->getClass()) : nullptr, c.var,
@@ -861,7 +861,7 @@ void CodegenVisitor::visit(const TryStmt *stmt) {
     // Each finally gets its own level
     ctx->addLevel();
 
-    auto fBlock = newBlock();
+    auto fBlock = newBlock("tc_finally");
     ctx->addBlock(fBlock);
     transform(stmt->finally);
     condSetTerminator(Ns<FinallyTerminator>(stmt->getSrcInfo(), newTc));

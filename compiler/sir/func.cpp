@@ -18,11 +18,11 @@ Func::Func(std::string name, std::vector<std::string> argNames,
       internal(), builtin() {
 
   argVars = std::vector<std::shared_ptr<Var>>{};
-  auto argTypes = std::static_pointer_cast<types::FuncType>(type)->getArgTypes();
+  auto argTypes = type->as<types::FuncType>()->getArgTypes();
   for (int i = 0; i < argTypes.size(); i++) {
     argVars.push_back(std::make_shared<Var>(argNames[i], argTypes[i]));
   }
-  blocks.push_back(std::make_shared<BasicBlock>());
+  blocks.push_back(std::make_shared<BasicBlock>("sir_start"));
 }
 
 void Func::accept(common::SIRVisitor &v) { v.visit(getShared<Func>()); }
@@ -44,39 +44,43 @@ std::shared_ptr<Var> Func::getArgVar(const std::string &name) {
                                 : argVars[it - argNames.begin()];
 }
 
+std::string Func::referenceString() const {
+  return fmt::format(FMT_STRING("{}.fn_{}"), name, id);
+}
+
 std::string Func::textRepresentation() const {
   fmt::memory_buffer buf;
   fmt::format_to(buf, FMT_STRING("def {}(\n"), referenceString());
-  for (auto &arg : argVars) {
-    fmt::format_to(buf, FMT_STRING("{}\n"), arg->textRepresentation());
+  for (const auto & argVar : argVars) {
+    fmt::format_to(buf, FMT_STRING("    {}\n"), argVar->textRepresentation());
   }
   fmt::format_to(
       buf, FMT_STRING(") -> {} [\n"),
-      std::static_pointer_cast<types::FuncType>(type)->getRType()->referenceString());
-  for (const auto &var : vars) {
-    fmt::format_to(buf, FMT_STRING("{}\n"), var->textRepresentation());
+      type->as<types::FuncType>()->getRType()->referenceString());
+
+  for (const auto & var : vars) {
+    fmt::format_to(buf, FMT_STRING("    {}\n"), var->textRepresentation());
   }
 
   fmt::format_to(buf, FMT_STRING("]{{\n"));
+
   if (internal) {
-    fmt::format_to(buf, FMT_STRING("internal: {}.{}\n"), parent->referenceString(),
+    fmt::format_to(buf, FMT_STRING("    internal: {}.{}\n"), parent->referenceString(),
                    unmangledName);
   } else if (external) {
-    fmt::format_to(buf, FMT_STRING("external\n"));
+    fmt::format_to(buf, FMT_STRING("    external\n"));
   } else {
     for (const auto &block : blocks) {
       fmt::format_to(buf, FMT_STRING("{}\n"), block->textRepresentation());
     }
   }
+
   for (auto &tc : tryCatches) {
     fmt::format_to(buf, FMT_STRING("{}\n"), tc->textRepresentation());
   }
+
   fmt::format_to(buf, FMT_STRING("}}; {}"), attributeString());
   return std::string(buf.data(), buf.size());
-}
-
-std::string Func::referenceString() const {
-  return fmt::format(FMT_STRING("f${}#{}"), name, id);
 }
 
 } // namespace ir

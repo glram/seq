@@ -22,7 +22,7 @@ std::shared_ptr<types::Type> MemberRvalue::rvalType() {
 }
 
 std::string MemberRvalue::textRepresentation() const {
-  return fmt::format(FMT_STRING("{}.{}"), var->textRepresentation(), field);
+  return fmt::format(FMT_STRING("({}).{}"), var->textRepresentation(), field);
 }
 
 void CallRvalue::accept(common::SIRVisitor &v) { v.visit(getShared<CallRvalue>()); }

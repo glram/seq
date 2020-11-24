@@ -79,10 +79,10 @@ struct FuncAttribute : public Attribute {
   std::string textRepresentation() const override;
 };
 
-/// CRTP base of all SIR classes.
+/// CRTP base of all SIR objects.
 template <typename A> class AttributeHolder : public std::enable_shared_from_this<A> {
 private:
-  /// key-value attribtue store
+  /// key-value attribute store
   std::map<std::string, std::shared_ptr<Attribute>> kvStore;
 
 public:
@@ -92,9 +92,13 @@ public:
   std::string attributeString() const {
     fmt::memory_buffer buf;
     buf.push_back('[');
-    for (auto &it : kvStore) {
-      fmt::format_to(buf, FMT_STRING("{}: {}, "), it.first,
-                     it.second->textRepresentation());
+
+    for (auto it = kvStore.begin(); it != kvStore.end(); it++) {
+      if (it != kvStore.begin())
+        fmt::format_to(buf, FMT_STRING(", "));
+
+      fmt::format_to(buf, FMT_STRING("({}, {})"), it->first,
+                     it->second->textRepresentation());
     }
     buf.push_back(']');
     return std::string(buf.data(), buf.size());
