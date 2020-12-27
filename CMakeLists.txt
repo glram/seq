@@ -168,6 +168,7 @@ set(SEQ_HPPFILES compiler/lang/expr.h
         compiler/util/jit.h
         compiler/util/llvm.h
         compiler/util/tapir.h
+        compiler/sir/transform/lower_flows.h
         compiler/sir/types/types.h
         compiler/sir/util/context.h
         compiler/sir/util/iterators.h
@@ -226,6 +227,7 @@ set(SEQ_CPPFILES compiler/lang/expr.cpp
         compiler/parser/visitors/simplify/simplify_expr.cpp
         compiler/parser/visitors/simplify/simplify_stmt.cpp
         compiler/parser/visitors/simplify/simplify_pattern.cpp
+        compiler/sir/transform/lower_flows.cpp
         compiler/sir/types/types.cpp
         compiler/sir/util/visitor.cpp
         compiler/sir/attribute.cpp
