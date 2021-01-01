@@ -55,6 +55,8 @@ public:
   /// @param l the new value
   void setRhs(ValuePtr v) { rhs = std::move(v); }
 
+  std::vector<Value *> getChildren() const override { return {rhs.get()}; }
+
 private:
   std::ostream &doFormat(std::ostream &os) const override;
 
@@ -92,6 +94,8 @@ public:
   /// Sets the field.
   /// @param f the new field
   void setField(std::string f) { field = std::move(f); }
+
+  std::vector<Value *> getChildren() const override { return {val.get()}; }
 
 private:
   std::ostream &doFormat(std::ostream &os) const override;
@@ -142,6 +146,8 @@ public:
   /// @param f the new field
   void setField(std::string f) { field = std::move(f); }
 
+  std::vector<Value *> getChildren() const override { return {lhs.get(), rhs.get()}; }
+
 private:
   std::ostream &doFormat(std::ostream &os) const override;
 
@@ -182,6 +188,9 @@ public:
 
   /// @return the func
   const ValuePtr &getFunc() const { return func; }
+  /// Sets the function.
+  /// @param f the new function
+  void setFunc(ValuePtr f) { func = std::move(f); }
 
   /// @return an iterator to the first argument
   iterator begin() { return args.begin(); }
@@ -200,6 +209,9 @@ public:
   const_reference front() const { return args.front(); }
   /// @return a reference to the last argument
   const_reference back() const { return args.back(); }
+
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
 
   /// Inserts an argument at the given position.
   /// @param pos the position
@@ -220,6 +232,8 @@ public:
   /// Sets the args.
   /// @param v the new args vector
   void setArgs(std::vector<ValuePtr> v) { args = std::move(v); }
+
+  std::vector<Value *> getChildren() const override;
 
 private:
   std::ostream &doFormat(std::ostream &os) const override;
@@ -253,6 +267,8 @@ public:
   /// @param c the new value
   void setCount(ValuePtr c) { count = std::move(c); }
 
+  std::vector<Value *> getChildren() const override { return {count.get()}; }
+
 private:
   std::ostream &doFormat(std::ostream &os) const override;
 
@@ -281,6 +297,8 @@ public:
 
   /// @return true if the instruction suspends
   bool isSuspending() const { return suspend; }
+
+  std::vector<Value *> getChildren() const override { return {}; }
 
 private:
   std::ostream &doFormat(std::ostream &os) const override;
@@ -331,35 +349,60 @@ public:
   /// @param v the new value
   void setFalseValue(ValuePtr v) { falseValue = std::move(v); }
 
+  std::vector<Value *> getChildren() const override {
+    return {cond.get(), trueValue.get(), falseValue.get()};
+  }
+
 private:
   std::ostream &doFormat(std::ostream &os) const override;
 
   Value *doClone() const override;
 };
 
-/// Base for control flow instructions
 class ControlFlowInstr : public AcceptorExtend<ControlFlowInstr, Instr> {
+public:
+  static const char NodeId;
+
+  using AcceptorExtend::AcceptorExtend;
+
+  /// @return all targets of the instruction. nullptr signifies that the instruction may
+  /// return.
+  virtual std::vector<Flow *> getTargets() const = 0;
+};
+
+/// Base for unconditional control-flow instructions.
+class UnconditionalControlFlowInstr
+    : public AcceptorExtend<UnconditionalControlFlowInstr, ControlFlowInstr> {
 private:
   /// the target
-  Flow *target;
+  ValuePtr target;
 
 public:
   static const char NodeId;
 
   /// Constructs a control flow instruction.
   /// @param target the flow being targeted
-  explicit ControlFlowInstr(Flow *target, std::string name = "")
-      : AcceptorExtend(std::move(name)), target(target) {}
+  explicit UnconditionalControlFlowInstr(ValuePtr target, std::string name = "")
+      : AcceptorExtend(std::move(name)), target(std::move(target)) {}
+
+  virtual ~UnconditionalControlFlowInstr() = default;
+
+  /// @return all targets
+  std::vector<Flow *> getTargets() const override;
 
   /// @return the target
-  Flow *getTarget() const { return target; }
+  const ValuePtr &getTarget() const { return target; }
   /// Sets the count.
   /// @param f the new value
-  void setTarget(Flow *f) { target = f; }
+  void setTarget(ValuePtr f) { target = std::move(f); }
+
+  std::vector<Value *> getChildren() const override {
+    return target ? std::vector<Value *>{target.get()} : std::vector<Value *>();
+  }
 };
 
 /// Instr representing a break statement.
-class BreakInstr : public AcceptorExtend<BreakInstr, ControlFlowInstr> {
+class BreakInstr : public AcceptorExtend<BreakInstr, UnconditionalControlFlowInstr> {
 public:
   static const char NodeId;
 
@@ -372,7 +415,8 @@ private:
 };
 
 /// Instr representing a continue statement.
-class ContinueInstr : public AcceptorExtend<ContinueInstr, ControlFlowInstr> {
+class ContinueInstr
+    : public AcceptorExtend<ContinueInstr, UnconditionalControlFlowInstr> {
 public:
   static const char NodeId;
 
@@ -385,7 +429,7 @@ private:
 };
 
 /// Instr representing a return statement.
-class ReturnInstr : public AcceptorExtend<ReturnInstr, ControlFlowInstr> {
+class ReturnInstr : public AcceptorExtend<ReturnInstr, UnconditionalControlFlowInstr> {
 private:
   /// the value
   ValuePtr value;
@@ -401,6 +445,106 @@ public:
   /// Sets the value.
   /// @param v the new value
   void setValue(ValuePtr v) { value = std::move(v); }
+
+  std::vector<Value *> getChildren() const override {
+    return value ? std::vector<Value *>{value.get()} : std::vector<Value *>();
+  }
+
+private:
+  std::ostream &doFormat(std::ostream &os) const override;
+
+  Value *doClone() const override;
+};
+
+/// Instr representing an unconditional jump.
+class BranchInstr : public AcceptorExtend<BranchInstr, UnconditionalControlFlowInstr> {
+public:
+  static const char NodeId;
+
+  using AcceptorExtend::AcceptorExtend;
+
+private:
+  std::ostream &doFormat(std::ostream &os) const override;
+
+  Value *doClone() const override;
+};
+
+/// Instruction representing a conditional branch.
+class CondBranchInstr : public AcceptorExtend<CondBranchInstr, ControlFlowInstr> {
+public:
+  struct Target {
+    ValuePtr dst;
+    ValuePtr cond;
+
+    explicit Target(ValuePtr dst, ValuePtr cond = nullptr)
+        : dst(std::move(dst)), cond(std::move(cond)) {}
+
+    friend std::ostream &operator<<(std::ostream &os, const Target &t);
+  };
+
+  using iterator = std::vector<Target>::iterator;
+  using reference = std::vector<Target>::reference;
+  using const_iterator = std::vector<Target>::const_iterator;
+  using const_reference = std::vector<Target>::const_reference;
+
+private:
+  /// the targets
+  std::vector<Target> targets;
+
+public:
+  static const char NodeId;
+
+  /// Constructs a conditional control flow instruction.
+  /// @param targets the flows being targeted
+  explicit CondBranchInstr(std::vector<Target> targets, std::string name = "")
+      : AcceptorExtend(std::move(name)), targets(std::move(targets)) {}
+
+  std::vector<Flow *> getTargets() const override;
+
+  /// @return an iterator to the first target
+  iterator begin() { return targets.begin(); }
+  /// @return an iterator beyond the last target
+  iterator end() { return targets.end(); }
+  /// @return an iterator to the first target
+  const_iterator begin() const { return targets.begin(); }
+  /// @return an iterator beyond the last target
+  const_iterator end() const { return targets.end(); }
+
+  /// @return a reference to the first target
+  reference front() { return targets.front(); }
+  /// @return a reference to the last target
+  reference back() { return targets.back(); }
+  /// @return a reference to the first target
+  const_reference front() const { return targets.front(); }
+  /// @return a reference to the last target
+  const_reference back() const { return targets.back(); }
+
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
+
+  /// Inserts an target at the given position.
+  /// @param pos the position
+  /// @param v the target
+  /// @return an iterator to the newly added target
+  iterator insert(iterator pos, Target v) { return targets.insert(pos, std::move(v)); }
+  /// Inserts an target at the given position.
+  /// @param pos the position
+  /// @param v the target
+  /// @return an iterator to the newly added target
+  iterator insert(const_iterator pos, Target v) {
+    return targets.insert(pos, std::move(v));
+  }
+  /// Appends an target.
+  /// @param v the target
+  void push_back(Target v) { targets.push_back(std::move(v)); }
+
+  /// Emplaces a target.
+  /// @tparam Args the target constructor args
+  template <typename... Args> void emplace_back(Args &&... args) {
+    targets.emplace_back(std::forward<Args>(args)...);
+  }
+
+  std::vector<Value *> getChildren() const override;
 
 private:
   std::ostream &doFormat(std::ostream &os) const override;
@@ -425,6 +569,8 @@ public:
   /// @param v the new value
   void setValue(ValuePtr v) { value = std::move(v); }
 
+  std::vector<Value *> getChildren() const override { return {value.get()}; }
+
 private:
   std::ostream &doFormat(std::ostream &os) const override;
 
@@ -447,6 +593,8 @@ public:
   /// Sets the value.
   /// @param v the new value
   void setValue(ValuePtr v) { value = std::move(v); }
+
+  std::vector<Value *> getChildren() const override { return {value.get()}; }
 
 private:
   std::ostream &doFormat(std::ostream &os) const override;
@@ -486,6 +634,91 @@ public:
   /// @param v the new value
   void setValue(ValuePtr v) { val = std::move(v); }
 
+  std::vector<Value *> getChildren() const override { return {flow.get(), val.get()}; }
+
+private:
+  std::ostream &doFormat(std::ostream &os) const override;
+
+  Value *doClone() const override;
+};
+
+/// Instruction representing a phi node.
+class PhiInstr : public AcceptorExtend<PhiInstr, Instr> {
+public:
+  struct Predecessor {
+    ValuePtr pred;
+    ValuePtr val;
+
+    Predecessor(ValuePtr pred, ValuePtr val)
+        : pred(std::move(pred)), val(std::move(val)) {}
+
+    friend std::ostream &operator<<(std::ostream &os, const Predecessor &p);
+  };
+
+  using iterator = std::vector<Predecessor>::iterator;
+  using reference = std::vector<Predecessor>::reference;
+  using const_iterator = std::vector<Predecessor>::const_iterator;
+  using const_reference = std::vector<Predecessor>::const_reference;
+
+private:
+  /// the targets
+  std::vector<Predecessor> predecessors;
+
+public:
+  static const char NodeId;
+
+  /// Constructs a conditional control flow instruction.
+  /// @param predecessors the flows being predecessored
+  explicit PhiInstr(std::vector<Predecessor> predecessors, std::string name = "")
+      : AcceptorExtend(std::move(name)), predecessors(std::move(predecessors)) {}
+
+  /// @return an iterator to the first predecessor
+  iterator begin() { return predecessors.begin(); }
+  /// @return an iterator beyond the last predecessor
+  iterator end() { return predecessors.end(); }
+  /// @return an iterator to the first predecessor
+  const_iterator begin() const { return predecessors.begin(); }
+  /// @return an iterator beyond the last predecessor
+  const_iterator end() const { return predecessors.end(); }
+
+  /// @return a reference to the first predecessor
+  reference front() { return predecessors.front(); }
+  /// @return a reference to the last predecessor
+  reference back() { return predecessors.back(); }
+  /// @return a reference to the first predecessor
+  const_reference front() const { return predecessors.front(); }
+  /// @return a reference to the last predecessor
+  const_reference back() const { return predecessors.back(); }
+
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
+
+  /// Inserts an predecessor at the given position.
+  /// @param pos the position
+  /// @param v the predecessor
+  /// @return an iterator to the newly added predecessor
+  iterator insert(iterator pos, Predecessor v) {
+    return predecessors.insert(pos, std::move(v));
+  }
+  /// Inserts an predecessor at the given position.
+  /// @param pos the position
+  /// @param v the predecessor
+  /// @return an iterator to the newly added predecessor
+  iterator insert(const_iterator pos, Predecessor v) {
+    return predecessors.insert(pos, std::move(v));
+  }
+  /// Appends an predecessor.
+  /// @param v the predecessor
+  void push_back(Predecessor v) { predecessors.push_back(std::move(v)); }
+
+  /// Emplaces a predecessor.
+  /// @tparam Args the predecessor constructor args
+  template <typename... Args> void emplace_back(Args &&... args) {
+    predecessors.emplace_back(std::forward<Args>(args)...);
+  }
+
+  std::vector<Value *> getChildren() const override;
+
 private:
   std::ostream &doFormat(std::ostream &os) const override;
 
@@ -494,3 +727,14 @@ private:
 
 } // namespace ir
 } // namespace seq
+
+// See https://github.com/fmtlib/fmt/issues/1283.
+namespace fmt {
+template <typename Char>
+struct formatter<seq::ir::CondBranchInstr::Target, Char>
+    : fmt::v6::internal::fallback_formatter<seq::ir::CondBranchInstr::Target, Char> {};
+
+template <typename Char>
+struct formatter<seq::ir::PhiInstr::Predecessor, Char>
+    : fmt::v6::internal::fallback_formatter<seq::ir::PhiInstr::Predecessor, Char> {};
+} // namespace fmt

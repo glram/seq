@@ -1,5 +1,6 @@
 #include "instr.h"
 
+#include "constant.h"
 #include "module.h"
 #include "util/iterators.h"
 
@@ -11,7 +12,7 @@ const char Instr::NodeId = 0;
 const char AssignInstr::NodeId = 0;
 
 std::ostream &AssignInstr::doFormat(std::ostream &os) const {
-  fmt::print(os, FMT_STRING("store({}, {})"), *lhs, *rhs);
+  fmt::print(os, FMT_STRING("store({}, {})"), lhs->referenceString(), *rhs);
   return os;
 }
 
@@ -51,9 +52,20 @@ Value *InsertInstr::doClone() const {
 const char CallInstr::NodeId = 0;
 
 types::Type *CallInstr::getType() const {
+  if (auto *intrinsic = cast<IntrinsicConstant>(func))
+    return intrinsic->getReturnType();
+
   auto *funcType = func->getType()->as<types::FuncType>();
   assert(funcType);
   return funcType->getReturnType();
+}
+
+std::vector<Value *> CallInstr::getChildren() const {
+  std::vector<Value *> ret;
+  for (auto &v : *this)
+    ret.push_back(v.get());
+  ret.push_back(func.get());
+  return ret;
 }
 
 std::ostream &CallInstr::doFormat(std::ostream &os) const {
@@ -108,26 +120,41 @@ Value *TernaryInstr::doClone() const {
 
 const char ControlFlowInstr::NodeId = 0;
 
+const char UnconditionalControlFlowInstr::NodeId = 0;
+
+std::vector<Flow *> UnconditionalControlFlowInstr::getTargets() const {
+  if (!target)
+    return {};
+  else if (auto *proxy = cast<ValueProxy>(target)) {
+    auto *flow = cast<Flow>(proxy->getValue());
+    assert(flow);
+    return {flow};
+  } else if (auto *flow = cast<Flow>(target))
+    return {flow};
+
+  assert(false);
+}
+
 const char BreakInstr::NodeId = 0;
 
 std::ostream &BreakInstr::doFormat(std::ostream &os) const {
-  fmt::print(os, FMT_STRING("break({})"), getTarget()->referenceString());
+  fmt::print(os, FMT_STRING("break({})"), *getTarget());
   return os;
 }
 
 Value *BreakInstr::doClone() const {
-  return getModule()->Nrs<BreakInstr>(getSrcInfo(), getTarget(), getName());
+  return getModule()->Nrs<BreakInstr>(getSrcInfo(), getTarget()->clone(), getName());
 }
 
 const char ContinueInstr::NodeId = 0;
 
 std::ostream &ContinueInstr::doFormat(std::ostream &os) const {
-  fmt::print(os, FMT_STRING("continue({})"), getTarget()->referenceString());
+  fmt::print(os, FMT_STRING("continue({})"), *getTarget());
   return os;
 }
 
 Value *ContinueInstr::doClone() const {
-  return getModule()->Nrs<ContinueInstr>(getSrcInfo(), getTarget(), getName());
+  return getModule()->Nrs<ContinueInstr>(getSrcInfo(), getTarget()->clone(), getName());
 }
 
 const char ReturnInstr::NodeId = 0;
@@ -144,6 +171,67 @@ std::ostream &ReturnInstr::doFormat(std::ostream &os) const {
 Value *ReturnInstr::doClone() const {
   return getModule()->Nrs<ReturnInstr>(getSrcInfo(), value ? value->clone() : nullptr,
                                        getName());
+}
+
+const char BranchInstr::NodeId = 0;
+
+std::ostream &BranchInstr::doFormat(std::ostream &os) const {
+  fmt::print(os, FMT_STRING("jmp({})"), *getTarget());
+  return os;
+}
+
+Value *BranchInstr::doClone() const {
+  return getModule()->Nrs<BranchInstr>(getSrcInfo(), getTarget()->clone(), getName());
+}
+
+std::ostream &operator<<(std::ostream &os, const CondBranchInstr::Target &t) {
+  fmt::print(os, FMT_STRING("({}, {})"),
+             t.cond ? fmt::format(FMT_STRING("{}"), *t.cond) : "true",
+             *t.dst);
+  return os;
+}
+
+const char CondBranchInstr::NodeId = 0;
+
+std::vector<Flow *> CondBranchInstr::getTargets() const {
+  std::vector<Flow *> ret;
+  for (auto &t : targets) {
+    auto &target = t.dst;
+    if (auto *proxy = cast<ValueProxy>(target)) {
+      auto *flow = cast<Flow>(proxy->getValue());
+      assert(flow);
+      return {flow};
+    } else if (auto *flow = cast<Flow>(target))
+      return {flow};
+    else
+      assert(false);
+  }
+  return ret;
+}
+
+std::vector<Value *> CondBranchInstr::getChildren() const {
+  std::vector<Value *> ret;
+  for (auto &c : *this) {
+    if (c.cond)
+      ret.push_back(c.cond.get());
+    ret.push_back(c.dst.get());
+  }
+  return ret;
+}
+
+std::ostream &CondBranchInstr::doFormat(std::ostream &os) const {
+  fmt::print(os, FMT_STRING("cond_jmp({})"),
+             fmt::join(targets.begin(), targets.end(), ", "));
+  return os;
+}
+
+Value *CondBranchInstr::doClone() const {
+  std::vector<Target> newTargets;
+  for (auto &t : targets)
+    newTargets.emplace_back(t.dst->clone(), t.cond->clone());
+
+  return getModule()->Nrs<CondBranchInstr>(getSrcInfo(), std::move(newTargets),
+                                           getName());
 }
 
 const char YieldInstr::NodeId = 0;
@@ -183,6 +271,36 @@ std::ostream &FlowInstr::doFormat(std::ostream &os) const {
 Value *FlowInstr::doClone() const {
   return getModule()->Nrs<FlowInstr>(getSrcInfo(), flow->clone(), val->clone(),
                                      getName());
+}
+
+std::ostream &operator<<(std::ostream &os, const PhiInstr::Predecessor &p) {
+  fmt::print(os, FMT_STRING("({}, {})"), *p.pred, *p.val);
+  return os;
+}
+
+const char PhiInstr::NodeId = 0;
+
+std::ostream &PhiInstr::doFormat(std::ostream &os) const {
+  fmt::print(os, FMT_STRING("phi({})"),
+             fmt::join(predecessors.begin(), predecessors.end(), ", "));
+  return os;
+}
+
+Value *PhiInstr::doClone() const {
+  std::vector<Predecessor> newPreds;
+  for (auto &t : predecessors)
+    newPreds.emplace_back(t.pred->clone(), t.val->clone());
+
+  return getModule()->Nrs<PhiInstr>(getSrcInfo(), std::move(newPreds), getName());
+}
+
+std::vector<Value *> PhiInstr::getChildren() const {
+  std::vector<Value *> ret;
+  for (auto &c : *this) {
+    ret.push_back(c.pred.get());
+    ret.push_back(c.val.get());
+  }
+  return ret;
 }
 
 } // namespace ir

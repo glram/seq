@@ -62,6 +62,8 @@ public:
 
   types::Type *getType() const override { return val->getType(); }
 
+  std::vector<Value *> getChildren() const override { return {}; }
+
 private:
   std::ostream &doFormat(std::ostream &os) const override {
     return os << val->referenceString();
@@ -89,6 +91,8 @@ public:
 
   types::Type *getType() const override;
 
+  std::vector<Value *> getChildren() const override { return {}; }
+
 private:
   std::ostream &doFormat(std::ostream &os) const override {
     return os << '&' << val->referenceString();
@@ -102,8 +106,7 @@ private:
 
 // See https://github.com/fmtlib/fmt/issues/1283.
 namespace fmt {
-using seq::ir::Var;
-
 template <typename Char>
-struct formatter<Var, Char> : fmt::v6::internal::fallback_formatter<Var, Char> {};
+struct formatter<seq::ir::Var, Char>
+    : fmt::v6::internal::fallback_formatter<seq::ir::Var, Char> {};
 } // namespace fmt

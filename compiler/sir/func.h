@@ -56,6 +56,9 @@ public:
   /// @return a reference to the last arg
   arg_const_reference arg_back() const { return args.back(); }
 
+  /// @return true if empty
+  bool arg_empty() const { return arg_begin() == arg_end(); }
+
   /// @return iterator to the first symbol
   symbol_iterator begin() { return symbols.begin(); }
   /// @return iterator beyond the last symbol
@@ -73,6 +76,9 @@ public:
   symbol_const_reference front() const { return symbols.front(); }
   /// @return a reference to the last symbol
   symbol_const_reference back() const { return symbols.back(); }
+
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
 
   /// Inserts an symbol at the given position.
   /// @param pos the position

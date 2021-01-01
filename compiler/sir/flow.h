@@ -63,6 +63,9 @@ public:
   /// @return a reference to the last instruction/flow
   const_reference back() const { return series.back(); }
 
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
+
   /// Inserts an instruction/flow at the given position.
   /// @param pos the position
   /// @param v the flow or instruction
@@ -90,6 +93,8 @@ public:
 
   /// @return true if the series contains other flows.
   bool containsFlows() const;
+
+  std::vector<Value *> getChildren() const override;
 
 private:
   std::ostream &doFormat(std::ostream &os) const override;
@@ -126,6 +131,8 @@ public:
   /// Sets the body.
   /// @param f the new value
   void setBody(FlowPtr f) { body = std::move(f); }
+
+  std::vector<Value *> getChildren() const override { return {cond.get(), body.get()}; }
 
 private:
   std::ostream &doFormat(std::ostream &os) const override;
@@ -175,6 +182,8 @@ public:
   /// @param c the new var
   void setVar(Var *c) { var = c; }
 
+  std::vector<Value *> getChildren() const override { return {body.get(), iter.get()}; }
+
 private:
   std::ostream &doFormat(std::ostream &os) const override;
 
@@ -221,6 +230,8 @@ public:
   /// Sets the condition.
   /// @param c the new condition
   void setCond(ValuePtr c) { cond = std::move(c); }
+
+  std::vector<Value *> getChildren() const override;
 
 private:
   std::ostream &doFormat(std::ostream &os) const override;
@@ -300,6 +311,9 @@ public:
   /// @return a reference to the last catch
   const_reference back() const { return catches.back(); }
 
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
+
   /// Inserts a catch at the given position.
   /// @param pos the position
   /// @param v the catch
@@ -330,6 +344,8 @@ public:
   /// @param pos the position
   /// @return the iterator beyond the erased catch
   iterator erase(const_iterator pos) { return catches.erase(pos); }
+
+  std::vector<Value *> getChildren() const override;
 
 private:
   std::ostream &doFormat(std::ostream &os) const override;
@@ -371,6 +387,9 @@ public:
   /// @return a reference to the last flow
   const_reference back() const { return series.back(); }
 
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
+
   /// Inserts a flow at the given position.
   /// @param pos the position
   /// @param v the flow
@@ -396,6 +415,8 @@ public:
   /// @return the iterator beyond the removed flow
   iterator erase(const_iterator pos) { return series.erase(pos); }
 
+  std::vector<Value *> getChildren() const override;
+
 private:
   std::ostream &doFormat(std::ostream &os) const override;
 
@@ -407,8 +428,7 @@ private:
 
 // See https://github.com/fmtlib/fmt/issues/1283.
 namespace fmt {
-using seq::ir::Flow;
-
 template <typename Char>
-struct formatter<Flow, Char> : fmt::v6::internal::fallback_formatter<Flow, Char> {};
+struct formatter<seq::ir::Flow, Char>
+    : fmt::v6::internal::fallback_formatter<seq::ir::Flow, Char> {};
 } // namespace fmt

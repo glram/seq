@@ -146,3 +146,4 @@ public:
 } // namespace seq
 
 #undef DEFAULT_VISIT
+#undef VISIT

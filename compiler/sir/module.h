@@ -73,6 +73,9 @@ public:
   /// @return a reference to the last symbol
   const_reference back() const { return symbols.back(); }
 
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
+
   /// Inserts an symbol at the given position.
   /// @param pos the position
   /// @param v the symbol
@@ -132,6 +135,14 @@ public:
     auto ret = std::make_unique<DesiredType>(std::forward<Args>(args)...);
     ret->setModule(this);
     ret->setSrcInfo(s->getSrcInfo());
+    return std::move(ret);
+  }
+
+  template <typename DesiredType, typename... Args>
+  std::unique_ptr<DesiredType> Nxs(SrcInfo s, Args &&... args) {
+    auto ret = std::make_unique<DesiredType>(std::forward<Args>(args)...);
+    ret->setModule(this);
+    ret->setSrcInfo(s);
     return std::move(ret);
   }
 

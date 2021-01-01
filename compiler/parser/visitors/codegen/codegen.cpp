@@ -250,12 +250,14 @@ void CodegenVisitor::visit(const PassStmt *stmt) {}
 
 void CodegenVisitor::visit(const BreakStmt *stmt) {
   auto *module = ctx->getModule();
-  ctx->getSeries()->push_back(module->Nxs<BreakInstr>(stmt, ctx->getLoop()));
+  ctx->getSeries()->push_back(
+      module->Nxs<BreakInstr>(stmt, module->Nxs<ValueProxy>(stmt, ctx->getLoop())));
 }
 
 void CodegenVisitor::visit(const ContinueStmt *stmt) {
   auto *module = ctx->getModule();
-  ctx->getSeries()->push_back(module->Nxs<ContinueInstr>(stmt, ctx->getLoop()));
+  ctx->getSeries()->push_back(
+      module->Nxs<ContinueInstr>(stmt, module->Nxs<ValueProxy>(stmt, ctx->getLoop())));
 }
 
 void CodegenVisitor::visit(const ExprStmt *stmt) {

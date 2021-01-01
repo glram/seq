@@ -135,6 +135,9 @@ public:
   /// @return a reference to the last field
   virtual const_reference back() const = 0;
 
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
+
   /// Changes the body of the membered type.
   /// @param mTypes the new body
   /// @param mNames the new names
@@ -180,8 +183,8 @@ public:
 
   const_iterator begin() const override { return fields.begin(); }
   const_iterator end() const override { return fields.end(); }
-  virtual const_reference front() const override { return fields.front(); }
-  virtual const_reference back() const override { return fields.back(); }
+  const_reference front() const override { return fields.front(); }
+  const_reference back() const override { return fields.back(); }
 
   void realize(std::vector<Type *> mTypes, std::vector<std::string> mNames) override;
 
@@ -217,7 +220,7 @@ public:
   const_iterator begin() const override { return contents->begin(); }
   const_iterator end() const override { return contents->end(); }
   const_reference front() const override { return contents->front(); }
-  virtual const_reference back() const override { return contents->back(); }
+  const_reference back() const override { return contents->back(); }
 
   /// @return the reference type's contents
   RecordType *getContents() const { return contents; }
@@ -266,6 +269,9 @@ public:
   const_reference front() const { return argTypes.front(); }
   /// @return a reference to the last argument
   const_reference back() const { return argTypes.back(); }
+
+  /// @return true if empty
+  bool empty() const { return begin() == end(); }
 
   static std::string getName(Type *rType, const std::vector<Type *> &argTypes);
 

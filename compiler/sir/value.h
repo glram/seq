@@ -27,6 +27,11 @@ public:
 
   /// @return a clone of the value
   std::unique_ptr<Value> clone() const { return std::unique_ptr<Value>(doClone()); }
+  /// @return a clone of the value
+  Value *rawClone() const { return doClone(); }
+
+  /// @return a vector of all children of the value
+  virtual std::vector<Value *> getChildren() const = 0;
 
 protected:
   virtual Value *doClone() const = 0;
@@ -51,6 +56,14 @@ public:
 
   types::Type *getType() const override { return val->getType(); }
 
+  /// @return the value
+  Value *getValue() const { return val; }
+  /// Sets the value.
+  /// @param v the new value
+  void setValue(Value *v) { val = v; }
+
+  std::vector<Value *> getChildren() const override { return {}; }
+
 private:
   std::ostream &doFormat(std::ostream &os) const override {
     return os << val->referenceString();
@@ -64,8 +77,7 @@ private:
 
 // See https://github.com/fmtlib/fmt/issues/1283.
 namespace fmt {
-using seq::ir::Value;
-
 template <typename Char>
-struct formatter<Value, Char> : fmt::v6::internal::fallback_formatter<Value, Char> {};
+struct formatter<seq::ir::Value, Char>
+    : fmt::v6::internal::fallback_formatter<seq::ir::Value, Char> {};
 } // namespace fmt

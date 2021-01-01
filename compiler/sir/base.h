@@ -69,7 +69,7 @@ public:
     return isConvertible(Target::nodeId()) ? static_cast<Target *>(this) : nullptr;
   }
   /// See LLVM documentation.
-  template <typename Target> Target *as() const {
+  template <typename Target> const Target *as() const {
     return isConvertible(Target::nodeId()) ? static_cast<const Target *>(this)
                                            : nullptr;
   }
@@ -152,11 +152,23 @@ public:
 };
 
 template <typename Desired> Desired *cast(IRNode *other) {
-  return other != nullptr ? other->as<Desired>() : nullptr;
+  return other ? other->as<Desired>() : nullptr;
 }
 
-template <typename Desired> bool isA(IRNode *other) {
+template <typename Desired> Desired *cast(const IRNode *other) {
+  return other ? other->as<Desired>() : nullptr;
+}
+
+template <typename Desired, typename T> Desired *cast(const std::unique_ptr<T> &other) {
+  return other ? other->template as<Desired>() : nullptr;
+}
+
+template <typename Desired> bool isA(const IRNode *other) {
   return other && other->is<Desired>();
+}
+
+template <typename Desired, typename T> bool isA(const std::unique_ptr<T> &other) {
+  return other && other->template is<Desired>();
 }
 
 } // namespace ir

@@ -22,6 +22,8 @@ public:
       : AcceptorExtend(std::move(name)), type(type) {}
 
   types::Type *getType() const override { return type; }
+
+  std::vector<Value *> getChildren() const override { return {}; }
 };
 
 template <typename ValueType>
@@ -61,6 +63,12 @@ using FloatConstant = TemplatedConstant<double>;
 using BoolConstant = TemplatedConstant<bool>;
 using StringConstant = TemplatedConstant<std::string>;
 
+enum IntrinsicType { NEXT, DONE };
+
+std::ostream &operator<<(std::ostream &os, const IntrinsicType &t);
+
+using IntrinsicConstant = TemplatedConstant<IntrinsicType>;
+
 template <typename T> const char TemplatedConstant<T>::NodeId = 0;
 
 template <>
@@ -87,6 +95,52 @@ private:
   Value *doClone() const override {
     return getModule()->Nrs<TemplatedConstant<std::string>>(getSrcInfo(), val,
                                                             getType());
+  }
+};
+
+template <>
+class TemplatedConstant<IntrinsicType>
+    : public AcceptorExtend<TemplatedConstant<IntrinsicType>, Constant> {
+private:
+  IntrinsicType val;
+  types::Type *returnType;
+
+public:
+  static const char NodeId;
+
+  TemplatedConstant(IntrinsicType v, types::Type *returnType, std::string name = "")
+      : AcceptorExtend(nullptr, std::move(name)), val(v), returnType(returnType) {}
+
+  /// @return the internal value.
+  IntrinsicType getVal() { return val; }
+
+  types::Type *getReturnType() const { return returnType; }
+
+private:
+  std::ostream &doFormat(std::ostream &os) const override {
+    fmt::print(os, "{}", val);
+    return os;
+  }
+
+  Value *doClone() const override {
+    return getModule()->Nrs<TemplatedConstant<IntrinsicType>>(getSrcInfo(), val,
+                                                              getType());
+  }
+};
+
+/// Signifies an undefined value.
+class UndefinedConstant : public AcceptorExtend<UndefinedConstant, Constant> {
+public:
+  static const char NodeId;
+
+  explicit UndefinedConstant(types::Type *type, std::string name = "")
+      : AcceptorExtend(type, std::move(name)) {}
+
+private:
+  std::ostream &doFormat(std::ostream &os) const override { return os << "undef"; }
+
+  Value *doClone() const override {
+    return getModule()->Nrs<UndefinedConstant>(getSrcInfo(), getType());
   }
 };
 

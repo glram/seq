@@ -23,6 +23,8 @@
 #include "sir/sir.h"
 #include "util/fmt/format.h"
 
+#include "sir/transform/lower_flows.h"
+
 int _ocaml_time = 0;
 int _ll_time = 0;
 int _level = 0;
@@ -86,6 +88,8 @@ seq::SeqModule *parse(const string &argv0, const string &file, const string &cod
 
     t = high_resolution_clock::now();
     auto module = ast::CodegenVisitor::apply(cache, move(typechecked));
+    seq::ir::transform::LowerFlowsVisitor::process(module.get());
+
     std::cout << *module;
 
     if (!isTest)

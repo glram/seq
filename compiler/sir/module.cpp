@@ -14,7 +14,7 @@ const char IRModule::NodeId = 0;
 
 std::ostream &IRModule::doFormat(std::ostream &os) const {
   fmt::print(os, FMT_STRING("module {}{{\n"), referenceString());
-  fmt::print(os, "{}\n", *mainFunc);
+  fmt::print(os, FMT_STRING("{}\n"), *mainFunc);
 
   for (auto &g : symbols) {
     fmt::print(os, FMT_STRING("{}\n"), *g);
